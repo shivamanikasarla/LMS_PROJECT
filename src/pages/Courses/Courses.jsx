@@ -1,14 +1,21 @@
-
 import React from 'react';
 import { FiPlus } from "react-icons/fi";
 import CourseFilters from './components/CourseFilters';
 import CourseGrid from './components/CourseGrid';
 import CourseModal from './components/CourseModal';
+import CourseDetailsModal from './components/CourseDetailsModal';
 import { useCourses } from './hooks/useCourses';
 import { useCourseFilters } from './hooks/useCourseFilters';
 import './styles/courses.css';
+import { useNavigate } from 'react-router-dom';
+
+import CourseShareModal from './components/CourseShareModal';
 
 const CoursesPage = () => {
+  const navigate = useNavigate();
+  const [viewCourse, setViewCourse] = React.useState(null);
+  const [shareCourse, setShareCourse] = React.useState(null);
+
   // 1. Data & Form Logic
   const {
     courses,
@@ -25,31 +32,27 @@ const CoursesPage = () => {
     editIndex
   } = useCourses();
 
-  // 2. Filter Logic
+  // 2. Filter Logic (NO type filter)
   const {
     search,
     setSearch,
-    filterType,
-    setFilterType,
+    statusFilter,
+    setStatusFilter,
     filteredCourses
   } = useCourseFilters(courses);
 
   return (
     <div className="courses-container">
-      {/* Header */}
       <header className="courses-header">
         <div className="header-content">
           <h1>Course Management</h1>
-          <p>Create, manage and assign courses to mentors.</p>
+          <p>Create, manage and assign courses.</p>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          {/* Filters & Actions */}
           <CourseFilters
             search={search}
             setSearch={setSearch}
-            filterType={filterType}
-            setFilterType={setFilterType}
           />
 
           <button className="btn-primary-add" onClick={() => openModal()}>
@@ -58,15 +61,16 @@ const CoursesPage = () => {
         </div>
       </header>
 
-      {/* Content using Grid and Empty State */}
       <CourseGrid
         courses={filteredCourses}
         onEdit={openModal}
         onDelete={handleDelete}
-        onOpenModal={() => openModal()}
+        onOpenModal={openModal}
+        onManageContent={(id) => navigate(`/courses/builder/${id}`)}
+        onShowDetails={(course) => setViewCourse(course)}
+        onShare={(course) => setShareCourse(course)}
       />
 
-      {/* Modal */}
       <CourseModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -77,6 +81,18 @@ const CoursesPage = () => {
         handleImageChange={handleImageChange}
         handleSave={handleSave}
         isEdit={editIndex !== null}
+      />
+
+      <CourseDetailsModal
+        isOpen={!!viewCourse}
+        onClose={() => setViewCourse(null)}
+        course={viewCourse}
+      />
+
+      <CourseShareModal
+        isOpen={!!shareCourse}
+        onClose={() => setShareCourse(null)}
+        course={shareCourse}
       />
     </div>
   );

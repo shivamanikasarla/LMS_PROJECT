@@ -4,15 +4,17 @@ import { useState } from 'react';
 export const useCourseFilters = (courses) => {
     const [search, setSearch] = useState("");
     const [filterType, setFilterType] = useState("All");
-    const [statusFilter, setStatusFilter] = useState("All");
+
 
     const filteredCourses = courses.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.trainer.toLowerCase().includes(search.toLowerCase());
-        const matchesType = filterType === "All" || c.courseType === filterType;
-        const matchesStatus = statusFilter === "All" || c.status === statusFilter;
+        const courseName = c.name ? c.name.toLowerCase() : "";
+        const mentor = c.mentorName ? c.mentorName.toLowerCase() : "";
+        const query = search.toLowerCase();
 
-        return matchesSearch && matchesType && matchesStatus;
+        const matchesSearch = courseName.includes(query) || mentor.includes(query);
+        const matchesType = filterType === "All" || c.courseType === filterType;
+
+        return matchesSearch && matchesType;
     });
 
     return {
@@ -20,8 +22,6 @@ export const useCourseFilters = (courses) => {
         setSearch,
         filterType,
         setFilterType,
-        statusFilter,
-        setStatusFilter,
         filteredCourses
     };
 };

@@ -84,6 +84,9 @@ const Users = () => {
         <button className={`u-tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>
           All Users <span className="u-badge">{users.length}</span>
         </button>
+        <button className={`u-tab ${activeTab === 'instructors' ? 'active' : ''}`} onClick={() => setActiveTab('instructors')}>
+          Instructors <span className="u-badge">{users.filter(u => u.role === 'Instructor').length}</span>
+        </button>
         <button className={`u-tab ${activeTab === 'approvals' ? 'active' : ''}`} onClick={() => setActiveTab('approvals')}>
           Instructor Requests <span className="u-badge warning">{requestCount}</span>
         </button>
@@ -101,6 +104,16 @@ const Users = () => {
             onDelete={handleDeleteUser}
             onToggleStatus={handleToggleStatus}
             onEdit={handleEditUser}
+          />
+        )}
+        {activeTab === 'instructors' && (
+          <UserList
+            users={users.filter(u => u.role === 'Instructor')}
+            setUsers={setUsers}
+            onDelete={handleDeleteUser}
+            onToggleStatus={handleToggleStatus}
+            onEdit={handleEditUser}
+            hideRoleFilter={true}
           />
         )}
         {activeTab === 'approvals' && <InstructorRequests />}

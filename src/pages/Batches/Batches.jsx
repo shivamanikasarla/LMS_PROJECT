@@ -1,15 +1,25 @@
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FiPlus, FiSearch, FiFilter } from "react-icons/fi";
+import { useNavigate } from 'react-router-dom';
+
 import { useBatches } from './hooks/useBatches';
 import BatchCard from './components/BatchCard';
 import BatchModal from './components/BatchModal';
 import BatchStats from './components/BatchStats';
 import BatchesEmptyState from './components/BatchesEmptyState';
 import { BATCH_TABS } from './constants/batchConstants';
+import { MOCK_COURSES } from '../../data/mockCourses';
+import { MOCK_USERS } from '../../data/mockUsers';
+
 import './styles/batches.css';
 
 const Batches = () => {
+    const navigate = useNavigate();
+
+    // TEMP: replace with API / store later
+    const courses = MOCK_COURSES;
+    const instructors = useMemo(() => MOCK_USERS.filter(u => u.role === 'Instructor' || u.role === 'Admin'), []);
+
     const {
         batches,
         allBatches,
@@ -25,17 +35,21 @@ const Batches = () => {
         currentTab,
         setCurrentTab,
         searchQuery,
-        setSearchQuery
-    } = useBatches();
+        setSearchQuery,
+        courseFilter,
+        setCourseFilter,
+        instructorFilter,
+        setInstructorFilter
+    } = useBatches(courses);
 
     return (
         <div className="batches-page">
 
-            {/* 1. Header Section */}
+            {/* Header */}
             <div className="batches-header-premium">
                 <div className="header-titles">
                     <h1>Batch Management</h1>
-                    <p>Track class schedules, student enrollments, and ongoing sessions.</p>
+                    <p>Manage batch schedules, pricing, and access.</p>
                 </div>
                 <div className="header-actions">
                     <button className="btn-primary-add" onClick={() => openModal()}>
@@ -44,13 +58,11 @@ const Batches = () => {
                 </div>
             </div>
 
-            {/* 2. Stats Section */}
+            {/* Stats */}
             <BatchStats stats={stats} />
 
-            {/* 3. Controls & Filters */}
+            {/* Tabs + Search */}
             <div className="batches-controls-bar">
-
-                {/* Tabs */}
                 <div className="tabs-container">
                     {Object.values(BATCH_TABS).map(tab => (
                         <button
@@ -63,8 +75,31 @@ const Batches = () => {
                     ))}
                 </div>
 
-                {/* Search */}
                 <div className="search-filter-group">
+                    {/* Course Filter */}
+                    <div className="filter-select-wrapper">
+                        <select
+                            className="filter-select"
+                            value={courseFilter}
+                            onChange={(e) => setCourseFilter(e.target.value)}
+                        >
+                            <option value="All">All Courses</option>
+                            {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Instructor Filter */}
+                    <div className="filter-select-wrapper">
+                        <select
+                            className="filter-select"
+                            value={instructorFilter}
+                            onChange={(e) => setInstructorFilter(e.target.value)}
+                        >
+                            <option value="All">All Instructors</option>
+                            {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                        </select>
+                    </div>
+
                     <div className="search-box-wrapper">
                         <FiSearch className="search-icon" />
                         <input
@@ -77,33 +112,46 @@ const Batches = () => {
                 </div>
             </div>
 
-            {/* 4. Grid Content */}
+            {/* Grid */}
             {batches.length > 0 ? (
                 <div className="batches-grid-layout">
-                    {batches.map((batch) => (
+                    {batches.map(batch => (
                         <BatchCard
                             key={batch.id}
                             batch={batch}
+                            courses={courses}
                             onEdit={openModal}
                             onDelete={handleDelete}
+                            onManageContent={(id) =>
+                                navigate(`/batches/builder/${id}`)
+                            }
                         />
                     ))}
                 </div>
             ) : (
-                // Show empty state if no batches match, or if global empty
                 <div className="no-results-area">
                     {allBatches.length === 0 ? (
-                        <BatchesEmptyState onCreate={() => openModal()} />
+                        <BatchesEmptyState onCreate={openModal} />
                     ) : (
                         <div className="search-empty">
                             <p>No batches found matching your filters.</p>
-                            <button className="text-btn" onClick={() => { setCurrentTab(BATCH_TABS.ALL); setSearchQuery('') }}>Clear Filters</button>
+                            <button
+                                className="text-btn"
+                                onClick={() => {
+                                    setCurrentTab(BATCH_TABS.ALL);
+                                    setSearchQuery('');
+                                    setCourseFilter('All');
+                                    setInstructorFilter('All');
+                                }}
+                            >
+                                Clear Filters
+                            </button>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* 5. Modal */}
+            {/* Modal */}
             <BatchModal
                 isOpen={showModal}
                 onClose={closeModal}
@@ -111,6 +159,8 @@ const Batches = () => {
                 handleInputChange={handleInputChange}
                 handleSave={handleSave}
                 isEdit={isEdit}
+                courses={courses}
+                instructors={instructors}
             />
         </div>
     );

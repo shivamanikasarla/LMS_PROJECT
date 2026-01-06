@@ -12,8 +12,30 @@ export const useCourses = () => {
     const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+
+        let val = value;
+        if (type === 'checkbox') {
+            val = (name === 'accessPlatforms') ? value : checked;
+        } else if (value === 'true') {
+            val = true;
+        } else if (value === 'false') {
+            val = false;
+        }
+
+        if (name === 'accessPlatforms') {
+            // Handle multi-select checkbox for accessPlatforms
+            setFormData(prev => {
+                const current = prev.accessPlatforms || [];
+                if (checked) {
+                    return { ...prev, accessPlatforms: [...current, value] };
+                } else {
+                    return { ...prev, accessPlatforms: current.filter(item => item !== value) };
+                }
+            });
+        } else {
+            setFormData(prev => ({ ...prev, [name]: val }));
+        }
     };
 
     const handleImageChange = (e) => {
@@ -39,15 +61,21 @@ export const useCourses = () => {
             setFormData({
                 name: c.name,
                 desc: c.desc,
-                price: c.price,
-                trainer: c.trainer,
-                courseType: c.courseType,
-                status: c.status || "Upcoming",
-                mentorName: c.mentorName,
-                mentorId: c.mentorId,
-                mentorPhone: c.mentorPhone,
+                overview: c.overview || "",
+                toolsCovered: c.toolsCovered || "",
+
                 img: null,
-                imgPreview: c.img
+                imgPreview: c.img,
+
+                showValidity: c.showValidity || false,
+                validityDuration: c.validityDuration || "",
+                accessPlatforms: c.accessPlatforms || ['Website'],
+                allowOffline: c.allowOffline || false,
+                showLearnInfo: c.showLearnInfo || false,
+                showAvatar: c.showAvatar || false,
+                allowBookmark: c.allowBookmark || false,
+                provideCertificate: c.provideCertificate || false,
+                certificateTemplate: c.certificateTemplate || ""
             });
             setEditIndex(index);
         } else {
@@ -99,6 +127,9 @@ export const useCourses = () => {
         formData,
         step,
         setStep,
-        editIndex
+        step,
+        setStep,
+        editIndex,
+        setFormData
     };
 };

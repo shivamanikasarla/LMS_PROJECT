@@ -49,7 +49,7 @@ const EditorMode = ({ examData, setExamData, onSave, onPreview, onBack }) => {
             <div className="bg-white border-bottom px-4 py-2 d-flex justify-content-between align-items-center shadow-sm" style={{ zIndex: 10 }}>
                 <div className="d-flex align-items-center gap-3">
                     <button className="btn btn-light btn-sm" onClick={onBack}>
-                        <i className="bi bi-arrow-left me-1"></i> Setup
+                        <i className="bi bi-nut me-1"></i> Settings
                     </button>
                     <div className="vr h-50"></div>
                     <h6 className="mb-0 fw-bold">{title} <span className="text-muted fw-normal ms-2">| {course}</span></h6>
@@ -81,7 +81,7 @@ const EditorMode = ({ examData, setExamData, onSave, onPreview, onBack }) => {
                                 <i className="bi bi-plus-lg me-1"></i> Add Question
                             </button>
                             <button className={`nav-link py-1 small rounded-2 fw-bold ${activeTab === 'settings' ? 'active shadow-sm' : 'text-muted'}`} onClick={() => setActiveTab('settings')}>
-                                <i className="bi bi-sliders me-1"></i> Stats
+                                <i className="bi bi-sliders me-1"></i> Settings
                             </button>
                         </div>
                     </div>
@@ -100,23 +100,140 @@ const EditorMode = ({ examData, setExamData, onSave, onPreview, onBack }) => {
                         ) : (
                             <div className="p-4">
                                 <h6 className="fw-bold text-muted text-uppercase small ls-1 mb-3">Paper Information</h6>
-                                <ul className="list-group list-group-flush mb-4 small">
-                                    <li className="list-group-item d-flex justify-content-between px-0">
+                                <ul className="list-group list-group-flush mb-4 small border rounded">
+                                    <li className="list-group-item d-flex justify-content-between">
                                         <span>Total Questions</span>
                                         <span className="fw-bold">{questions.length}</span>
                                     </li>
-                                    <li className="list-group-item d-flex justify-content-between px-0">
-                                        <span>Current Total Marks</span>
+                                    <li className="list-group-item d-flex justify-content-between">
+                                        <span>Total Marks</span>
                                         <span className={`fw-bold ${currentTotal > totalMarks ? 'text-danger' : 'text-success'}`}>{currentTotal} / {totalMarks}</span>
                                     </li>
-                                    <li className="list-group-item d-flex justify-content-between px-0">
+                                    <li className="list-group-item d-flex justify-content-between">
                                         <span>Duration</span>
                                         <span className="fw-bold">{duration} min</span>
                                     </li>
                                 </ul>
 
+                                <h6 className="fw-bold text-muted text-uppercase small ls-1 mb-3 mt-4">Exam Controls</h6>
+
+                                {/* 1. Rules */}
+                                <div className="mb-4">
+                                    <label className="small fw-bold text-primary mb-2 d-block">Rules & Behaviour</label>
+                                    <div className="card card-body p-3 bg-light border-0">
+                                        <div className="form-check form-switch mb-2">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.negativeMarking || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, negativeMarking: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Negative Marking</label>
+                                        </div>
+                                        <div className="form-check form-switch mb-2">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.autoSubmit || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, autoSubmit: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Auto Submit</label>
+                                        </div>
+                                        <div className="form-check form-switch mb-2">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.shuffleQuestions || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, shuffleQuestions: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Shuffle Questions</label>
+                                        </div>
+                                        <div className="form-check form-switch">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.allowResume || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, allowResume: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Allow Resume</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. Proctoring */}
+                                <div className="mb-4">
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <label className="small fw-bold text-danger mb-0">Proctoring</label>
+                                        <div className="form-check form-switch m-0">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.proctoring?.enabled || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, proctoring: { ...prev.proctoring, enabled: e.target.checked } }))}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {examData.proctoring?.enabled && (
+                                        <div className="card card-body p-3 bg-danger bg-opacity-10 border-0">
+                                            <div className="form-check form-switch mb-2">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={examData.proctoring?.cameraRequired || false}
+                                                    onChange={(e) => setExamData(prev => ({ ...prev, proctoring: { ...prev.proctoring, cameraRequired: e.target.checked } }))}
+                                                />
+                                                <label className="form-check-label small">Camera Req.</label>
+                                            </div>
+                                            <div className="form-check form-switch mb-2">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={examData.proctoring?.forceFullScreen || false}
+                                                    onChange={(e) => setExamData(prev => ({ ...prev, proctoring: { ...prev.proctoring, forceFullScreen: e.target.checked } }))}
+                                                />
+                                                <label className="form-check-label small">Full Screen</label>
+                                            </div>
+                                            <div className="form-check form-switch">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={examData.proctoring?.blockOnTabSwitch || false}
+                                                    onChange={(e) => setExamData(prev => ({ ...prev, proctoring: { ...prev.proctoring, blockOnTabSwitch: e.target.checked } }))}
+                                                />
+                                                <label className="form-check-label small">Block Tab Switch</label>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 3. Grading */}
+                                <div className="mb-4">
+                                    <label className="small fw-bold text-success mb-2 d-block">Grading</label>
+                                    <div className="card card-body p-3 bg-success bg-opacity-10 border-0">
+                                        <div className="form-check form-switch mb-2">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.showResults || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, showResults: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Show Results</label>
+                                        </div>
+                                        <div className="form-check form-switch">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                checked={examData.settings?.autoEvaluation || false}
+                                                onChange={(e) => setExamData(prev => ({ ...prev, settings: { ...prev.settings, autoEvaluation: e.target.checked } }))}
+                                            />
+                                            <label className="form-check-label small">Auto Evaluation</label>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="p-3 bg-blue-50 text-primary rounded border border-blue-100 mb-3">
-                                    <small><i className="bi bi-info-circle me-1"></i> Keep questions within the page limits. Add pages feature coming soon.</small>
+                                    <small><i className="bi bi-info-circle me-1"></i> Changes here update the main settings immediately.</small>
                                 </div>
                             </div>
                         )}
@@ -145,6 +262,9 @@ const EditorMode = ({ examData, setExamData, onSave, onPreview, onBack }) => {
                         <div className="position-relative p-5 h-100 d-flex flex-column" style={{ zIndex: 2 }}>
                             {/* Paper Header */}
                             <div className="text-center border-bottom border-dark pb-4 mb-4">
+                                {customAssets.logo && (
+                                    <img src={customAssets.logo} alt="Logo" className="mb-3" style={{ height: '60px', objectFit: 'contain' }} />
+                                )}
                                 <h1 className="fw-bold mb-2 text-uppercase display-6" style={{ letterSpacing: '2px' }}>{title}</h1>
                                 <div className="d-flex justify-content-center gap-4 text-muted small fw-bold text-uppercase">
                                     <span>{course}</span>
@@ -153,6 +273,13 @@ const EditorMode = ({ examData, setExamData, onSave, onPreview, onBack }) => {
                                     <span>•</span>
                                     <span>Max Marks: {totalMarks}</span>
                                 </div>
+
+                                {examData.instructions && (
+                                    <div className="mt-4 text-start bg-light p-3 rounded border border-light">
+                                        <h6 className="fw-bold small text-uppercase mb-2 text-muted">Instructions:</h6>
+                                        <p className="small mb-0 text-dark" style={{ whiteSpace: 'pre-line' }}>{examData.instructions}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Questions */}

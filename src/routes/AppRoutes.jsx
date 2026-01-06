@@ -18,18 +18,26 @@ const AffiliateMarketing = lazy(() => import('../pages/AffiliateMarketing/Affili
 const Users = lazy(() => import('../pages/Users/Users'));
 const Settings = lazy(() => import('../pages/Settings/Settings'));
 const NotFound = lazy(() => import('../pages/NotFound'));
+const BatchBuilder = lazy(() => import('../pages/Batches/BatchBuilder'));
+const CourseBuilder = lazy(() => import('../pages/Courses/CourseBuilder'));
+const CourseOverview = lazy(() => import('../pages/Courses/CourseOverview'));
 
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
+        {/* Public Routes */}
+        <Route path="/course-overview/:id" element={<CourseOverview />} />
+
         {/* Main Application Routes wrapped in Dashboard Layout */}
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<Home />} />
 
           <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/builder/:id" element={<CourseBuilder />} />
           <Route path="/courses/*" element={<Navigate to="/courses" replace />} />
           <Route path="/batches" element={<Batches />} />
+          <Route path="/batches/builder/:id" element={<BatchBuilder />} />
 
           <Route path="/users" element={<Users />} />
           <Route path="/exams/*" element={<Exams />} />

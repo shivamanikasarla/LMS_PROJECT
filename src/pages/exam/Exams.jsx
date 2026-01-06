@@ -8,7 +8,9 @@ import ExamSchedule from "./schedule/ExamSchedule";
 import ReattemptRules from "./reattempt/ReattemptRules";
 import ExamReports from "./reports/ExamReports";
 import Leaderboard from "./leaderboard/Leaderboard";
+import ExamSettings from "./settings/ExamSettings";
 import ExamPaperView from "./preview/ExamPaperView";
+import LearnerExamView from "./learner/LearnerExamView";
 
 const Exams = () => {
     return (
@@ -23,8 +25,12 @@ const Exams = () => {
                 <Route path="reattempt" element={<ReattemptRules />} />
                 <Route path="reports" element={<ExamReports />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
+                <Route path="settings" element={<ExamSettings />} />
                 <Route path="view-paper/:id" element={<ExamPaperView />} />
             </Route>
+
+            {/* Learner/Student View (Standalone) */}
+            <Route path="student/attempt/:id" element={<LearnerExamView />} />
         </Routes>
     );
 };

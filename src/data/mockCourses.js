@@ -3,7 +3,7 @@ export const MOCK_COURSES = [
     {
         id: "C-101",
         name: "Introduction to React Native",
-        trainer: "Sarah Wilson",
+
         courseType: "Free",
         status: "Completed",
         desc: "Learn the basics of building native mobile apps using React. This course covers components, navigation, and basic state management.",
@@ -16,7 +16,7 @@ export const MOCK_COURSES = [
     {
         id: "C-102",
         name: "Advanced Python Masterclass",
-        trainer: "David Chen",
+
         courseType: "Paid",
         status: "Completed",
         desc: "Deep dive into Python features like decorators, generators, and metaprogramming. Perfect for experienced developers.",
@@ -29,7 +29,7 @@ export const MOCK_COURSES = [
     {
         id: "C-103",
         name: "Full Stack Web Development",
-        trainer: "Michael Brown",
+
         courseType: "Paid",
         status: "Live",
         desc: "Complete bootcamp covering MongoDB, Express, React, and Node.js. Build real-world projects from scratch.",
@@ -42,7 +42,7 @@ export const MOCK_COURSES = [
     {
         id: "C-104",
         name: "UI/UX Design Fundamentals",
-        trainer: "Emma Davis",
+
         courseType: "Free",
         status: "Upcoming",
         desc: "Understand the principles of good design, wireframing, and prototyping. No prior design experience required.",
@@ -55,7 +55,7 @@ export const MOCK_COURSES = [
     {
         id: "C-105",
         name: "Machine Learning with TensorFlow",
-        trainer: "Dr. James Wilson",
+
         courseType: "Paid",
         status: "Upcoming",
         desc: "A comprehensive guide to neural networks and deep learning. Prerequisites: Basic Python and Linear Algebra.",

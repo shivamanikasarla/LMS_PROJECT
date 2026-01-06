@@ -3,7 +3,7 @@ import { FiSearch, FiEdit2, FiTrash2, FiUserX } from "react-icons/fi";
 import { BsToggleOn, BsToggleOff } from "react-icons/bs";
 import { USER_STATUS } from "../hooks/useUsers";
 
-const UserList = ({ users, onDelete, onToggleStatus, onEdit }) => {
+const UserList = ({ users, onDelete, onToggleStatus, onEdit, hideRoleFilter }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
 
@@ -36,18 +36,20 @@ const UserList = ({ users, onDelete, onToggleStatus, onEdit }) => {
           />
         </div>
 
-        <select
-          className="role-filter-select"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-        >
-          <option value="All">All Roles</option>
-          <option value="Admin">Admin</option>
-          <option value="Instructor">Instructor</option>
-          <option value="Student">Learner (Student)</option>
-          <option value="Parent">Parent</option>
-          <option value="Affiliate">Affiliate</option>
-        </select>
+        {!hideRoleFilter && (
+          <select
+            className="role-filter-select"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="All">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Instructor">Instructor</option>
+            <option value="Student">Learner (Student)</option>
+            <option value="Parent">Parent</option>
+            <option value="Affiliate">Affiliate</option>
+          </select>
+        )}
       </div>
 
       <div className="users-table-container">

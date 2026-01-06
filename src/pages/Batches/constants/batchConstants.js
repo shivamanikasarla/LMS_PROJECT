@@ -11,9 +11,15 @@ export const INITIAL_BATCH_FORM = {
     courseName: "", // For display/denormalization
     startDate: "",
     endDate: "",
-    trainer: "",
-    students: 0,
-    maxStudents: 60
+    price: "",
+    classesPerWeek: "",
+    mode: "Online",
+    validity: "",
+    status: "Upcoming",
+    pricingType: "paid", // 'free' | 'paid'
+    price: "",
+    maxStudents: "",
+    instructorId: ""
 };
 
 export const BATCH_TABS = {

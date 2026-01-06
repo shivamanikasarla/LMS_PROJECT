@@ -1,9 +1,8 @@
-
 import React from 'react';
 import CourseCard from './CourseCard';
 import EmptyState from './EmptyState';
 
-const CourseGrid = ({ courses, onEdit, onDelete, onOpenModal }) => {
+const CourseGrid = ({ courses, onEdit, onDelete, onOpenModal, onManageContent, onShowDetails, onShare }) => {
     if (!courses || courses.length === 0) {
         return <EmptyState onOpenModal={onOpenModal} />;
     }
@@ -17,6 +16,9 @@ const CourseGrid = ({ courses, onEdit, onDelete, onOpenModal }) => {
                     index={index}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onManageContent={onManageContent}
+                    onShowDetails={onShowDetails}
+                    onShare={onShare}
                 />
             ))}
         </div>

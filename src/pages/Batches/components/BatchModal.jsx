@@ -1,16 +1,23 @@
-
 import React from 'react';
-import { FiX, FiInfo } from "react-icons/fi";
-import { MOCK_COURSES } from '../../../data/mockCourses';
+import { FiX } from "react-icons/fi";
 
-const BatchModal = ({ isOpen, onClose, formData, handleInputChange, handleSave, isEdit }) => {
+const BatchModal = ({
+    isOpen,
+    onClose,
+    formData,
+    handleInputChange,
+    handleSave,
+    isEdit,
+    courses = [],
+    instructors = []
+}) => {
     if (!isOpen) return null;
 
     return (
         <div className="modal-overlay-fixed">
             <div className="modal-box premium-modal">
                 <div className="modal-head">
-                    <h2>{isEdit ? 'Edit Batch Details' : 'Create New Batch'}</h2>
+                    <h2>{isEdit ? 'Edit Batch' : 'Create New Batch'}</h2>
                     <button className="close-btn" onClick={onClose}>
                         <FiX size={24} />
                     </button>
@@ -18,34 +25,38 @@ const BatchModal = ({ isOpen, onClose, formData, handleInputChange, handleSave, 
 
                 <div className="modal-body">
                     <p className="modal-subtitle">
-                        Configure batch schedule and capacity. Status is automatically derived from dates.
+                        Configure batch schedule and pricing.
                     </p>
 
                     <div className="form-group-grid">
 
-                        {/* Row 1: Course (Linked) */}
+                        {/* Course */}
                         <div className="form-field full-width">
-                            <label>Course Name <span className="req">*</span></label>
+                            <label>Course <span className="req">*</span></label>
                             <select
                                 className="form-select"
                                 name="courseId"
                                 value={formData.courseId}
                                 onChange={handleInputChange}
-                                disabled={isEdit} // Optional: Lock course on edit
+                                disabled={isEdit}
                             >
-                                <option value="">Select a Course</option>
-                                {MOCK_COURSES.map(course => (
+                                <option value="">Select a course</option>
+                                {courses.map(course => (
                                     <option key={course.id} value={course.id}>
                                         {course.name}
                                     </option>
                                 ))}
                             </select>
-                            {isEdit && <span className="helper-text">Course cannot be changed once batch is created.</span>}
+                            {isEdit && (
+                                <span className="helper-text">
+                                    Course cannot be changed after creation.
+                                </span>
+                            )}
                         </div>
 
-                        {/* Row 2: Batch Name */}
+                        {/* Batch Name */}
                         <div className="form-field full-width">
-                            <label>Batch Name (Identifier) <span className="req">*</span></label>
+                            <label>Batch Name <span className="req">*</span></label>
                             <input
                                 type="text"
                                 className="form-input"
@@ -56,33 +67,25 @@ const BatchModal = ({ isOpen, onClose, formData, handleInputChange, handleSave, 
                             />
                         </div>
 
-                        {/* Row 3: Trainer & Capacity */}
-                        <div className="form-row-split">
-                            <div className="form-field">
-                                <label>Assigned Trainer <span className="req">*</span></label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    name="trainer"
-                                    value={formData.trainer}
-                                    onChange={handleInputChange}
-                                    placeholder="Instructor Name"
-                                />
-                            </div>
-                            <div className="form-field">
-                                <label>Max Students <span className="req">*</span></label>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    name="maxStudents"
-                                    value={formData.maxStudents}
-                                    onChange={handleInputChange}
-                                    min="1"
-                                />
-                            </div>
+                        {/* Instructor */}
+                        <div className="form-field full-width">
+                            <label>Assigned Instructor</label>
+                            <select
+                                className="form-select"
+                                name="instructorId"
+                                value={formData.instructorId}
+                                onChange={handleInputChange}
+                            >
+                                <option value="">Select an instructor</option>
+                                {instructors.map(inst => (
+                                    <option key={inst.id} value={inst.id}>
+                                        {inst.name} ({inst.role})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
-                        {/* Row 4: Dates */}
+                        {/* Dates */}
                         <div className="form-row-split">
                             <div className="form-field">
                                 <label>Start Date <span className="req">*</span></label>
@@ -94,6 +97,7 @@ const BatchModal = ({ isOpen, onClose, formData, handleInputChange, handleSave, 
                                     onChange={handleInputChange}
                                 />
                             </div>
+
                             <div className="form-field">
                                 <label>End Date <span className="req">*</span></label>
                                 <input
@@ -106,13 +110,101 @@ const BatchModal = ({ isOpen, onClose, formData, handleInputChange, handleSave, 
                             </div>
                         </div>
 
-                        {/* Info Block */}
-                        <div className="info-block">
-                            <FiInfo size={16} />
-                            <span>
-                                Batch status (Upcoming, Ongoing, Completed) will be set automatically based on the selected dates.
-                            </span>
+                        {/* Class Frequency & Mode */}
+                        <div className="form-row-split">
+                            <div className="form-field">
+                                <label>Classes / Week</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    name="classesPerWeek"
+                                    value={formData.classesPerWeek || ''}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label>Mode</label>
+                                <select
+                                    className="form-select"
+                                    name="mode"
+                                    value={formData.mode || 'Online'}
+                                    onChange={handleInputChange}
+                                >
+                                    <option value="Online">Online</option>
+                                    <option value="Offline">Offline</option>
+                                    <option value="Both">Hybrid</option>
+                                </select>
+                            </div>
                         </div>
+
+                        {/* Validity & Batch Limit */}
+                        <div className="form-row-split">
+                            <div className="form-field">
+                                <label>Batch Limit (Max Students)</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    name="maxStudents"
+                                    value={formData.maxStudents || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 50"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label>Access Validity</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    name="validity"
+                                    value={formData.validity || ''}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 6 Months"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="form-field full-width">
+                            <label>Pricing</label>
+                            <div className="pricing-options">
+                                <label className={`pricing-radio-card ${formData.pricingType === 'free' ? 'active' : ''}`}>
+                                    <input
+                                        type="radio"
+                                        name="pricingType"
+                                        value="free"
+                                        checked={formData.pricingType === 'free'}
+                                        onChange={handleInputChange}
+                                    />
+                                    Free
+                                </label>
+
+                                <label className={`pricing-radio-card ${formData.pricingType === 'paid' ? 'active' : ''}`}>
+                                    <input
+                                        type="radio"
+                                        name="pricingType"
+                                        value="paid"
+                                        checked={formData.pricingType === 'paid'}
+                                        onChange={handleInputChange}
+                                    />
+                                    Paid
+                                </label>
+                            </div>
+                        </div>
+
+                        {formData.pricingType === 'paid' && (
+                            <div className="form-field full-width">
+                                <label>Price (₹) <span className="req">*</span></label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    name="price"
+                                    value={formData.price || ''}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                        )}
 
                     </div>
                 </div>

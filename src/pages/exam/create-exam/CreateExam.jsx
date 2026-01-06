@@ -31,10 +31,77 @@ const CreateExam = () => {
       orientation: "portrait"
     },
     settings: {
-      maxAttempts: "1",
+      maxAttempts: 1, // Default to 1
       gradingStrategy: "highest",
-      cooldownPeriod: "0",
-      allowReattemptCondition: "always"
+      cooldownPeriod: 0,
+
+      // A. Negative Marking
+      negativeMarking: false,
+      negativeMarkingPenalty: 0.25,
+
+      // B. Auto Submit
+      autoSubmit: true,
+
+      // C. Shuffle
+      shuffleQuestions: false,
+      shuffleOptions: false,
+
+      // D. Resume
+      allowResume: true,
+
+      // E. Reattempt
+      allowReattempt: false,
+      // maxAttempts is already above
+
+      // F. Late Entry
+      allowLateEntry: false,
+      lateEntryWindow: 15, // minutes
+
+      // 4. Evaluation
+      autoEvaluation: true,
+      partialMarking: false,
+
+      // 5. Result
+      showResults: true,
+      resultView: "score", // 'score' | 'score_correct' | 'full'
+      showRank: false,
+      showPercentile: false,
+
+      // 6. Notifications
+      scheduledNotification: false,
+      examReminder: 0, // 0 = disabled, otherwise minutes
+      collectFeedback: false,
+
+      // 7. Accessibility
+      screenReader: false
+    },
+    proctoring: {
+      enabled: false,
+
+      // A. Camera
+      cameraRequired: false,
+
+      // B. Microphone
+      microphoneRequired: false,
+
+      // C. Camera Monitoring
+      cameraMonitoring: false, // 10s warning
+
+      // D. Violation Count
+      maxViolations: 5,
+
+      // E. Tab Switch
+      maxTabSwitches: 2,
+      blockOnTabSwitch: true, // Auto submit on limit
+
+      // F. Full Screen
+      forceFullScreen: false,
+
+      // G. Disable Copy/Paste
+      disableCopyPaste: false,
+
+      // H. Device
+      deviceRestriction: "any" // 'any' | 'desktop' | 'mobile'
     },
     status: "DRAFT"
   });

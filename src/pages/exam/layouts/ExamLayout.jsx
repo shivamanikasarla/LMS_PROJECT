@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from "react-router-dom";
 import { Link, useLocation } from "react-router-dom";
-import { FaCalendarAlt, FaChartBar, FaFileAlt, FaBars, FaTimes, FaBook, FaPlusCircle } from "react-icons/fa";
+import { FaCalendarAlt, FaChartBar, FaFileAlt, FaBars, FaTimes, FaBook, FaPlusCircle, FaCog } from "react-icons/fa";
 
 const ExamLayout = () => {
     const location = useLocation();
@@ -16,6 +16,7 @@ const ExamLayout = () => {
         { path: "/exams/question-bank", label: "Question Bank", icon: <FaBook /> },
         { path: "/exams/schedule", label: "Schedule", icon: <FaCalendarAlt /> },
         { path: "/exams/reports", label: "Reports", icon: <FaFileAlt /> },
+        { path: "/exams/settings", label: "Settings", icon: <FaCog /> },
     ];
 
     return (

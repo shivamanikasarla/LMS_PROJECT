@@ -15,13 +15,20 @@ export const COURSE_STATUS = {
 export const INITIAL_FORM_DATA = {
     name: "",
     desc: "",
-    price: "",
-    trainer: "",
-    courseType: "",
-    status: "Upcoming", // Default status
-    mentorName: "",
-    mentorId: "",
-    mentorPhone: "",
+    overview: "",
+    toolsCovered: "",
+    toolsCovered: "",
     img: null,
-    imgPreview: null
+    imgPreview: null,
+
+    // Advanced Options
+    showValidity: false,
+    validityDuration: "", // New field for validity duration
+    accessPlatforms: ['Website'], // Default to Website
+    allowOffline: false,
+    showLearnInfo: false,
+    showAvatar: false,
+    allowBookmark: false,
+    provideCertificate: false,
+    certificateTemplate: "" // New field for certificate template
 };

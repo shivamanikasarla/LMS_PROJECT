@@ -27,13 +27,18 @@ export const validateBatchForm = (data) => {
     if (!data.courseId) errors.push("Course is required");
     if (!data.startDate) errors.push("Start Date is required");
     if (!data.endDate) errors.push("End Date is required");
-    if (!data.trainer) errors.push("Trainer is required");
-    if (!data.maxStudents || data.maxStudents < 1) errors.push("Valid Max Students limit is required");
+    if (data.pricingType === 'paid' && !data.price) {
+        errors.push("Price is required for paid batches");
+    }
 
     if (data.startDate && data.endDate) {
         if (new Date(data.startDate) >= new Date(data.endDate)) {
             errors.push("End Date must be after Start Date");
         }
+    }
+
+    if (data.maxStudents && Number(data.maxStudents) < 0) {
+        errors.push("Batch Limit cannot be negative");
     }
 
     return errors;

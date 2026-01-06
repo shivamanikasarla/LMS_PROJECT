@@ -1,76 +1,127 @@
-import React from 'react';
-import { FiImage, FiEdit2, FiTrash2 } from "react-icons/fi";
+import React from "react";
+import {
+    FiImage,
+    FiInfo,
+    FiUsers,
+    FiLayers,
+    FiMoreVertical,
+    FiEdit2,
+    FiTrash2,
+    FiShare2
+} from "react-icons/fi";
 
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'Live': return '#ef4444';
-        case 'Completed': return '#10b981';
-        default: return '#3b82f6';
-    }
-};
-
-const CourseCard = ({ course, index, onEdit, onDelete }) => {
+const CourseCard = ({
+    course,
+    index,
+    onEdit,
+    onDelete,
+    onManageContent,
+    onViewLearners,
+    onShowDetails,
+    onShare
+}) => {
     return (
-        <div className="course-card-item">
-            <div className="card-image-wrapper">
-                {course.img ? (
-                    <img src={course.img} alt={course.name} />
-                ) : (
-                    <div className="placeholder-wrapper">
-                        <FiImage size={32} color="#94a3b8" />
+        <div className="card shadow-sm h-100">
+
+            {/* Image */}
+            {course.img ? (
+                <img
+                    src={course.img}
+                    className="card-img-top"
+                    alt={course.name}
+                    style={{ height: '200px', objectFit: 'cover' }}
+                />
+            ) : (
+                <div className="d-flex align-items-center justify-content-center bg-light"
+                    style={{ height: 160 }}>
+                    <FiImage size={36} className="text-secondary" />
+                </div>
+            )}
+
+            <div className="card-body d-flex flex-column">
+
+                {/* Header */}
+                <div className="d-flex justify-content-between align-items-start mb-2">
+
+                    <div className="d-flex align-items-center gap-2">
+                        <h6 className="mb-0 fw-semibold">{course.name}</h6>
+
+                        {/* Info */}
+                        <FiInfo
+                            className="text-secondary"
+                            title="View Course Details"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => onShowDetails(course)}
+                        />
                     </div>
-                )}
-                <div className="card-badges">
-                    <span
-                        className="badge-pill"
-                        style={{
-                            background: getStatusColor(course.status || 'Upcoming'),
-                            color: '#fff'
-                        }}
-                    >
-                        {course.status || 'Upcoming'}
-                    </span>
-                    {course.courseType === 'Free' ? (
-                        <span className="badge-pill free">Free</span>
-                    ) : (
-                        <span className="badge-pill paid">₹{course.price}</span>
-                    )}
-                </div>
-            </div>
 
-            <div className="card-content-body">
-                <div className="card-header-row">
-                    <h3 className="card-title-text">{course.name}</h3>
-                    <span className="card-trainer-text">
-                        <span style={{ fontWeight: 500, color: '#94a3b8' }}>Trainer:</span> {course.trainer}
-                    </span>
+                    {/* Dropdown */}
+                    <div className="dropdown">
+                        <button
+                            className="btn btn-sm btn-light"
+                            data-bs-toggle="dropdown"
+                        >
+                            <FiMoreVertical />
+                        </button>
+
+                        <ul className="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button
+                                    className="dropdown-item"
+                                    onClick={() => onShare(course)}
+                                >
+                                    <FiShare2 className="me-2" /> Share
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    className="dropdown-item"
+                                    onClick={() => onEdit(index)}
+                                >
+                                    <FiEdit2 className="me-2" /> Edit
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    className="dropdown-item text-danger"
+                                    onClick={() => onDelete(index)}
+                                >
+                                    <FiTrash2 className="me-2" /> Delete
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
 
-                <p className="card-desc-text">
-                    {course.desc.length > 80 ? course.desc.substring(0, 80) + '...' : course.desc}
+                {/* Learners count */}
+                <div className="d-flex align-items-center text-muted mb-2">
+                    <FiUsers className="me-1" />
+                    <small>{course.learnersCount || 0} learners</small>
+                </div>
+
+                {/* Description */}
+                <p className="text-muted small flex-grow-1">
+                    {course.desc?.length > 80
+                        ? course.desc.slice(0, 80) + "..."
+                        : course.desc}
                 </p>
 
-                <div className="card-meta-row">
-                    <div className="meta-col">
-                        <span className="meta-label-sm">Mentor</span>
-                        <span className="meta-value-text">{course.mentorName || 'Not Assigned'}</span>
-                    </div>
-                    {course.mentorPhone && (
-                        <div className="meta-col">
-                            <span className="meta-label-sm">Contact</span>
-                            <span className="meta-value-text">{course.mentorPhone}</span>
-                        </div>
-                    )}
-                </div>
-            </div>
+                {/* Actions */}
+                <div className="d-flex gap-2 mt-3">
+                    <button
+                        className="btn btn-primary btn-sm w-100"
+                        onClick={() => onManageContent(course.id)}
+                    >
+                        <FiLayers className="me-1" /> Course Content
+                    </button>
 
-            <div className="card-footer-actions">
-                <button className="action-btn-card edit" onClick={() => onEdit(index)}>
-                    <FiEdit2 size={14} /> Edit
-                </button>
-                <button className="action-btn-card delete" onClick={() => onDelete(index)}>
-                    <FiTrash2 size={14} /> Delete
-                </button>
+                    <button
+                        className="btn btn-outline-secondary btn-sm w-100"
+                        onClick={() => onViewLearners(course.id)}
+                    >
+                        <FiUsers className="me-1" /> Learners
+                    </button>
+                </div>
             </div>
         </div>
     );

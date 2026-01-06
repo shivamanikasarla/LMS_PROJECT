@@ -1,81 +1,67 @@
-
 import { useState, useMemo, useEffect } from 'react';
-import { MOCK_STUDENTS, MOCK_BATCHES_DROPDOWN } from '../data/mockData';
+import { MOCK_STUDENTS, MOCK_COURSES, MOCK_BATCHES, MOCK_SESSIONS, MOCK_ATTENDANCE_HISTORY } from '../data/mockData';
 import { ATTENDANCE_STATUS } from '../constants/attendanceConstants';
-import { isDateEditable, isDateFuture, getAttendanceStats } from '../utils/attendanceUtils';
+import { isDateEditable, getAttendanceStats } from '../utils/attendanceUtils'; // Removed isDateFuture if unused or use it
 
 export const useAttendance = () => {
+    // 1. Selection State
+    const [selectedCourseId, setSelectedCourseId] = useState("");
     const [selectedBatchId, setSelectedBatchId] = useState("");
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [attendanceRecords, setAttendanceRecords] = useState({}); // { "batchId-date": [ { studentId: status } ] }
-    const [students, setStudents] = useState([]);
-    const [isEditable, setIsEditable] = useState(true);
+    const [selectedSessionId, setSelectedSessionId] = useState("");
+
+    // 2. Data State
+    const [attendanceRecords, setAttendanceRecords] = useState(MOCK_ATTENDANCE_HISTORY); // { "sessionId": [ { studentId: status, ... } ] }
+    const [draftRecords, setDraftRecords] = useState([]); // Current view draft
     const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error
 
-    // Load students when batch changes
-    useEffect(() => {
-        if (selectedBatchId) {
-            const batchStudents = MOCK_STUDENTS.filter(s => s.batchId == selectedBatchId);
-            setStudents(batchStudents);
-        } else {
-            setStudents([]);
-        }
+    // 3. Derived Data (Cascading Dropdowns)
+    const filteredBatches = useMemo(() =>
+        MOCK_BATCHES.filter(b => b.courseId === selectedCourseId),
+        [selectedCourseId]);
+
+    const filteredSessions = useMemo(() =>
+        MOCK_SESSIONS.filter(s => s.batchId === selectedBatchId && s.date === selectedDate),
+        [selectedBatchId, selectedDate]);
+
+    // 4. Load Students on Batch Change
+    const students = useMemo(() => {
+        if (!selectedBatchId) return [];
+        return MOCK_STUDENTS.filter(s => s.batchId === selectedBatchId);
     }, [selectedBatchId]);
 
-    // Check editability when date/batch changes
+    // 5. Initialize Draft Records when Session Changes
     useEffect(() => {
-        const batch = MOCK_BATCHES_DROPDOWN.find(b => b.id == selectedBatchId);
-        const dateEditable = isDateEditable(selectedDate);
-        const batchActive = batch ? batch.status !== 'Completed' : true;
-
-        setIsEditable(dateEditable && batchActive);
-    }, [selectedDate, selectedBatchId]);
-
-    // Get current records
-    const currentRecords = useMemo(() => {
-        const key = `${selectedBatchId}-${selectedDate}`;
-        const saved = attendanceRecords[key];
-
-        if (saved) return saved;
-
-        // Initialize empty/default
-        return students.map(s => ({
-            studentId: s.id,
-            name: s.name,
-            status: ATTENDANCE_STATUS.PENDING
-        }));
-    }, [selectedBatchId, selectedDate, attendanceRecords, students]);
-
-    const handleStatusChange = (studentId, status) => {
-        if (!isEditable) return;
-
-        const key = `${selectedBatchId}-${selectedDate}`;
-        const newRecords = [...currentRecords];
-        const idx = newRecords.findIndex(r => r.studentId === studentId);
-
-        if (idx >= 0) {
-            newRecords[idx] = { ...newRecords[idx], status };
-        } else {
-            // Should not happen if initialized correctly, but handle just in case
-            const s = students.find(st => st.id === studentId);
-            newRecords.push({ studentId, name: s.name, status });
+        if (!selectedSessionId || students.length === 0) {
+            setDraftRecords([]);
+            return;
         }
 
-        // We update the huge state object. In a real app, this would be local state until save.
-        // For this demo, let's keep it in a "draft" state until saved? 
-        // Or just update directly for responsiveness. Let's update copy.
-        // Actually, let's keep a "draft" state for the current view and sync it.
-    };
+        const saved = attendanceRecords[selectedSessionId];
 
-    // We need a local draft state to avoid committing to "database" immediately?
-    // Simplified: Just use a local state for the current view and a function to commit it.
-    const [draftRecords, setDraftRecords] = useState([]);
+        if (saved) {
+            setDraftRecords(saved);
+        } else {
+            // Initialize new records for this session
+            const initial = students.map(s => ({
+                studentId: s.id,
+                name: s.name,
+                status: ATTENDANCE_STATUS.PENDING,
+                remarks: '',
+                markedAt: null,
+                markedBy: null
+            }));
+            setDraftRecords(initial);
+        }
+        setSaveStatus('idle');
+    }, [selectedSessionId, students, attendanceRecords]);
 
-    useEffect(() => {
-        setDraftRecords(currentRecords);
-    }, [currentRecords]);
+    // 6. Helpers
+    const isEditable = useMemo(() => {
+        return !!selectedSessionId; // Simplified for now - if session selected, can edit (add more rules later)
+    }, [selectedSessionId]);
 
-    const updateLocalStatus = (studentId, status) => {
+    const handleStatusChange = (studentId, status) => {
         if (!isEditable) return;
         setDraftRecords(prev => prev.map(r => r.studentId === studentId ? { ...r, status } : r));
         setSaveStatus('idle');
@@ -88,33 +74,44 @@ export const useAttendance = () => {
     };
 
     const saveAttendance = () => {
-        if (!selectedBatchId) return;
+        if (!selectedSessionId) return;
 
         setSaveStatus('saving');
         setTimeout(() => {
-            const key = `${selectedBatchId}-${selectedDate}`;
             setAttendanceRecords(prev => ({
                 ...prev,
-                [key]: draftRecords
+                [selectedSessionId]: draftRecords.map(r => ({
+                    ...r,
+                    markedAt: new Date().toISOString(),
+                    markedBy: 'Instructor (You)' // Mock user
+                }))
             }));
             setSaveStatus('saved');
-        }, 800); // Simulate API call
+        }, 800);
     };
 
-    // Stats
     const stats = useMemo(() => getAttendanceStats(draftRecords), [draftRecords]);
 
     return {
-        batches: MOCK_BATCHES_DROPDOWN,
-        selectedBatchId,
-        setSelectedBatchId,
-        selectedDate,
-        setSelectedDate,
-        students: draftRecords, // Return the records which include student info + status
-        handleStatusChange: updateLocalStatus,
-        saveAttendance,
-        isEditable,
+        // Data for Dropdowns
+        courses: MOCK_COURSES,
+        batches: filteredBatches,
+        sessions: filteredSessions,
+
+        // Selections
+        selectedCourseId, setSelectedCourseId,
+        selectedBatchId, setSelectedBatchId,
+        selectedDate, setSelectedDate,
+        selectedSessionId, setSelectedSessionId,
+
+        // Working Data
+        students: draftRecords, // We display the draft records which contain student info + status
+        handleStatusChange,
         markAll,
+        saveAttendance,
+
+        // UI State
+        isEditable,
         stats,
         saveStatus,
         isLoading: false

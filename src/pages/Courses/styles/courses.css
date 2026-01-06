@@ -123,7 +123,7 @@
 /* Grid */
 .courses-grid-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 24px;
     padding-bottom: 40px;
 }
@@ -149,6 +149,8 @@
 
 .card-image-wrapper {
     height: 180px;
+    width: 100%;
+    /* Ensure full width */
     background: #f1f5f9;
     position: relative;
     overflow: hidden;
@@ -577,13 +579,18 @@
         align-items: flex-start;
         gap: 16px;
         height: auto;
+        margin: -24px -24px 24px -24px;
+        padding: 24px;
+    }
+
+    .courses-container {
+        padding: 24px;
     }
 
     .courses-actions-bar {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
-        /* Stretch children */
     }
 
     .course-search-wrapper {
@@ -592,7 +599,6 @@
 
     .course-filter-select {
         width: 100%;
-        /* Full width filters on mobile */
     }
 
     .btn-primary-add {
@@ -602,11 +608,11 @@
 
     .courses-grid-layout {
         grid-template-columns: 1fr;
-        /* Force single column on mobile */
     }
 
     .modal-box {
         width: 95%;
         padding: 20px;
+        max-height: 85vh;
     }
 }

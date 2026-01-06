@@ -5,6 +5,7 @@ export const statsData = {
     pendingAmount: 3500,
     totalStudents: 1250,
     newStudents: 45,
+    totalSignups: 340,
 };
 
 export const monthlyEnrollmentData = [
@@ -191,4 +192,67 @@ export const bestInstructors = [
     { id: 2, name: "Theron Trump", role: "Design Course", courseCount: 8, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Theron" },
     { id: 3, name: "Tyler Mark", role: "Design Course", courseCount: 12, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tyler" },
     { id: 4, name: "Johen Mark", role: "Design Course", courseCount: 3, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Johen" },
+];
+
+export const upcomingWebinars = [
+    {
+        id: 1,
+        title: "Future of AI in Education",
+        date: "Jan 15, 2025",
+        time: "10:00 AM",
+        host: "Dr. Sarah Connor",
+        participants: 120,
+        color: "#8B5CF6", // Violet
+        icon: "AI"
+    },
+    {
+        id: 2,
+        title: "Mastering React Hooks",
+        date: "Jan 18, 2025",
+        time: "02:00 PM",
+        host: "John Doe",
+        participants: 85,
+        color: "#3B82F6", // Blue
+        icon: "R"
+    },
+    {
+        id: 3,
+        title: "UX Design Trends 2025",
+        date: "Jan 20, 2025",
+        time: "11:30 AM",
+        host: "Jane Smith",
+        participants: 200,
+        color: "#EC4899", // Pink
+        icon: "UX"
+    }
+];
+
+export const upcomingBatches = [
+    {
+        id: 1,
+        name: "Full Stack Web Dev",
+        startDate: "Feb 01, 2025",
+        instructor: "Mark Wilson",
+        enrolled: 45,
+        maxSeats: 60,
+        color: "#10B981" // Emerald
+    },
+    {
+        id: 2,
+        name: "Data Science Bootcamp",
+        startDate: "Feb 05, 2025",
+        instructor: "Alice Cooper",
+        enrolled: 30,
+        maxSeats: 50,
+        color: "#F59E0B" // Amber
+    },
+    {
+        id: 3,
+        name: "Digital Marketing 101",
+        startDate: "Feb 10, 2025",
+        instructor: "Emily Blunt",
+        enrolled: 25,
+        maxSeats: 40,
+        color: "#6366F1" // Indigo
+    }
 ];
