@@ -1,13 +1,15 @@
+// constants/attendanceConstants.js
 
 export const ATTENDANCE_STATUS = {
-    PRESENT: 'Present',
-    ABSENT: 'Absent',
-    LATE: 'Late',
-    EXCUSED: 'Excused',
-    PENDING: 'Pending' // Not marked yet
+    PRESENT: 'PRESENT',
+    ABSENT: 'ABSENT',
+    LATE: 'LATE',
+    EXCUSED: 'EXCUSED',
+    LEFT_EARLY: 'LEFT_EARLY',
+    UNMARKED: 'UNMARKED'
 };
 
 export const ATTENDANCE_LIMITATIONS = {
-    EDIT_WINDOW_DAYS: 7, // Can only edit last 7 days
-    FUTURE_MARKING: false // Cannot mark future
+    EDIT_WINDOW_DAYS: 7,
+    FUTURE_MARKING: false
 };

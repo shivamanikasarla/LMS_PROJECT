@@ -1,0 +1,296 @@
+/* attendance-advanced.css - Premium UI Styles */
+
+:root {
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --primary-glow: rgba(99, 102, 241, 0.5);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+}
+
+/* --- Anti Gravity Styles (Restoring Missing Styles) --- */
+
+.ag-background-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 600px;
+    overflow: hidden;
+    border-radius: 24px;
+    background: radial-gradient(ellipse at top, #1e1b4b 0%, #020617 100%);
+    /* Indigo-950 to Slate-950 */
+    padding: 2rem;
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    color: white;
+}
+
+.ag-orb-1 {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 500px;
+    height: 500px;
+    background: rgba(147, 51, 234, 0.2);
+    /* Purple-600/20 */
+    filter: blur(120px);
+    border-radius: 50%;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.ag-orb-2 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 600px;
+    height: 600px;
+    background: rgba(79, 70, 229, 0.1);
+    /* Indigo-600/10 */
+    filter: blur(100px);
+    border-radius: 50%;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.ag-noise-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0.2;
+    filter: brightness(1.5) contrast(1.5);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.ag-content-row {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    flex: 1;
+}
+
+@media (min-width: 768px) {
+    .ag-content-row {
+        flex-direction: row;
+    }
+}
+
+/* Glass Card */
+.ag-glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: relative;
+}
+
+.ag-glass-card:hover .ag-glow-effect {
+    opacity: 1;
+}
+
+.ag-glow-effect {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(99, 102, 241, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.7s;
+    pointer-events: none;
+}
+
+/* Header & Icons */
+.ag-icon-box {
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ag-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.025em;
+    margin: 0;
+}
+
+.ag-subtitle {
+    font-size: 0.75rem;
+    font-family: monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(199, 210, 254, 0.6);
+    margin: 0;
+}
+
+.ag-indicator {
+    width: 12px;
+    height: 12px;
+    background: #34d399;
+    /* Emerald 400 */
+    border-radius: 50%;
+    box-shadow: 0 0 10px #34d399;
+}
+
+/* QR Section */
+.ag-qr-container {
+    background: white;
+    padding: 16px;
+    border-radius: 24px;
+    transition: all 0.2s;
+}
+
+.ag-qr-container.glitch {
+    filter: blur(4px);
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+.ag-refresh-badge {
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: rgba(165, 180, 252, 0.8);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(4px);
+}
+
+/* Stats */
+.ag-stat-box {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.2s;
+}
+
+.ag-stat-box:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ag-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: rgba(199, 210, 254, 0.5);
+    font-weight: 700;
+    display: block;
+}
+
+.ag-stat-value {
+    font-size: 12px;
+    color: white;
+    font-weight: 500;
+}
+
+/* List Items */
+.ag-list-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s;
+    backdrop-filter: blur(12px);
+    margin-bottom: 0.75rem;
+}
+
+.ag-list-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.ag-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #9333ea);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ag-status-pill {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ag-status-late {
+    background: rgba(244, 63, 94, 0.2);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.2);
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
+}
+
+/* Scrollbar Hide */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Toggle Buttons */
+.ag-toggle-btn {
+    padding: 6px 16px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+}
+
+.ag-toggle-btn.active-instructor {
+    background: #6366f1;
+    color: white;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+}
+
+.ag-toggle-btn.active-student {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+}
+
+.ag-toggle-btn.inactive {
+    color: #c7d2fe;
+    background: transparent;
+}
+
+.ag-toggle-btn.inactive:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}

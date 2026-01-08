@@ -1,9 +1,45 @@
-
 import React from 'react';
 import { ATTENDANCE_STATUS } from '../constants/attendanceConstants';
-import { FiCheck, FiX, FiClock, FiMinusCircle } from 'react-icons/fi';
+import {
+    FiCheck,
+    FiX,
+    FiClock,
+    FiMinusCircle
+} from 'react-icons/fi';
 
-const AttendanceTable = ({ students, onStatusChange, isEditable }) => {
+const STATUS_ACTIONS = [
+    {
+        key: ATTENDANCE_STATUS.PRESENT,
+        label: 'Present',
+        icon: <FiCheck />,
+        className: 'present'
+    },
+    {
+        key: ATTENDANCE_STATUS.ABSENT,
+        label: 'Absent',
+        icon: <FiX />,
+        className: 'absent'
+    },
+    {
+        key: ATTENDANCE_STATUS.LATE,
+        label: 'Late',
+        icon: <FiClock />,
+        className: 'late'
+    },
+    {
+        key: ATTENDANCE_STATUS.EXCUSED,
+        label: 'Excused',
+        icon: <FiMinusCircle />,
+        className: 'excused'
+    }
+];
+
+const AttendanceTable = ({
+    students = [],
+    onStatusChange,
+    onRemarkChange,
+    isEditable = false
+}) => {
     return (
         <div className="att-table-container">
             <table className="att-table">
@@ -14,60 +50,80 @@ const AttendanceTable = ({ students, onStatusChange, isEditable }) => {
                         <th>Remarks</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    {students.map((student) => (
-                        <tr key={student.studentId} className={isEditable ? '' : 'disabled-row'}>
-                            <td className="student-name-cell">
-                                <div className="avatar-placeholder">{student.name.charAt(0)}</div>
-                                <span>{student.name}</span>
-                            </td>
-                            <td>
-                                <div className="status-options">
-                                    <button
-                                        className={`status-btn present ${student.status === ATTENDANCE_STATUS.PRESENT ? 'active' : ''}`}
-                                        onClick={() => onStatusChange(student.studentId, ATTENDANCE_STATUS.PRESENT)}
-                                        disabled={!isEditable}
-                                    >
-                                        <FiCheck /> Present
-                                    </button>
-                                    <button
-                                        className={`status-btn absent ${student.status === ATTENDANCE_STATUS.ABSENT ? 'active' : ''}`}
-                                        onClick={() => onStatusChange(student.studentId, ATTENDANCE_STATUS.ABSENT)}
-                                        disabled={!isEditable}
-                                    >
-                                        <FiX /> Absent
-                                    </button>
-                                    <button
-                                        className={`status-btn late ${student.status === ATTENDANCE_STATUS.LATE ? 'active' : ''}`}
-                                        onClick={() => onStatusChange(student.studentId, ATTENDANCE_STATUS.LATE)}
-                                        disabled={!isEditable}
-                                    >
-                                        <FiClock /> Late
-                                    </button>
-                                    <button
-                                        className={`status-btn excused ${student.status === ATTENDANCE_STATUS.EXCUSED ? 'active' : ''}`}
-                                        onClick={() => onStatusChange(student.studentId, ATTENDANCE_STATUS.EXCUSED)}
-                                        disabled={!isEditable}
-                                    >
-                                        <FiMinusCircle /> Excused
-                                    </button>
-                                </div>
-                            </td>
-                            <td>
-                                <input
-                                    type="text"
-                                    placeholder="Add remark..."
-                                    className="remark-input"
-                                    disabled={!isEditable}
-                                />
-                            </td>
-                        </tr>
-                    ))}
                     {students.length === 0 && (
                         <tr>
-                            <td colSpan="3" className="text-center py-4">No students found in this batch.</td>
+                            <td colSpan="3" className="text-center py-4">
+                                No students found in this batch.
+                            </td>
                         </tr>
                     )}
+
+                    {students.map(student => {
+                        const name = student.name || 'Unknown';
+                        const avatar = name.charAt(0).toUpperCase();
+
+                        return (
+                            <tr
+                                key={student.studentId}
+                                className={!isEditable ? 'disabled-row' : ''}
+                            >
+                                {/* Student */}
+                                <td className="student-name-cell">
+                                    <div className="avatar-placeholder">
+                                        {avatar}
+                                    </div>
+                                    <span>{name}</span>
+                                </td>
+
+                                {/* Status */}
+                                <td>
+                                    <div className="status-options d-flex gap-2 flex-wrap">
+                                        {STATUS_ACTIONS.map(action => (
+                                            <button
+                                                key={action.key}
+                                                type="button"
+                                                className={`btn btn-sm ${student.status === action.key
+                                                        ? `btn-${action.className === 'present' ? 'success' : action.className === 'absent' ? 'danger' : action.className === 'late' ? 'warning' : 'secondary'}`
+                                                        : 'btn-outline-light text-dark border'
+                                                    }`}
+                                                style={{ minWidth: '90px' }}
+                                                onClick={() =>
+                                                    isEditable &&
+                                                    onStatusChange(
+                                                        student.studentId,
+                                                        action.key
+                                                    )
+                                                }
+                                                disabled={!isEditable}
+                                            >
+                                                {action.icon} <span className="ms-1">{action.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </td>
+
+                                {/* Remarks */}
+                                <td>
+                                    <input
+                                        type="text"
+                                        className="remark-input"
+                                        placeholder="Add remark..."
+                                        value={student.remarks || ''}
+                                        onChange={e =>
+                                            isEditable &&
+                                            onRemarkChange(
+                                                student.studentId,
+                                                e.target.value
+                                            )
+                                        }
+                                        disabled={!isEditable}
+                                    />
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

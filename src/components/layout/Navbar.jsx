@@ -1,3 +1,5 @@
+import './Navbar.css';
+
 const Navbar = ({ toggleSidebar }) => {
   return (
     <header
@@ -22,8 +24,20 @@ const Navbar = ({ toggleSidebar }) => {
         </button>
 
         {/* TITLE */}
-        <div className="fw-medium text-secondary fs-6">
+        <div className="fw-medium text-secondary fs-6 d-none d-md-block" style={{ minWidth: '100px' }}>
           Dashboard
+        </div>
+
+        {/* CENTER SEARCH BAR */}
+        <div className="flex-grow-1 d-flex justify-content-center mx-4">
+          <div className="navbar-search-box">
+            <i className="bi bi-search navbar-search-icon"></i>
+            <input
+              type="text"
+              className="navbar-search-input"
+              placeholder="Search anything..."
+            />
+          </div>
         </div>
 
         {/* ACTIONS */}

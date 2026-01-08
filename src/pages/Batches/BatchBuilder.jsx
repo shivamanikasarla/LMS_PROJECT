@@ -4,6 +4,7 @@ import { FiArrowLeft, FiUsers, FiBook, FiSettings, FiPlus, FiTrash2, FiSearch, F
 import { MOCK_USERS } from '../../data/mockUsers';
 import { INITIAL_BATCHES } from './hooks/useBatches';
 import AttendanceTab from './tabs/AttendanceTab';
+import ClassesTab from './tabs/ClassesTab';
 import './styles/BatchBuilder.css';
 
 const BatchBuilder = () => {
@@ -87,17 +88,17 @@ const BatchBuilder = () => {
                 </div>
                 <div className="bb-header-right">
                     <div className="bb-tabs">
-                        <button className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</button>
-                        <button className={`tab-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>Students</button>
+                        <button className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Classes</button>
+                        <button className={`tab-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>Students modifications</button>
                         <button className={`tab-item ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveTab('attendance')}>Attendance</button>
-                        <button className={`tab-item ${activeTab === 'curriculum' ? 'active' : ''}`} onClick={() => setActiveTab('curriculum')}>Curriculum</button>
-                        <button className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</button>
                     </div>
                 </div>
             </header>
 
             <main className="bb-main">
-                {activeTab === 'students' ? (
+                {activeTab === 'overview' ? (
+                    <ClassesTab batchId={id} />
+                ) : activeTab === 'students' ? (
                     <div className="students-manager">
                         <div className="sm-header">
                             <div>
@@ -164,8 +165,8 @@ const BatchBuilder = () => {
                 ) : (
                     <div className="empty-content-state">
                         <div className="ecs-icon"><FiSettings /></div>
-                        <h3>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module</h3>
-                        <p>This section is under development.</p>
+                        <h3>Module Not Found</h3>
+                        <p>The requested module is not available.</p>
                     </div>
                 )}
             </main>

@@ -66,11 +66,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         <nav className="flex-grow-1 overflow-auto py-3">
           <ul className="list-unstyled m-0 p-0 d-flex flex-column gap-1">
 
-            {/* CORE */}
-            <div className="px-3 mb-1 mt-2">
-              {isOpen && <small className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Core</small>}
-            </div>
-            {/* Click to Expand Dashboard */}
+            {/* Dashboard */}
             <SidebarItem to="/" icon="house-door" label="Dashboard" isOpen={isOpen} onClick={() => !isOpen && toggleSidebar()} />
 
             {/* ACADEMICS GROUP */}
@@ -103,10 +99,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
               <SidebarItem to="/invoices" icon="receipt" label="Invoices" isOpen={isOpen} isSub />
             </MenuGroup>
 
-            {/* SYSTEM */}
-            <div className="px-3 mb-1 mt-3">
-              {isOpen && <small className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>System</small>}
-            </div>
+            {/* SETTINGS */}
             <SidebarItem to="/settings" icon="gear" label="Settings" isOpen={isOpen} />
           </ul>
         </nav>

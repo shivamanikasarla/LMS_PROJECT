@@ -11,7 +11,7 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const location = useLocation()
-  const isFullWidth = location.pathname.startsWith('/exams') || location.pathname.startsWith('/webinar') || location.pathname.startsWith('/courses')
+  const isFullWidth = location.pathname.startsWith('/exams') || location.pathname.startsWith('/webinar') || location.pathname.startsWith('/courses') || location.pathname.startsWith('/attendance')
 
   useEffect(() => {
     const handleResize = () => {

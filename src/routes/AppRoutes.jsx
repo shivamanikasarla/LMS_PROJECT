@@ -21,6 +21,7 @@ const NotFound = lazy(() => import('../pages/NotFound'));
 const BatchBuilder = lazy(() => import('../pages/Batches/BatchBuilder'));
 const CourseBuilder = lazy(() => import('../pages/Courses/CourseBuilder'));
 const CourseOverview = lazy(() => import('../pages/Courses/CourseOverview'));
+const CreateClass = lazy(() => import('../pages/Batches/CreateClass'));
 
 const AppRoutes = () => {
   return (
@@ -38,11 +39,12 @@ const AppRoutes = () => {
           <Route path="/courses/*" element={<Navigate to="/courses" replace />} />
           <Route path="/batches" element={<Batches />} />
           <Route path="/batches/builder/:id" element={<BatchBuilder />} />
+          <Route path="/batches/:id/create-class" element={<CreateClass />} />
 
           <Route path="/users" element={<Users />} />
           <Route path="/exams/*" element={<Exams />} />
           <Route path="/webinar/*" element={<Webinar />} />
-          <Route path="/attendance" element={<Attendance />} />
+          <Route path="/attendance/*" element={<Attendance />} />
           <Route path="/certificates" element={<Certificates />} />
           <Route path="/marketing" element={<Marketing />} />
           <Route path="/affiliatemarketing" element={<AffiliateMarketing />} />
