@@ -174,6 +174,7 @@ const AttendanceReport = ({ history = [] }) => {
             {/* Student Profile Modal */}
             <StudentAttendanceProfile
                 student={selectedStudent}
+                studentHistory={history.filter(h => h.studentId === selectedStudent?.id)}
                 onClose={() => setSelectedStudent(null)}
             />
         </div>

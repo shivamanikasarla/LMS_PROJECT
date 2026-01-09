@@ -38,6 +38,7 @@ const AttendanceTable = ({
     students = [],
     onStatusChange,
     onRemarkChange,
+    onLateMinutesChange,
     isEditable = false
 }) => {
     return (
@@ -85,8 +86,8 @@ const AttendanceTable = ({
                                                 key={action.key}
                                                 type="button"
                                                 className={`btn btn-sm ${student.status === action.key
-                                                        ? `btn-${action.className === 'present' ? 'success' : action.className === 'absent' ? 'danger' : action.className === 'late' ? 'warning' : 'secondary'}`
-                                                        : 'btn-outline-light text-dark border'
+                                                    ? `btn-${action.className === 'present' ? 'success' : action.className === 'absent' ? 'danger' : action.className === 'late' ? 'warning' : 'secondary'}`
+                                                    : 'btn-outline-light text-dark border'
                                                     }`}
                                                 style={{ minWidth: '90px' }}
                                                 onClick={() =>
@@ -102,6 +103,23 @@ const AttendanceTable = ({
                                             </button>
                                         ))}
                                     </div>
+                                    {isEditable && student.status === ATTENDANCE_STATUS.LATE && (
+                                        <div className="mt-2 d-flex align-items-center animate-fade-in">
+                                            <span className="small text-muted me-2">Minutes Late:</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                className="form-control form-control-sm"
+                                                style={{ width: '80px' }}
+                                                value={student.lateMinutes || ''}
+                                                onChange={(e) =>
+                                                    onLateMinutesChange &&
+                                                    onLateMinutesChange(student.studentId, e.target.value)
+                                                }
+                                                placeholder="Min"
+                                            />
+                                        </div>
+                                    )}
                                 </td>
 
                                 {/* Remarks */}

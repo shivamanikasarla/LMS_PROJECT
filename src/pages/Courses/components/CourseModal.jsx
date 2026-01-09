@@ -76,6 +76,31 @@ const CourseModal = ({
                             />
                         </div>
 
+                        <div className="form-row" style={{ display: 'flex', gap: '16px' }}>
+                            <div className="form-field" style={{ flex: 1 }}>
+                                <label>Course Fee</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    name="price"
+                                    value={formData.price || ""}
+                                    onChange={handleInputChange}
+                                    placeholder="0 for Free"
+                                />
+                            </div>
+                            <div className="form-field" style={{ flex: 1 }}>
+                                <label>Duration</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    name="duration"
+                                    value={formData.duration || ""}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 10 Hours"
+                                />
+                            </div>
+                        </div>
+
                         <div className="form-field">
                             <label>Cover Image</label>
                             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
@@ -247,59 +272,7 @@ const CourseModal = ({
                                 </div>
                             </div>
 
-                            {/* Avatar */}
-                            <div className="form-field">
-                                <label>Show Instructor Avatar</label>
-                                <div style={{ display: "flex", gap: 16 }}>
-                                    <label>
-                                        <input
-                                            type="radio"
-                                            name="showAvatar"
-                                            value="true"
-                                            checked={formData.showAvatar === true}
-                                            onChange={handleInputChange}
-                                        />{" "}
-                                        Yes
-                                    </label>
-                                    <label>
-                                        <input
-                                            type="radio"
-                                            name="showAvatar"
-                                            value="false"
-                                            checked={formData.showAvatar === false}
-                                            onChange={handleInputChange}
-                                        />{" "}
-                                        No
-                                    </label>
-                                </div>
-                            </div>
 
-                            {/* Bookmark */}
-                            <div className="form-field">
-                                <label>Allow Bookmarking</label>
-                                <div style={{ display: "flex", gap: 16 }}>
-                                    <label>
-                                        <input
-                                            type="radio"
-                                            name="allowBookmark"
-                                            value="true"
-                                            checked={formData.allowBookmark === true}
-                                            onChange={handleInputChange}
-                                        />{" "}
-                                        Yes
-                                    </label>
-                                    <label>
-                                        <input
-                                            type="radio"
-                                            name="allowBookmark"
-                                            value="false"
-                                            checked={formData.allowBookmark === false}
-                                            onChange={handleInputChange}
-                                        />{" "}
-                                        No
-                                    </label>
-                                </div>
-                            </div>
 
                             {/* Certificate */}
                             <div className="form-field" style={{ gridColumn: "1 / -1" }}>

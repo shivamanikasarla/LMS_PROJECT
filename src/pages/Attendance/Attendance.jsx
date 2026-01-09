@@ -11,7 +11,7 @@ import AttendanceSettings from './components/AttendanceSettings';
 import SessionsList from './pages/SessionsList';
 
 // Attendance.jsx
-import ExceptionsPage from './pages/ExceptionsPage';
+// Attendance.jsx
 
 const Attendance = () => (
     <Routes>
@@ -26,7 +26,7 @@ const Attendance = () => (
             <Route path="dashboard" element={<SessionDashboard />} />
             <Route path="sessions" element={<SessionsList />} />
             <Route path="sessions/:sessionId/*" element={<SessionDetails />} />
-            <Route path="exceptions" element={<ExceptionsPage />} />
+
             <Route path="reports" element={<ReportPage />} />
             <Route path="settings" element={<AttendanceSettings />} />
             <Route path="offline-sync" element={<OfflineSync />} />

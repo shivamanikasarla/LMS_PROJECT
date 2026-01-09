@@ -22,13 +22,13 @@ export const INITIAL_FORM_DATA = {
     imgPreview: null,
 
     // Advanced Options
+    price: "", // Added for Course Fee
+    duration: "", // Added for Duration
     showValidity: false,
     validityDuration: "", // New field for validity duration
     accessPlatforms: ['Website'], // Default to Website
     allowOffline: false,
     showLearnInfo: false,
-    showAvatar: false,
-    allowBookmark: false,
     provideCertificate: false,
     certificateTemplate: "" // New field for certificate template
 };

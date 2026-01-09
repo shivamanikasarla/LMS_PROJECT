@@ -3,9 +3,20 @@ import AttendanceReport from '../components/AttendanceReport';
 
 import { MOCK_COURSES, MOCK_BATCHES } from '../data/mockData';
 
-const ReportPage = () => {
+const ReportPage = ({ batchId }) => {
     const [selectedCourse, setSelectedCourse] = React.useState('');
     const [selectedBatch, setSelectedBatch] = React.useState('');
+
+    // Pre-select batch if batchId prop is provided
+    React.useEffect(() => {
+        if (batchId) {
+            const batch = MOCK_BATCHES.find(b => b.id === batchId);
+            if (batch) {
+                setSelectedBatch(batchId);
+                setSelectedCourse(batch.courseId);
+            }
+        }
+    }, [batchId]);
 
     // Derived state for batches dropdown
     const availableBatches = useMemo(() => {
@@ -64,43 +75,45 @@ const ReportPage = () => {
 
     return (
         <div className="fade-in">
-            {/* Batch Selection Controls */}
-            <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body">
-                    <div className="row g-3">
-                        <div className="col-md-4">
-                            <label className="form-label small fw-bold text-secondary">Course</label>
-                            <select
-                                className="form-select"
-                                value={selectedCourse}
-                                onChange={(e) => {
-                                    setSelectedCourse(e.target.value);
-                                    setSelectedBatch(''); // Reset batch on course change
-                                }}
-                            >
-                                <option value="">Select Course</option>
-                                {MOCK_COURSES.map(c => (
-                                    <option key={c.id} value={c.id}>{c.title}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-md-4">
-                            <label className="form-label small fw-bold text-secondary">Batch</label>
-                            <select
-                                className="form-select"
-                                value={selectedBatch}
-                                onChange={(e) => setSelectedBatch(e.target.value)}
-                                disabled={!availableBatches.length}
-                            >
-                                <option value="">Select Batch</option>
-                                {availableBatches.map(b => (
-                                    <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                            </select>
+            {/* Batch Selection Controls - Only show if no batchId is provided */}
+            {!batchId && (
+                <div className="card border-0 shadow-sm mb-4">
+                    <div className="card-body">
+                        <div className="row g-3">
+                            <div className="col-md-4">
+                                <label className="form-label small fw-bold text-secondary">Course</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedCourse}
+                                    onChange={(e) => {
+                                        setSelectedCourse(e.target.value);
+                                        setSelectedBatch(''); // Reset batch on course change
+                                    }}
+                                >
+                                    <option value="">Select Course</option>
+                                    {MOCK_COURSES.map(c => (
+                                        <option key={c.id} value={c.id}>{c.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="col-md-4">
+                                <label className="form-label small fw-bold text-secondary">Batch</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedBatch}
+                                    onChange={(e) => setSelectedBatch(e.target.value)}
+                                    disabled={!availableBatches.length}
+                                >
+                                    <option value="">Select Batch</option>
+                                    {availableBatches.map(b => (
+                                        <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {selectedBatch ? (
                 <AttendanceReport history={mockBatchHistory} />

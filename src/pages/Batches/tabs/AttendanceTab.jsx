@@ -1,10 +1,10 @@
 import React from 'react';
-import SessionDashboard from '../../Attendance/pages/SessionDashboard';
+import ReportPage from '../../Attendance/pages/ReportPage';
 
 const AttendanceTab = ({ batchId, showAdvancedControls }) => {
     return (
         <div className="p-3">
-            <SessionDashboard />
+            <ReportPage batchId={batchId} />
         </div>
     );
 };

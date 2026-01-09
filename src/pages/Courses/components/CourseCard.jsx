@@ -20,23 +20,22 @@ const CourseCard = ({
     onShowDetails,
     onShare
 }) => {
+    const [imgError, setImgError] = React.useState(false);
+    const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1517694712202-14dd9538aa97";
+
+    const displayImage = imgError || !course.img ? DEFAULT_IMAGE : course.img;
+
     return (
         <div className="card shadow-sm h-100">
 
             {/* Image */}
-            {course.img ? (
-                <img
-                    src={course.img}
-                    className="card-img-top"
-                    alt={course.name}
-                    style={{ height: '200px', objectFit: 'cover' }}
-                />
-            ) : (
-                <div className="d-flex align-items-center justify-content-center bg-light"
-                    style={{ height: 160 }}>
-                    <FiImage size={36} className="text-secondary" />
-                </div>
-            )}
+            <img
+                src={displayImage}
+                className="card-img-top"
+                alt={course.name}
+                style={{ height: '200px', objectFit: 'cover' }}
+                onError={() => setImgError(true)}
+            />
 
             <div className="card-body d-flex flex-column">
 

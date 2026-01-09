@@ -15,46 +15,37 @@ const CourseOverview = () => {
     // Mock Course Data (In real app, fetch by ID)
     const [course, setCourse] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [imgError, setImgError] = useState(false);
 
     useEffect(() => {
-        // Simulate fetching course details
-        setTimeout(() => {
-            setCourse({
-                id: id,
-                title: "Advanced React Patterns & Performance",
-                description: "Master advanced React concepts including HOCs, Render Props, Hooks, and Context API. Learn to build scalable and high-performance applications.",
-                longDescription: "This comprehensive course takes you beyond the basics of React. You'll dive deep into advanced patterns, performance optimization techniques, and state management strategies used by top-tier tech companies. By the end of this course, you'll be able to architect complex applications with confidence.",
-                instructor: "Sarah Wilson",
-                instructorRole: "Senior Frontend Engineer",
-                duration: "12 Weeks",
-                lessons: 48,
-                students: 1240,
-                rating: 4.8,
-                price: "$99.00",
-                originalPrice: "$149.00",
-                coverImage: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?ixlib=rb-1.2.1&auto=format&fit=crop&w=1470&q=80",
-                topics: [
-                    "Advanced Hooks & Custom Hooks",
-                    "Performance Optimization (useMemo, useCallback)",
-                    "State Management (Redux, Zustand, Context)",
-                    "Server-Side Rendering (Next.js)",
-                    "Testing React Applications",
-                    "Design Systems & Component Libraries"
-                ],
-                curriculum: [
-                    { title: "Introduction to Advanced Patterns", type: "video", duration: "10:00", isPreview: true },
-                    { title: "Compound Components", type: "video", duration: "15:30", isPreview: false },
-                    { title: "Control Props Pattern", type: "video", duration: "12:45", isPreview: false },
-                    { title: "Performance Profiling", type: "video", duration: "20:00", isPreview: false },
-                ]
-            });
-            setLoading(false);
+        const fetchCourse = async () => {
+            try {
+                const data = await courseService.getCourseById(id);
+                setCourse({
+                    id: data.courseId,
+                    title: data.courseName,
+                    description: data.description,
+                    longDescription: data.description, // Backend doesn't have longDescription separate
+                    instructor: "TBD", // Backend missing instructor
+                    instructorRole: "Instructor",
+                    duration: data.duration,
+                    lessons: 0, // Topics not fetched
+                    students: 0, // Enrollment not fetched
+                    rating: 0, // Rating not fetched
+                    price: data.courseFee ? `$${data.courseFee}` : "Free",
+                    originalPrice: "",
+                    coverImage: data.courseImageUrl || "https://images.unsplash.com/photo-1633356122544-f134324a6cee",
+                    topics: data.toolsCovered ? data.toolsCovered.split(',') : [],
+                    curriculum: [] // Topics are @JsonIgnore in backend for now
+                });
+            } catch (error) {
+                console.error("Failed to load course details", error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-            // Check for simulated login (e.g., set via login page redirect)
-            const user = localStorage.getItem('mockUser');
-            if (user) setIsLoggedIn(true);
-
-        }, 800);
+        fetchCourse();
     }, [id]);
 
     const handleEnroll = () => {
@@ -146,7 +137,8 @@ const CourseOverview = () => {
                     {/* Right: Card */}
                     <div style={{ background: 'white', borderRadius: '24px', padding: '24px', color: '#0f172a', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
                         <img
-                            src={course.coverImage}
+                            src={imgError ? "https://images.unsplash.com/photo-1633356122544-f134324a6cee" : course.coverImage}
+                            onError={() => setImgError(true)}
                             alt={course.title}
                             style={{ width: '100%', height: '220px', objectFit: 'cover', borderRadius: '16px', marginBottom: '24px' }}
                         />

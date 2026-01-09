@@ -16,6 +16,7 @@ const OfflineSync = () => {
 
     // Local Attendance State
     const [attendanceMap, setAttendanceMap] = useState({});
+    const [lateMinutesMap, setLateMinutesMap] = useState({});
 
     // Filter Logic
     const filteredBatches = useMemo(() =>
@@ -25,7 +26,11 @@ const OfflineSync = () => {
     // Available Sessions for Date
     const availableSessions = useMemo(() => {
         if (!selectedBatch || !selectedDate) return [];
-        return MOCK_SESSIONS.filter(s => s.batchId === selectedBatch && s.date === selectedDate);
+        return MOCK_SESSIONS.filter(s =>
+            s.batchId === selectedBatch &&
+            s.date === selectedDate &&
+            s.type === 'Live Class'
+        );
     }, [selectedBatch, selectedDate]);
 
     // Students
@@ -110,7 +115,8 @@ const OfflineSync = () => {
         if (!selectedSessionId) return;
 
         Object.entries(attendanceMap).forEach(([sid, status]) => {
-            queueOfflineAttendance(sid, status, selectedDate, selectedSessionId);
+            const meta = status === 'LATE' && lateMinutesMap[sid] ? { minutesLate: lateMinutesMap[sid] } : {};
+            queueOfflineAttendance(sid, status, selectedDate, selectedSessionId, meta);
         });
         alert(`Attendance for ${students.length} students queued locally.`);
         setActiveTab('QUEUE');
@@ -160,8 +166,21 @@ const OfflineSync = () => {
                     {/* Filters */}
                     <div className="card border-0 shadow-sm mb-4">
                         <div className="card-body">
-                            <div className="row g-3">
-                                <div className="col-md-4">
+                            <div className="row g-3 align-items-end">
+                                <div className="col-md-3">
+                                    <label className="form-label small fw-bold text-secondary">Course</label>
+                                    <select
+                                        className="form-select"
+                                        value={selectedCourse}
+                                        onChange={e => { setSelectedCourse(e.target.value); setSelectedBatch(''); setSelectedSessionId(''); }}
+                                    >
+                                        <option value="">Select Course</option>
+                                        {MOCK_COURSES.map(c => (
+                                            <option key={c.id} value={c.id}>{c.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-md-3">
                                     <label className="form-label small fw-bold text-secondary">Batch</label>
                                     <select
                                         className="form-select"
@@ -169,12 +188,12 @@ const OfflineSync = () => {
                                         onChange={e => { setSelectedBatch(e.target.value); setSelectedSessionId(''); }}
                                     >
                                         <option value="">Select Batch</option>
-                                        {MOCK_BATCHES.map(b => (
+                                        {filteredBatches.map(b => (
                                             <option key={b.id} value={b.id}>{b.name}</option>
                                         ))}
                                     </select>
                                 </div>
-                                <div className="col-md-4">
+                                <div className="col-md-3">
                                     <label className="form-label small fw-bold text-secondary">Date</label>
                                     <input
                                         type="date"
@@ -183,7 +202,7 @@ const OfflineSync = () => {
                                         onChange={e => { setSelectedDate(e.target.value); setSelectedSessionId(''); }}
                                     />
                                 </div>
-                                <div className="col-md-4 d-flex align-items-end">
+                                <div className="col-md-3">
                                     {/* CSV Upload Button - Only active if session selected */}
                                     <div className="w-100">
                                         <input
@@ -259,9 +278,11 @@ const OfflineSync = () => {
                                             ...s,
                                             studentId: s.id,
                                             status: attendanceMap[s.id] || 'UNMARKED',
+                                            lateMinutes: lateMinutesMap[s.id],
                                             remarks: ''
                                         }))}
                                         onStatusChange={handleStatusChange}
+                                        onLateMinutesChange={(id, mins) => setLateMinutesMap(prev => ({ ...prev, [id]: mins }))}
                                         onRemarkChange={() => { }}
                                         isEditable={true}
                                     />
@@ -309,9 +330,14 @@ const OfflineSync = () => {
                                     <tr key={i}>
                                         <td className="ps-4 fw-medium">{r.studentId}</td>
                                         <td>
-                                            <span className={`badge bg-${r.status === 'PRESENT' ? 'success' : 'danger'} bg-opacity-10 text-${r.status === 'PRESENT' ? 'success' : 'danger'}`}>
+                                            <span className={`badge bg-${r.status === 'PRESENT' ? 'success' : r.status === 'LATE' ? 'warning' : 'danger'} bg-opacity-10 text-${r.status === 'PRESENT' ? 'success' : r.status === 'LATE' ? 'warning' : 'danger'}`}>
                                                 {r.status}
                                             </span>
+                                            {r.status === 'LATE' && r.minutesLate && (
+                                                <div className="small text-danger fw-bold mt-1" style={{ fontSize: '0.7rem' }}>
+                                                    +{r.minutesLate} min
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="small text-muted">{r.sessionId}</td>
                                         <td className="text-muted small">

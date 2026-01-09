@@ -74,14 +74,15 @@ export const AttendanceProvider = ({ children }) => {
 
     // --- Offline Logic ---
 
-    const queueOfflineAttendance = (studentId, status = 'PRESENT', customDate = null, customSessionId = null) => {
+    const queueOfflineAttendance = (studentId, status = 'PRESENT', customDate = null, customSessionId = null, metadata = {}) => {
         const record = {
             id: crypto.randomUUID(),
             sessionId: customSessionId || session.id || 'OFFLINE_SESSION',
             studentId,
             status,
             synced: false,
-            timestamp: customDate ? new Date(customDate).toISOString() : new Date().toISOString()
+            timestamp: customDate ? new Date(customDate).toISOString() : new Date().toISOString(),
+            ...metadata // Spread metadata like minutesLate
         };
 
         const stored = JSON.parse(localStorage.getItem('offline_attendance') || '[]');
