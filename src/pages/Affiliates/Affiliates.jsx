@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiDollarSign, FiUsers, FiBarChart2, FiSettings, FiPlus, FiDownload, FiSearch, FiFilter, FiLink, FiCopy, FiCheckCircle } from 'react-icons/fi';
+import { FiDollarSign, FiUsers, FiBarChart2, FiSettings, FiPlus, FiDownload, FiSearch, FiFilter, FiLink, FiCopy, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { generateAffiliateCode } from './utils/codeGenerator'; // Reusing utility for mocking
 import AffiliateForm from './components/AffiliateForm';
@@ -18,10 +18,10 @@ const Affiliates = () => {
 
   // MOCK DATA - Affiliates
   const [affiliatesList, setAffiliatesList] = useState([
-    { id: 101, name: 'John Doe', type: 'Individual', joined: '2024-01-15', referrals: 45, status: 'ACTIVE', email: 'john@example.com', phone: '+91 9876543210', commissionType: 'PERCENT', commissionValue: 15, affiliateCode: 'AFF-JD-001', address: '123 Main St, Mumbai' },
-    { id: 102, name: 'CodeMasters Institute', type: 'Organization', joined: '2023-11-20', referrals: 128, status: 'ACTIVE', email: 'contact@codemasters.com', phone: '+91 1122334455', commissionType: 'FIXED', commissionValue: 2500, affiliateCode: 'AFF-CMI-002', address: 'Tech Park, Bangalore' },
-    { id: 103, name: 'Sarah Tech', type: 'Influencer', joined: '2024-02-01', referrals: 310, status: 'ACTIVE', email: 'sarah@social.com', phone: '+91 9879879870', commissionType: 'PERCENT', commissionValue: 20, affiliateCode: 'AFF-ST-003', address: 'Digital Hub, Pune' },
-    { id: 104, name: 'Inactive User Demo', type: 'Individual', joined: '2024-03-01', referrals: 0, status: 'INACTIVE', email: 'inactive@demo.com', phone: '+91 0000000000', commissionType: 'PERCENT', commissionValue: 10, affiliateCode: 'AFF-INA-004', address: 'Nowhere' },
+    { id: 101, name: 'John Doe', type: 'Individual', joined: '2024-01-15', referrals: 45, status: 'ACTIVE', email: 'john@example.com', phone: '+91 9876543210', commissionType: 'PERCENT', commissionValue: 15, affiliateCode: 'AFF-JD-001', address: '123 Main St, Mumbai', riskLevel: 'Low', fraudSignals: [] },
+    { id: 102, name: 'CodeMasters Institute', type: 'Organization', joined: '2023-11-20', referrals: 128, status: 'ACTIVE', email: 'contact@codemasters.com', phone: '+91 1122334455', commissionType: 'FIXED', commissionValue: 2500, affiliateCode: 'AFF-CMI-002', address: 'Tech Park, Bangalore', riskLevel: 'High', fraudSignals: ['Multiple signups from same IP', 'Abnormal conversion rate'] },
+    { id: 103, name: 'Sarah Tech', type: 'Influencer', joined: '2024-02-01', referrals: 310, status: 'ACTIVE', email: 'sarah@social.com', phone: '+91 9879879870', commissionType: 'PERCENT', commissionValue: 20, affiliateCode: 'AFF-ST-003', address: 'Digital Hub, Pune', riskLevel: 'Medium', fraudSignals: ['Self-referrals detected'] },
+    { id: 104, name: 'Inactive User Demo', type: 'Individual', joined: '2024-03-01', referrals: 0, status: 'INACTIVE', email: 'inactive@demo.com', phone: '+91 0000000000', commissionType: 'PERCENT', commissionValue: 10, affiliateCode: 'AFF-INA-004', address: 'Nowhere', riskLevel: 'Low', fraudSignals: [] },
   ]);
 
   // Mock Chart Data
@@ -183,6 +183,7 @@ const Affiliates = () => {
                   <th>Type</th>
                   <th>Joined</th>
                   <th>Referrals</th>
+                  <th>Risk</th>
                   <th>Status</th>
                   <th className="text-end pe-4">Actions</th>
                 </tr>
@@ -205,7 +206,13 @@ const Affiliates = () => {
                       </td>
                       <td><span className="badge bg-light text-dark border fw-normal">{aff.type}</span></td>
                       <td className="text-muted small">{aff.joined}</td>
+                      <td className="text-muted small">{aff.joined}</td>
                       <td className="fw-bold">{aff.referrals}</td>
+                      <td>
+                        {aff.riskLevel === 'High' && <span className="badge bg-danger bg-opacity-10 text-danger border-0"><FiAlertTriangle className="me-1" /> High</span>}
+                        {aff.riskLevel === 'Medium' && <span className="badge bg-warning bg-opacity-10 text-warning border-0"><FiAlertTriangle className="me-1" /> Medium</span>}
+                        {aff.riskLevel === 'Low' && <span className="badge bg-success bg-opacity-10 text-success border-0">Low</span>}
+                      </td>
                       <td>
                         <span className={`badge ${aff.status === 'ACTIVE' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'}`}>
                           {aff.status}

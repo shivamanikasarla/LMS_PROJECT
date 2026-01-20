@@ -90,6 +90,17 @@ const LearnerExamView = () => {
         return () => clearInterval(timer);
     }, [examStarted, timeLeft, examSubmitted]);
 
+    // Anti-cheat: Disable Right Click
+    useEffect(() => {
+        const handleContextMenu = (e) => {
+            e.preventDefault();
+        };
+        document.addEventListener("contextmenu", handleContextMenu);
+        return () => {
+            document.removeEventListener("contextmenu", handleContextMenu);
+        };
+    }, []);
+
     // Helpers
     const formatTime = (seconds) => {
         const h = Math.floor(seconds / 3600);
@@ -100,6 +111,13 @@ const LearnerExamView = () => {
 
     const handleStartExam = () => {
         setExamStarted(true);
+        // Enforce Fullscreen
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log("Error attempting to enable full-screen mode:", err.message);
+            });
+        }
     };
 
     const handleAnswer = (optionId) => {
@@ -193,7 +211,7 @@ const LearnerExamView = () => {
                         </div>
                     </div>
 
-                    <button className="btn-dashboard" onClick={() => navigate('/exams/dashboard')}>
+                    <button className="btn-dashboard" onClick={() => navigate('/exams/student/dashboard')}>
                         Return to Dashboard
                     </button>
                 </div>

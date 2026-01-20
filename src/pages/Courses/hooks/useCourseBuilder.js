@@ -1,10 +1,11 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { courseService } from '../services/courseService';
 
 // Mock initial data
 const INITIAL_DATA = {
     id: null,
-    title: 'Untitled Course',
+    title: 'Loading...',
     chapters: []
 };
 
@@ -13,8 +14,32 @@ export const useCourseBuilder = (courseId) => {
     const [activeChapterId, setActiveChapterId] = useState(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
-    // Mock Load (replace with API call)
-    // useEffect(() => { ... }, [courseId]);
+    // Fetch course data on mount
+    useEffect(() => {
+        if (!courseId) return;
+
+        const fetchCourse = async () => {
+            try {
+                const data = await courseService.getCourseById(courseId);
+                // Ensure chapters array exists
+                const formattedData = {
+                    ...data,
+                    chapters: data.chapters || []
+                };
+                setCourseData(formattedData);
+
+                // Set first chapter active if available
+                if (data.chapters && data.chapters.length > 0) {
+                    setActiveChapterId(data.chapters[0].id);
+                }
+            } catch (error) {
+                console.error("Failed to load course:", error);
+                setCourseData(prev => ({ ...prev, title: 'Error loading course' }));
+            }
+        };
+
+        fetchCourse();
+    }, [courseId]);
 
     const addChapter = useCallback(() => {
         const newChapter = {
@@ -118,6 +143,44 @@ export const useCourseBuilder = (courseId) => {
         }));
     }, []);
 
+    const moveChapter = useCallback((chapterId, direction) => {
+        setCourseData(prev => {
+            const index = prev.chapters.findIndex(c => c.id === chapterId);
+            if (index === -1) return prev;
+
+            const newChapters = [...prev.chapters];
+            if (direction === 'up' && index > 0) {
+                [newChapters[index], newChapters[index - 1]] = [newChapters[index - 1], newChapters[index]];
+            } else if (direction === 'down' && index < newChapters.length - 1) {
+                [newChapters[index], newChapters[index + 1]] = [newChapters[index + 1], newChapters[index]];
+            }
+
+            return { ...prev, chapters: newChapters };
+        });
+    }, []);
+
+    const moveContent = useCallback((chapterId, itemId, direction) => {
+        setCourseData(prev => {
+            const chapterIndex = prev.chapters.findIndex(c => c.id === chapterId);
+            if (chapterIndex === -1) return prev;
+
+            const chapter = prev.chapters[chapterIndex];
+            const itemIndex = chapter.contents.findIndex(i => i.id === itemId);
+            if (itemIndex === -1) return prev;
+
+            const newContents = [...chapter.contents];
+            if (direction === 'up' && itemIndex > 0) {
+                [newContents[itemIndex], newContents[itemIndex - 1]] = [newContents[itemIndex - 1], newContents[itemIndex]];
+            } else if (direction === 'down' && itemIndex < newContents.length - 1) {
+                [newContents[itemIndex], newContents[itemIndex + 1]] = [newContents[itemIndex + 1], newContents[itemIndex]];
+            }
+
+            const newChapters = [...prev.chapters];
+            newChapters[chapterIndex] = { ...chapter, contents: newContents };
+            return { ...prev, chapters: newChapters };
+        });
+    }, []);
+
     return {
         courseData,
         activeChapterId,
@@ -129,6 +192,8 @@ export const useCourseBuilder = (courseId) => {
         selectChapter,
         addContent,
         deleteContent,
-        updateContent
+        updateContent,
+        moveChapter,
+        moveContent
     };
 };

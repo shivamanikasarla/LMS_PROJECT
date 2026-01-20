@@ -40,7 +40,9 @@ const CourseBuilder = () => {
         selectChapter,
         addContent,
         deleteContent,
-        updateContent
+        updateContent,
+        moveChapter,
+        moveContent
     } = useCourseBuilder(id);
 
     const [activeForm, setActiveForm] = useState(null);
@@ -133,44 +135,6 @@ const CourseBuilder = () => {
         setSelectedContentId(null);
     };
 
-    const moveChapter = (chapterId, direction) => {
-        setCourseData(prev => {
-            const index = prev.chapters.findIndex(c => c.id === chapterId);
-            if (index === -1) return prev;
-
-            const newChapters = [...prev.chapters];
-            if (direction === 'up' && index > 0) {
-                [newChapters[index], newChapters[index - 1]] = [newChapters[index - 1], newChapters[index]];
-            } else if (direction === 'down' && index < newChapters.length - 1) {
-                [newChapters[index], newChapters[index + 1]] = [newChapters[index + 1], newChapters[index]];
-            }
-
-            return { ...prev, chapters: newChapters };
-        });
-    };
-
-    const moveContent = (chapterId, itemId, direction) => {
-        setCourseData(prev => {
-            const chapterIndex = prev.chapters.findIndex(c => c.id === chapterId);
-            if (chapterIndex === -1) return prev;
-
-            const chapter = prev.chapters[chapterIndex];
-            const itemIndex = chapter.contents.findIndex(i => i.id === itemId);
-            if (itemIndex === -1) return prev;
-
-            const newContents = [...chapter.contents];
-            if (direction === 'up' && itemIndex > 0) {
-                [newContents[itemIndex], newContents[itemIndex - 1]] = [newContents[itemIndex - 1], newContents[itemIndex]];
-            } else if (direction === 'down' && itemIndex < newContents.length - 1) {
-                [newContents[itemIndex], newContents[itemIndex + 1]] = [newContents[itemIndex + 1], newContents[itemIndex]];
-            }
-
-            const newChapters = [...prev.chapters];
-            newChapters[chapterIndex] = { ...chapter, contents: newContents };
-            return { ...prev, chapters: newChapters };
-        });
-    };
-
     const handleSidebarAddItem = (chapterId, afterId = null) => {
         if (activeChapterId !== chapterId) {
             selectChapter(chapterId);
@@ -261,154 +225,123 @@ const CourseBuilder = () => {
                             </div>
 
                             {/* CONTENT LIST */}
-                            {displayedContents.map((group, i) => (
-                                <div key={i} className="section-block">
-                                    {group.heading && (
-                                        <div className="content-item-card heading-card">
-                                            <div className="d-flex justify-content-between align-items-start">
+                            <div className="content-list-container bg-white rounded shadow-sm border mt-4">
+                                {displayedContents.map((group, i) => (
+                                    <React.Fragment key={i}>
+                                        {group.heading && (
+                                            <div className="content-section-header p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
                                                 <div>
-                                                    <h4 className="mb-1 fw-bold">{group.heading.title}</h4>
+                                                    <h5 className="mb-0 fw-bold text-dark">{group.heading.title}</h5>
                                                     {group.heading.data?.subtext && (
-                                                        <p className="text-muted small mb-0">{group.heading.data.subtext}</p>
+                                                        <small className="text-muted">{group.heading.data.subtext}</small>
                                                     )}
                                                 </div>
-
-                                                <div style={{ position: 'relative' }}>
+                                                <div className="position-relative">
                                                     <button
-                                                        className="btn-icon-subtle"
-                                                        onClick={() =>
-                                                            setContentMenuOpenId(
-                                                                contentMenuOpenId === group.heading.id ? null : group.heading.id
-                                                            )
-                                                        }
+                                                        className="btn btn-sm btn-link text-muted p-0"
+                                                        onClick={() => setContentMenuOpenId(contentMenuOpenId === group.heading.id ? null : group.heading.id)}
                                                     >
                                                         <FiMoreVertical />
                                                     </button>
-
                                                     {contentMenuOpenId === group.heading.id && (
-                                                        <div className="chapter-menu-dropdown">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setEditingItem(group.heading);
-                                                                    setActiveForm('heading');
-                                                                    setContentMenuOpenId(null);
-                                                                }}
-                                                            >
+                                                        <div className="chapter-menu-dropdown" style={{ right: 0, top: '100%' }}>
+                                                            <button onClick={() => { setEditingItem(group.heading); setActiveForm('heading'); setContentMenuOpenId(null); }}>
                                                                 <FiEdit2 /> Edit
                                                             </button>
-                                                            <button
-                                                                className="danger"
-                                                                onClick={() => deleteContent(activeChapterId, group.heading.id)}
-                                                            >
+                                                            <button className="danger" onClick={() => deleteContent(activeChapterId, group.heading.id)}>
                                                                 <FiTrash2 /> Remove
                                                             </button>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {group.items.map(item => (
-                                        <div key={item.id} className="content-item-card">
-                                            <div className="cic-header">
-                                                <span>{item.type}</span>
-                                                <h4>
-                                                    {item.title}
-                                                    {item.data?.isPreview && (
-                                                        <span style={{
-                                                            fontSize: '11px',
-                                                            marginLeft: '8px',
-                                                            color: '#10b981',
-                                                            background: '#ecfdf5',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '4px',
-                                                            border: '1px solid #a7f3d0'
-                                                        }}>
-                                                            Preview Enabled
-                                                        </span>
-                                                    )}
-                                                </h4>
+                                        {group.items.map(item => (
+                                            <div key={item.id} className="content-row-item p-3 border-bottom hover-bg-light transition-all">
+                                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        <div className={`p-2 rounded ${item.type === 'video' ? 'bg-primary bg-opacity-10 text-primary' : 'bg-warning bg-opacity-10 text-warning'}`}>
+                                                            {item.type === 'video' ? <FiVideo size={20} /> : <FiFileText size={20} />}
+                                                        </div>
+                                                        <div>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <h6 className="mb-0 fw-semibold text-dark">{item.title}</h6>
+                                                                {item.data?.isPreview && (
+                                                                    <span className="badge bg-success bg-opacity-10 text-success border border-success px-2 py-0 ms-2" style={{ fontSize: '10px' }}>Preview</span>
+                                                                )}
+                                                            </div>
+                                                            <small className="text-muted text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>{item.type}</small>
+                                                        </div>
+                                                    </div>
 
-                                                <button
-                                                    className="btn-icon-subtle"
-                                                    onClick={() =>
-                                                        setContentMenuOpenId(
-                                                            contentMenuOpenId === item.id ? null : item.id
-                                                        )
-                                                    }
-                                                >
-                                                    <FiMoreVertical />
-                                                </button>
-
-                                                {contentMenuOpenId === item.id && (
-                                                    <div className="chapter-menu-dropdown">
+                                                    <div className="position-relative">
                                                         <button
-                                                            onClick={() => {
-                                                                // Toggle Preview
-                                                                updateContent(activeChapterId, item.id, { isPreview: !item.data?.isPreview });
-                                                                setContentMenuOpenId(null);
-                                                            }}
+                                                            className="btn btn-sm btn-light border text-muted opacity-75 hover-opacity-100"
+                                                            onClick={() => setContentMenuOpenId(contentMenuOpenId === item.id ? null : item.id)}
                                                         >
-                                                            {item.data?.isPreview ? 'Disable Preview' : 'Enable Preview'}
+                                                            <FiMoreVertical />
                                                         </button>
+
+                                                        {contentMenuOpenId === item.id && (
+                                                            <div className="chapter-menu-dropdown" style={{ right: 0, top: '100%', zIndex: 10 }}>
+                                                                <button onClick={() => { updateContent(activeChapterId, item.id, { isPreview: !item.data?.isPreview }); setContentMenuOpenId(null); }}>
+                                                                    {item.data?.isPreview ? 'Disable Preview' : 'Enable Preview'}
+                                                                </button>
+                                                                <button onClick={() => { setEditingItem(item); setActiveForm(item.type); setContentMenuOpenId(null); }}>
+                                                                    <FiEdit2 /> Edit
+                                                                </button>
+                                                                <button className="danger" onClick={() => deleteContent(activeChapterId, item.id)}>
+                                                                    <FiTrash2 /> Remove
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* INLINE PREVIEW AREA */}
+                                                {selectedContentId === item.id && (
+                                                    <div className="mt-3 p-3 bg-light rounded border">
+                                                        {item.type === 'video' && item.data.file ? (
+                                                            <video controls width="100%" src={URL.createObjectURL(item.data.file)} className="rounded" />
+                                                        ) : item.type === 'pdf' && item.data.file ? (
+                                                            <iframe src={URL.createObjectURL(item.data.file)} width="100%" height="400px" title={item.title} className="rounded border bg-white" />
+                                                        ) : (
+                                                            <div className="text-center py-4 text-muted">
+                                                                <p className="mb-0">No file uploaded for this content.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* QUICK ACTIONS */}
+                                                {(item.type === 'video' || item.type === 'pdf') && selectedContentId !== item.id && (
+                                                    <div className="ps-5 ms-2">
                                                         <button
-                                                            onClick={() => {
-                                                                setEditingItem(item);
-                                                                setActiveForm(item.type);
-                                                                setContentMenuOpenId(null);
-                                                            }}
+                                                            className="btn btn-sm btn-link text-decoration-none p-0 text-primary"
+                                                            style={{ fontSize: '13px' }}
+                                                            onClick={() => handleContentClick(activeChapterId, item)}
                                                         >
-                                                            <FiEdit2 /> Edit
-                                                        </button>
-                                                        <button
-                                                            className="danger"
-                                                            onClick={() => deleteContent(activeChapterId, item.id)}
-                                                        >
-                                                            <FiTrash2 /> Remove
+                                                            {selectedContentId === item.id ? 'Hide Preview' : 'Show Preview'}
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
-
-                                            {/* PREVIEW */}
-                                            {/* PREVIEW */}
-                                            {item.type === 'video' && item.data.file && (
-                                                selectedContentId === item.id ? (
-                                                    <video
-                                                        controls
-                                                        width="100%"
-                                                        src={URL.createObjectURL(item.data.file)}
-                                                        className="rounded"
-                                                    />
-                                                ) : (
-                                                    <div className="p-4 text-center bg-light rounded cursor-pointer" onClick={() => handleContentClick(activeChapterId, item)}>
-                                                        <div className="text-muted"><FiVideo size={24} className="mb-2" /></div>
-                                                        <button className="btn btn-sm btn-outline-primary">View Video</button>
-                                                    </div>
-                                                )
-                                            )}
-
-                                            {item.type === 'pdf' && item.data.file && (
-                                                selectedContentId === item.id ? (
-                                                    <iframe
-                                                        src={URL.createObjectURL(item.data.file)}
-                                                        width="100%"
-                                                        height="500px"
-                                                        title={item.title}
-                                                        className="rounded border"
-                                                    />
-                                                ) : (
-                                                    <div className="p-4 text-center bg-light rounded cursor-pointer" onClick={() => handleContentClick(activeChapterId, item)}>
-                                                        <div className="text-muted"><FiFileText size={24} className="mb-2" /></div>
-                                                        <button className="btn btn-sm btn-outline-primary">Click to View PDF</button>
-                                                    </div>
-                                                )
-                                            )}
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                                {displayedContents.length === 0 && (
+                                    <div className="text-center py-5">
+                                        <div className="mb-3 text-muted opacity-25">
+                                            <FiLayout size={48} />
                                         </div>
-                                    ))}
-                                </div>
-                            ))}
+                                        <h5 className="text-muted">This chapter is empty</h5>
+                                        <button className="btn btn-outline-primary btn-sm mt-2" onClick={() => setIsSelectorOpen(true)}>
+                                            <FiPlusCircle className="me-1" /> Add your first item
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* FORMS */}
                             {/* FORMS - Render in Modal */}

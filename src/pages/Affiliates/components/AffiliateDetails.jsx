@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiX, FiUser, FiSettings, FiActivity, FiLayers, FiDollarSign } from 'react-icons/fi';
+import { FiX, FiUser, FiSettings, FiActivity, FiLayers, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
 
 const AffiliateDetails = ({ affiliate, onClose }) => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -108,6 +108,25 @@ const AffiliateDetails = ({ affiliate, onClose }) => {
                                 </div>
                             </div>
                         </div>
+
+
+
+                        {/* RISK ANALYSIS SECTION */}
+                        {(affiliate.riskLevel === 'High' || affiliate.riskLevel === 'Medium') && (
+                            <div className={`p-3 border rounded mb-4 ${affiliate.riskLevel === 'High' ? 'bg-danger bg-opacity-10 border-danger' : 'bg-warning bg-opacity-10 border-warning'}`}>
+                                <div className="d-flex align-items-center gap-2 mb-2">
+                                    <FiAlertTriangle className={affiliate.riskLevel === 'High' ? 'text-danger' : 'text-warning'} />
+                                    <h6 className={`mb-0 fw-bold ${affiliate.riskLevel === 'High' ? 'text-danger' : 'text-danger-emphasis'}`}>Fraud & Abuse Signals Detected</h6>
+                                </div>
+                                <div className="d-flex flex-wrap gap-2">
+                                    {affiliate.fraudSignals.map((signal, idx) => (
+                                        <span key={idx} className={`badge ${affiliate.riskLevel === 'High' ? 'bg-danger text-white' : 'bg-warning text-dark'}`}>
+                                            {signal}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <h6 className="fw-bold mb-3">Contact Information</h6>
                         <div className="row g-3">
@@ -250,7 +269,7 @@ const AffiliateDetails = ({ affiliate, onClose }) => {
                 <button className="btn btn-outline-secondary btn-sm" onClick={onClose}>Close</button>
                 <button className="btn btn-primary btn-sm px-3">Edit Profile</button>
             </div>
-        </div>
+        </div >
     );
 };
 
