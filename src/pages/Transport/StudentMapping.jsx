@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiUserCheck, FiSearch, FiMapPin, FiTruck,
-    FiAlertCircle, FiCheckCircle, FiTrash2, FiEdit2
+    FiAlertCircle, FiCheckCircle, FiTrash2, FiEdit2, FiPlus, FiX
 } from 'react-icons/fi';
 
 const StudentMapping = () => {
@@ -24,6 +24,12 @@ const StudentMapping = () => {
     // Form State
     const [assignForm, setAssignForm] = useState({
         routeId: '', pickup: '', shift: 'Morning'
+    });
+
+    // Add Student Modal State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newStudentForm, setNewStudentForm] = useState({
+        name: '', class: '', routeId: '', pickup: '', shift: 'Morning'
     });
 
     // --- Effects ---
@@ -91,20 +97,75 @@ const StudentMapping = () => {
         s.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // --- Add Student Handler ---
+    const handleAddStudent = (e) => {
+        e.preventDefault();
+        const newId = `S-${Date.now()}`;
+        const newStudent = {
+            id: newId,
+            name: newStudentForm.name,
+            class: newStudentForm.class,
+            routeId: newStudentForm.routeId ? parseInt(newStudentForm.routeId) : null,
+            pickup: newStudentForm.pickup || '',
+            shift: newStudentForm.shift || 'Morning',
+            status: 'Active'
+        };
+
+        // Capacity check if route selected
+        if (newStudent.routeId && !checkCapacity(newStudent.routeId)) {
+            alert('Selected route is at full capacity!');
+            return;
+        }
+
+        setStudents([...students, newStudent]);
+        setIsAddModalOpen(false);
+        setNewStudentForm({ name: '', class: '', routeId: '', pickup: '', shift: 'Morning' });
+    };
+
     return (
         <div style={{ position: 'relative', minHeight: '600px' }}>
             {/* Header / Search */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <div className="glass-card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, width: '400px' }}>
-                    <FiSearch color="#94a3b8" size={18} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{
+                    padding: '12px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    flex: 1,
+                    maxWidth: '400px',
+                    background: 'white',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    transition: 'all 0.2s ease'
+                }}>
+                    <FiSearch color="#6366f1" size={20} />
                     <input
                         type="text"
                         placeholder="Search student by Name or ID..."
-                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '15px' }}
+                        style={{
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            width: '100%',
+                            fontSize: '14px',
+                            color: '#334155',
+                            fontWeight: '500'
+                        }}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    style={{
+                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                        color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600'
+                    }}
+                >
+                    <FiPlus /> Add Student
+                </button>
             </div>
 
             {/* List */}
@@ -267,6 +328,102 @@ const StudentMapping = () => {
                                         Confirm Assignment
                                     </button>
                                 </div>
+                            </form>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Add Student Modal */}
+            <AnimatePresence>
+                {isAddModalOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setIsAddModalOpen(false)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, backdropFilter: 'blur(4px)' }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, x: '-50%' }}
+                            animate={{ opacity: 1, scale: 1, x: '-50%' }}
+                            exit={{ opacity: 0, scale: 0.95, x: '-50%' }}
+                            style={{
+                                position: 'fixed', top: '80px', left: '50%',
+                                width: 'calc(100% - 32px)', maxWidth: '480px', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto',
+                                background: 'white', borderRadius: '16px', padding: '24px', zIndex: 51,
+                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                                <h3 style={{ margin: 0, fontSize: '20px' }}>Add New Student</h3>
+                                <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={24} /></button>
+                            </div>
+
+                            <form onSubmit={handleAddStudent} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Student Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Aarav Sharma"
+                                        value={newStudentForm.name}
+                                        onChange={e => setNewStudentForm({ ...newStudentForm, name: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Class <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Class 10-A"
+                                        value={newStudentForm.class}
+                                        onChange={e => setNewStudentForm({ ...newStudentForm, class: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '8px' }}>
+                                    <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Optional: Assign to route now</p>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Route (Optional)</label>
+                                        <select
+                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                                            value={newStudentForm.routeId}
+                                            onChange={e => setNewStudentForm({ ...newStudentForm, routeId: e.target.value, pickup: '' })}
+                                        >
+                                            <option value="">-- No Route --</option>
+                                            {routes.map(r => {
+                                                const count = students.filter(s => s.routeId === r.id).length;
+                                                const isFull = count >= r.capacity;
+                                                return (
+                                                    <option key={r.id} value={r.id} disabled={isFull}>
+                                                        {r.code} - {r.name} ({count}/{r.capacity}) {isFull ? '[FULL]' : ''}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                    {newStudentForm.routeId && (
+                                        <div style={{ marginTop: '12px' }}>
+                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Pickup Point</label>
+                                            <select
+                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                                                value={newStudentForm.pickup}
+                                                onChange={e => setNewStudentForm({ ...newStudentForm, pickup: e.target.value })}
+                                            >
+                                                <option value="">-- Choose Stop --</option>
+                                                {getRouteDetails(newStudentForm.routeId)?.stops.map((stop, i) => (
+                                                    <option key={i} value={stop}>{stop}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button type="submit" style={{ marginTop: '8px', padding: '12px', background: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}>
+                                    Add Student
+                                </button>
                             </form>
                         </motion.div>
                     </>

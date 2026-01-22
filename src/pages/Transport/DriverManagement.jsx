@@ -250,13 +250,14 @@ const DriverManagement = () => {
                         />
                         {/* Content */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+                            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                            exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
                             style={{
-                                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                position: 'fixed', top: '50%', left: '50%',
                                 width: '100%', maxWidth: '600px', background: 'white', borderRadius: '16px',
-                                padding: '24px', zIndex: 51, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+                                padding: '24px', zIndex: 51, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+                                maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden'
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

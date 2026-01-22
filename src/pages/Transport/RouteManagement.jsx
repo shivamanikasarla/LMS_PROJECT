@@ -120,11 +120,13 @@ const RouteManagement = () => {
                 </button>
             </div>
 
-            {/* Routes Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
+            {/* Routes Grid - Only 2 cards per row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '28px', maxWidth: '100%' }}>
                 <AnimatePresence>
                     {filteredRoutes.map(route => {
                         const occupancy = (route.enrolled / route.capacity) * 100;
+                        const startPoint = route.stops[0] || 'Not Set';
+                        const endPoint = route.stops[route.stops.length - 1] || 'Not Set';
                         return (
                             <motion.div
                                 key={route.id}
@@ -132,35 +134,48 @@ const RouteManagement = () => {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
-                                style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+                                style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '280px' }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#6366f1', background: '#e0e7ff', padding: '2px 8px', borderRadius: '4px' }}>{route.code}</span>
-                                            <h3 style={{ margin: 0, fontSize: '16px', color: '#1e293b' }}>{route.name}</h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6366f1', background: '#e0e7ff', padding: '4px 12px', borderRadius: '6px' }}>{route.code}</span>
+                                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>{route.name}</h3>
                                         </div>
-                                        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <FiTruck size={12} /> {route.vehicle || 'No Vehicle Assigned'}
+                                        <div style={{ fontSize: '14px', color: '#64748b', marginTop: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <FiTruck size={14} /> {route.vehicle || 'No Vehicle Assigned'}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <button onClick={() => handleOpenModal(route)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><FiEdit2 /></button>
-                                        <button onClick={() => handleDelete(route.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><FiTrash2 /></button>
+                                    <div style={{ display: 'flex', gap: 10 }}>
+                                        <button onClick={() => handleOpenModal(route)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', padding: '8px', borderRadius: '8px' }}><FiEdit2 size={16} /></button>
+                                        <button onClick={() => handleDelete(route.id)} style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '8px', borderRadius: '8px' }}><FiTrash2 size={16} /></button>
                                     </div>
                                 </div>
 
-                                {/* Stops Timeline */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
-                                    {route.stops.map((stop, i) => (
-                                        <React.Fragment key={i}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 'fit-content' }}>
-                                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: i === 0 || i === route.stops.length - 1 ? '#6366f1' : '#cbd5e1' }} />
-                                                <span style={{ fontSize: '12px', color: '#475569' }}>{stop}</span>
-                                            </div>
-                                            {i < route.stops.length - 1 && <div style={{ height: 1, minWidth: 20, background: '#e2e8f0', flex: 1 }} />}
-                                        </React.Fragment>
-                                    ))}
+                                {/* Pickup → Drop Point */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '16px',
+                                    padding: '16px 20px',
+                                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                                    borderRadius: '12px',
+                                    border: '1px solid #bae6fd',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)' }} />
+                                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#0f766e' }}>{startPoint}</span>
+                                    </div>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ height: '3px', flex: 1, background: 'linear-gradient(90deg, #10b981, #6366f1)', borderRadius: '3px' }} />
+                                        <span style={{ margin: '0 12px', fontSize: '20px', color: '#6366f1', fontWeight: 'bold' }}>→</span>
+                                        <div style={{ height: '3px', flex: 1, background: 'linear-gradient(90deg, #6366f1, #ef4444)', borderRadius: '3px' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>{endPoint}</span>
+                                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.2)' }} />
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#475569', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
@@ -197,11 +212,14 @@ const RouteManagement = () => {
                             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, backdropFilter: 'blur(4px)' }}
                         />
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95, x: '-50%' }}
+                            animate={{ opacity: 1, scale: 1, x: '-50%' }}
+                            exit={{ opacity: 0, scale: 0.95, x: '-50%' }}
                             style={{
-                                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
-                                background: 'white', borderRadius: '16px', padding: '24px', zIndex: 51
+                                position: 'fixed', top: '80px', left: '50%',
+                                width: 'calc(100% - 32px)', maxWidth: '480px', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto',
+                                background: 'white', borderRadius: '16px', padding: '20px', zIndex: 51,
+                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

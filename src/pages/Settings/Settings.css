@@ -292,10 +292,69 @@
 
 @media (max-width: 768px) {
     .settings-content {
-        padding: 1.5rem 1rem;
+        padding: 1rem;
     }
 
     .settings-card {
         padding: 1.5rem;
+    }
+
+    .settings-nav {
+        padding: 1rem;
+        justify-content: flex-start;
+        /* Ensure items start from left for scrolling */
+    }
+
+    .nav-item {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .card-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+    }
+
+    /* Force input groups to stack on mobile */
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+
+    .input-field,
+    .select-field {
+        font-size: 0.9rem;
+    }
+
+    .settings-card .row>div {
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group-custom {
+        width: 100%;
+    }
+
+    /* Fix for the screenshot issue: Domain settings specific layout */
+    .d-flex.align-items-center.bg-slate-100 {
+        /* Removed width: 100% and justify-center to allow natural flex behavior */
+        padding: 0.8rem !important;
+    }
+
+    /* Allow input to shrink/grow in flex container */
+    .domain-input-group .input-field {
+        width: auto;
+        flex: 1;
+        min-width: 0;
+        /* Prevent overflow */
     }
 }

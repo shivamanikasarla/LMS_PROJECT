@@ -1,0 +1,15 @@
+
+> ui@0.0.0 build
+> vite build
+
+[36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 66 modules transformed.
+Γ£ù Build failed in 1.31s
+error during build:
+Could not resolve "./RouteManagementV2" from "src/pages/Transport/Transport.jsx"
+file: C:/Users/ASUS/OneDrive/Desktop/LMS_PROJECT/LMS-Project-Demo/LMS-Project-Demo/src/pages/Transport/Transport.jsx
+    at getRollupError (file:///C:/Users/ASUS/OneDrive/Desktop/LMS_PROJECT/LMS-Project-Demo/LMS-Project-Demo/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/ASUS/OneDrive/Desktop/LMS_PROJECT/LMS-Project-Demo/LMS-Project-Demo/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/ASUS/OneDrive/Desktop/LMS_PROJECT/LMS-Project-Demo/LMS-Project-Demo/node_modules/rollup/dist/es/shared/node-entry.js:21661:24)
+    at file:///C:/Users/ASUS/OneDrive/Desktop/LMS_PROJECT/LMS-Project-Demo/LMS-Project-Demo/node_modules/rollup/dist/es/shared/node-entry.js:21621:26

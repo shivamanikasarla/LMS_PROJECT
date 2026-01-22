@@ -157,7 +157,7 @@ const Settings = () => {
 
       {/* 1. Top Level Module Navigation */}
       <div className="settings-nav-wrapper">
-        <div className="settings-nav justify-content-center">
+        <div className="settings-nav justify-content-start justify-content-md-center">
           {modules.map((module) => (
             <button
               key={module.id}
@@ -222,7 +222,7 @@ const DomainSettings = ({ data, update }) => (
     <div className="row g-4">
       <div className="col-md-6">
         <label className="input-label">Default Subdomain</label>
-        <div className="d-flex gap-2">
+        <div className="d-flex align-items-stretch gap-2 domain-input-group">
           <input type="text" className="input-field" defaultValue="my-academy" readOnly />
           <div className="d-flex align-items-center bg-slate-100 px-3 rounded text-muted font-monospace">.lms.com</div>
         </div>
@@ -248,9 +248,9 @@ const DomainSettings = ({ data, update }) => (
             <AlertCircle size={16} /> DNS Configuration Required
           </h5>
           <p className="text-sm text-blue-700 mb-2">To connect your domain, add the following CNAME record to your DNS provider:</p>
-          <div className="bg-white p-3 rounded border border-blue-200 font-monospace text-xs d-flex justify-content-between">
+          <div className="bg-white p-3 rounded border border-blue-200 font-monospace text-xs d-flex flex-column flex-sm-row justify-content-between gap-2">
             <span>CNAME &nbsp; @ &nbsp; domains.lms.com</span>
-            <button className="text-blue-600 font-bold" onClick={() => { navigator.clipboard.writeText('domains.lms.com'); toast.success("Copied to clipboard!"); }}>Copy</button>
+            <button className="text-blue-600 font-bold align-self-start align-self-sm-center" onClick={() => { navigator.clipboard.writeText('domains.lms.com'); toast.success("Copied to clipboard!"); }}>Copy</button>
           </div>
         </div>
 

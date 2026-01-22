@@ -212,6 +212,31 @@ const TransportFees = () => {
                             </div>
                         ))}
                     </div>
+
+                    {/* Save Button */}
+                    <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
+                        <button
+                            onClick={() => {
+                                localStorage.setItem('lms_transport_fees_config', JSON.stringify(fees));
+                                alert('Fee configuration saved successfully!');
+                            }}
+                            style={{
+                                padding: '12px 24px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                                color: 'white',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
+                            }}
+                        >
+                            <FiCheckCircle /> Save Configuration
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
