@@ -163,7 +163,9 @@ const CourseBuilder = () => {
                     <button className="btn-icon" onClick={() => navigate('/courses')}>
                         <FiArrowLeft />
                     </button>
-                    <h2>{courseData.title}</h2>
+                    <div className="cb-title">
+                        <h2>{courseData.title}</h2>
+                    </div>
                 </div>
                 <div className="cb-header-actions">
                     {/* Placeholder buttons removed */}

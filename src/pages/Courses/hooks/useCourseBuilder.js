@@ -76,6 +76,7 @@ export const useCourseBuilder = (courseId) => {
 
             const formattedData = {
                 ...courseData,
+                title: courseData.courseName || courseData.title || 'Untitled Course',
                 chapters: chapters
             };
 
