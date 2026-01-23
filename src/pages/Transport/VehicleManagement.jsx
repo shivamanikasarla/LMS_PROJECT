@@ -10,9 +10,9 @@ const VehicleManagement = () => {
     const [vehicles, setVehicles] = useState(() => {
         const saved = localStorage.getItem('lms_transport_vehicles');
         return saved ? JSON.parse(saved) : [
-            { id: 1, number: 'KA-01-AB-1234', type: 'Bus', capacity: 50, gps: true, route: 'R-01', status: 'Active' },
-            { id: 2, number: 'KA-05-XY-9876', type: 'Van', capacity: 20, gps: true, route: 'R-04', status: 'Active' },
-            { id: 3, number: 'KA-53-ZZ-5555', type: 'Bus', capacity: 45, gps: false, route: '', status: 'Maintenance' },
+            { id: 1, number: 'KA-01-AB-1234', type: 'Bus', capacity: 50, occupiedSeats: 45, gps: true, route: 'R-01', status: 'Active' },
+            { id: 2, number: 'KA-05-XY-9876', type: 'Van', capacity: 20, occupiedSeats: 12, gps: true, route: 'R-04', status: 'Active' },
+            { id: 3, number: 'KA-53-ZZ-5555', type: 'Bus', capacity: 45, occupiedSeats: 0, gps: false, route: '', status: 'Maintenance' },
         ];
     });
 
@@ -20,7 +20,7 @@ const VehicleManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVehicle, setEditingVehicle] = useState(null);
     const [formData, setFormData] = useState({
-        number: '', type: 'Bus', capacity: '', gps: false, route: '', status: 'Active'
+        number: '', type: 'Bus', capacity: '', occupiedSeats: '', gps: false, route: '', status: 'Active'
     });
 
     // --- Persist Data ---
@@ -35,7 +35,7 @@ const VehicleManagement = () => {
             setFormData(vehicle);
         } else {
             setEditingVehicle(null);
-            setFormData({ number: '', type: 'Bus', capacity: '', gps: false, route: '', status: 'Active' });
+            setFormData({ number: '', type: 'Bus', capacity: '', occupiedSeats: '', gps: false, route: '', status: 'Active' });
         }
         setIsModalOpen(true);
     };
@@ -144,7 +144,9 @@ const VehicleManagement = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px', color: '#334155' }}>{vehicle.capacity} Seats</td>
+                                        <td style={{ padding: '16px', color: '#334155' }}>
+                                            {vehicle.occupiedSeats || 0} / {vehicle.capacity} Seats
+                                        </td>
                                         <td style={{ padding: '16px' }}>
                                             {vehicle.gps ? (
                                                 <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontSize: '13px' }}>
@@ -254,6 +256,16 @@ const VehicleManagement = () => {
                                         </select>
                                     </div>
                                     <FormInput label="Capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || '' })} required placeholder="e.g. 50" />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <FormInput
+                                        label="Occupied Seats"
+                                        type="number"
+                                        value={formData.occupiedSeats}
+                                        onChange={e => setFormData({ ...formData, occupiedSeats: parseInt(e.target.value) || '' })}
+                                        placeholder="e.g. 25"
+                                    />
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

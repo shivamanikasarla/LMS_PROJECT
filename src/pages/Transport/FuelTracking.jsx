@@ -173,10 +173,26 @@ const FuelTracking = () => {
                 {isModalOpen && (
                     <>
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleCloseModal} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50 }} />
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', maxWidth: '500px', background: 'white', borderRadius: '16px', padding: '24px', zIndex: 51 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                        <motion.div
+                            initial={{ opacity: 0, x: '-50%', y: '-20px' }}
+                            animate={{ opacity: 1, x: '-50%', y: '0px' }}
+                            exit={{ opacity: 0, x: '-50%', y: '-20px' }}
+                            className="hide-scrollbar"
+                            style={{
+                                position: 'fixed', top: '100px', left: '50%',
+                                width: '100%', maxWidth: '500px',
+                                maxHeight: 'calc(100vh - 120px)', overflowY: 'auto',
+                                background: 'white', borderRadius: '16px', padding: '24px',
+                                zIndex: 60, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                            }}
+                        >
+                            <div style={{
+                                display: 'flex', justifyContent: 'space-between', marginBottom: '20px',
+                                position: 'sticky', top: '-24px', background: 'white', zIndex: 10,
+                                paddingTop: '0', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9'
+                            }}>
                                 <h3 style={{ margin: 0 }}>Fuel Entry</h3>
-                                <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={20} /></button>
+                                <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><FiX size={20} /></button>
                             </div>
                             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>

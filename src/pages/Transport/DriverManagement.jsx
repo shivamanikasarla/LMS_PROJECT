@@ -11,9 +11,24 @@ const DriverManagement = () => {
     const [drivers, setDrivers] = useState(() => {
         const saved = localStorage.getItem('lms_transport_drivers');
         return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Ramesh Kumar', contact: '9876543210', license: 'KA2001000123', expiry: '2026-12-31', experience: '5 Years', assignedVehicle: 'KA-01-AB-1234', shift: 'Morning', verification: { police: true, medical: true } },
-            { id: 2, name: 'Suresh Singh', contact: '8765432109', license: 'KA2005000456', expiry: '2025-02-15', experience: '8 Years', assignedVehicle: 'KA-05-XY-9876', shift: 'Evening', verification: { police: true, medical: false } }, // Expiring soon
-            { id: 3, name: 'Mahesh Babu', contact: '7654321098', license: 'KA2010000789', expiry: '2024-01-01', experience: '3 Years', assignedVehicle: '', shift: 'Morning', verification: { police: false, medical: false } }, // Expired
+            {
+                id: 1, name: 'Ramesh Kumar', contact: '9876543210', license: 'KA2001000123', expiry: '2026-12-31',
+                experienceYears: 5, licenseStatus: 'Valid', driverStatus: 'Verified',
+                assignedVehicle: 'KA-01-AB-1234', assignedRoute: 'R-01', conductorId: 'CID-001',
+                shift: 'Morning', verification: { police: true, medical: true }
+            },
+            {
+                id: 2, name: 'Suresh Singh', contact: '8765432109', license: 'KA2005000456', expiry: '2025-02-15',
+                experienceYears: 8, licenseStatus: 'Expiring Soon', driverStatus: 'Pending',
+                assignedVehicle: 'KA-05-XY-9876', assignedRoute: 'R-04', conductorId: 'CID-002',
+                shift: 'Evening', verification: { police: true, medical: false }
+            },
+            {
+                id: 3, name: 'Mahesh Babu', contact: '7654321098', license: 'KA2010000789', expiry: '2024-01-01',
+                experienceYears: 3, licenseStatus: 'Expired', driverStatus: 'Suspended',
+                assignedVehicle: '', assignedRoute: '', conductorId: '',
+                shift: 'Morning', verification: { police: false, medical: false }
+            },
         ];
     });
 
@@ -21,7 +36,10 @@ const DriverManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDriver, setEditingDriver] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', contact: '', license: '', expiry: '', experience: '', assignedVehicle: '', shift: 'Morning', verification: { police: false, medical: false }
+        name: '', contact: '', license: '', expiry: '', experienceYears: '',
+        licenseStatus: 'Valid', driverStatus: 'Pending',
+        assignedVehicle: '', assignedRoute: '', conductorId: '',
+        shift: 'Morning', verification: { police: false, medical: false }
     });
 
     // --- Persist Data ---
@@ -49,8 +67,10 @@ const DriverManagement = () => {
         } else {
             setEditingDriver(null);
             setFormData({
-                name: '', contact: '', license: '', expiry: '', experience: '', assignedVehicle: '', shift: 'Morning',
-                verification: { police: false, medical: false }
+                name: '', contact: '', license: '', expiry: '', experienceYears: '',
+                licenseStatus: 'Valid', driverStatus: 'Pending',
+                assignedVehicle: '', assignedRoute: '', conductorId: '',
+                shift: 'Morning', verification: { police: false, medical: false }
             });
         }
         setIsModalOpen(true);
@@ -170,38 +190,50 @@ const DriverManagement = () => {
                                                 <div style={{ fontSize: '13px', color: '#334155' }}>
                                                     <span style={{ fontWeight: '600' }}>Shift:</span> {driver.shift}
                                                 </div>
-                                                {driver.assignedVehicle ? (
+                                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                                    Route: {driver.assignedRoute || 'N/A'}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                                    Conductor: {driver.conductorId || 'N/A'}
+                                                </div>
+                                                {driver.assignedVehicle && (
                                                     <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                                                         Vehicle: {driver.assignedVehicle}
                                                     </div>
-                                                ) : (
-                                                    <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Unassigned</div>
                                                 )}
                                             </td>
                                             <td style={{ padding: '16px' }}>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <div
+                                                <span style={{
+                                                    padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600',
+                                                    background: driver.driverStatus === 'Verified' ? '#ecfdf5' : driver.driverStatus === 'Rejected' ? '#fef2f2' : '#fffbeb',
+                                                    color: driver.driverStatus === 'Verified' ? '#10b981' : driver.driverStatus === 'Rejected' ? '#ef4444' : '#f59e0b',
+                                                    marginBottom: '4px', display: 'inline-block'
+                                                }}>
+                                                    {driver.driverStatus}
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                    <span
                                                         title="Police Verification"
                                                         style={{
-                                                            padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600',
                                                             background: driver.verification.police ? '#ecfdf5' : '#fef2f2',
                                                             color: driver.verification.police ? '#10b981' : '#ef4444',
-                                                            display: 'flex', alignItems: 'center', gap: 4
+                                                            display: 'flex', alignItems: 'center', gap: 2
                                                         }}
                                                     >
-                                                        <FiShield size={12} /> Police
-                                                    </div>
-                                                    <div
+                                                        <FiShield size={10} /> {driver.verification.police ? 'Pol.' : 'No Pol.'}
+                                                    </span>
+                                                    <span
                                                         title="Medical Check"
                                                         style={{
-                                                            padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600',
                                                             background: driver.verification.medical ? '#ecfdf5' : '#fef2f2',
                                                             color: driver.verification.medical ? '#10b981' : '#ef4444',
-                                                            display: 'flex', alignItems: 'center', gap: 4
+                                                            display: 'flex', alignItems: 'center', gap: 2
                                                         }}
                                                     >
-                                                        <FiActivity size={12} /> Medical
-                                                    </div>
+                                                        <FiActivity size={10} /> {driver.verification.medical ? 'Med.' : 'No Med.'}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td style={{ padding: '16px', textAlign: 'right' }}>
@@ -273,7 +305,44 @@ const DriverManagement = () => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                     <FormInput label="License Number" value={formData.license} onChange={e => setFormData({ ...formData, license: e.target.value })} required placeholder="DL-XXXXX" />
-                                    <FormInput label="Expiry Date" type="date" value={formData.expiry} onChange={e => setFormData({ ...formData, expiry: e.target.value })} required />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <FormInput label="Expiry Date" type="date" value={formData.expiry} onChange={e => setFormData({ ...formData, expiry: e.target.value })} required />
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Status</label>
+                                            <select
+                                                className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                                value={formData.licenseStatus}
+                                                onChange={e => setFormData({ ...formData, licenseStatus: e.target.value })}
+                                            >
+                                                <option>Valid</option>
+                                                <option>Expiring Soon</option>
+                                                <option>Expired</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <FormInput
+                                        label="Experience (Years)"
+                                        type="number"
+                                        value={formData.experienceYears}
+                                        onChange={e => setFormData({ ...formData, experienceYears: e.target.value })}
+                                        placeholder="e.g. 5"
+                                    />
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Driver Status</label>
+                                        <select
+                                            className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                            value={formData.driverStatus}
+                                            onChange={e => setFormData({ ...formData, driverStatus: e.target.value })}
+                                        >
+                                            <option>Pending</option>
+                                            <option>Verified</option>
+                                            <option>Suspended</option>
+                                            <option>Rejected</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -290,6 +359,11 @@ const DriverManagement = () => {
                                         </select>
                                     </div>
                                     <FormInput label="Assigned Vehicle" value={formData.assignedVehicle} onChange={e => setFormData({ ...formData, assignedVehicle: e.target.value })} placeholder="e.g. KA-01 (Optional)" />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <FormInput label="Assigned Route" value={formData.assignedRoute} onChange={e => setFormData({ ...formData, assignedRoute: e.target.value })} placeholder="e.g. R-10" />
+                                    <FormInput label="Conductor ID" value={formData.conductorId} onChange={e => setFormData({ ...formData, conductorId: e.target.value })} placeholder="e.g. C-101" />
                                 </div>
 
                                 <div style={{ marginTop: '8px' }}>

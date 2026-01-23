@@ -10,8 +10,8 @@ const RouteManagement = () => {
     const [routes, setRoutes] = useState(() => {
         const saved = localStorage.getItem('lms_transport_routes');
         return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Route 01: North City', code: 'R-01', vehicle: 'KA-01-AB-1234', capacity: 50, enrolled: 42, distance: '15 km', time: '45 mins', stops: ['Central Station', 'Market Road', 'North Avenue', 'College Campus'] },
-            { id: 2, name: 'Route 02: South City', code: 'R-02', vehicle: 'KA-05-XY-9876', capacity: 20, enrolled: 18, distance: '12 km', time: '40 mins', stops: ['South Park', 'Mall Road', 'Tech Park', 'College Campus'] },
+            { id: 1, name: 'Route 01: North City', code: 'R-01', vehicle: 'KA-01-AB-1234', capacity: 50, enrolled: 42, distance: '15 km', time: '45 mins', pickupPoint: 'Central Station', dropPoint: 'College Campus' },
+            { id: 2, name: 'Route 02: South City', code: 'R-02', vehicle: 'KA-05-XY-9876', capacity: 20, enrolled: 18, distance: '12 km', time: '40 mins', pickupPoint: 'South Park', dropPoint: 'College Campus' },
         ];
     });
 
@@ -19,7 +19,7 @@ const RouteManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRoute, setEditingRoute] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', code: '', vehicle: '', capacity: '', distance: '', time: '', stops: ['']
+        name: '', code: '', vehicle: '', capacity: '', distance: '', time: '', pickupPoint: '', dropPoint: ''
     });
 
     // --- Persist Data ---
@@ -35,7 +35,7 @@ const RouteManagement = () => {
         } else {
             setEditingRoute(null);
             setFormData({
-                name: '', code: '', vehicle: '', capacity: '', enrolled: 0, distance: '', time: '', stops: ['']
+                name: '', code: '', vehicle: '', capacity: '', enrolled: 0, distance: '', time: '', pickupPoint: '', dropPoint: ''
             });
         }
         setIsModalOpen(true);
@@ -59,33 +59,12 @@ const RouteManagement = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        // Filter empty stops
-        const validStops = formData.stops.filter(stop => stop.trim() !== '');
-
-        const finalData = { ...formData, stops: validStops };
-
         if (editingRoute) {
-            setRoutes(routes.map(r => r.id === editingRoute.id ? { ...finalData, id: r.id } : r));
+            setRoutes(routes.map(r => r.id === editingRoute.id ? { ...formData, id: r.id } : r));
         } else {
-            setRoutes([...routes, { ...finalData, id: Date.now(), enrolled: 0 }]); // New routes start with 0 enrolled
+            setRoutes([...routes, { ...formData, id: Date.now(), enrolled: 0 }]);
         }
         handleCloseModal();
-    };
-
-    const handleStopChange = (index, value) => {
-        const newStops = [...formData.stops];
-        newStops[index] = value;
-        setFormData({ ...formData, stops: newStops });
-    };
-
-    const addStop = () => {
-        setFormData({ ...formData, stops: [...formData.stops, ''] });
-    };
-
-    const removeStop = (index) => {
-        const newStops = formData.stops.filter((_, i) => i !== index);
-        setFormData({ ...formData, stops: newStops });
     };
 
     const filteredRoutes = routes.filter(r =>
@@ -125,8 +104,8 @@ const RouteManagement = () => {
                 <AnimatePresence>
                     {filteredRoutes.map(route => {
                         const occupancy = (route.enrolled / route.capacity) * 100;
-                        const startPoint = route.stops[0] || 'Not Set';
-                        const endPoint = route.stops[route.stops.length - 1] || 'Not Set';
+                        const startPoint = route.pickupPoint || 'Not Set';
+                        const endPoint = route.dropPoint || 'Not Set';
                         return (
                             <motion.div
                                 key={route.id}
@@ -243,30 +222,9 @@ const RouteManagement = () => {
                                     <FormInput label="Total Capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || '' })} required />
                                 </div>
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>Route Stops</label>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {formData.stops.map((stop, index) => (
-                                            <div key={index} style={{ display: 'flex', gap: '8px' }}>
-                                                <input
-                                                    type="text"
-                                                    value={stop}
-                                                    onChange={e => handleStopChange(index, e.target.value)}
-                                                    placeholder={`Stop #${index + 1}`}
-                                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
-                                                    required
-                                                />
-                                                {formData.stops.length > 1 && (
-                                                    <button type="button" onClick={() => removeStop(index)} style={{ border: 'none', background: '#fef2f2', color: '#ef4444', borderRadius: '8px', width: '40px', cursor: 'pointer' }}>
-                                                        <FiTrash2 />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={addStop} style={{ padding: '8px', background: '#f1f5f9', border: 'none', borderRadius: '8px', color: '#4f46e5', fontWeight: '500', cursor: 'pointer', marginTop: '4px' }}>
-                                            + Add Stop
-                                        </button>
-                                    </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <FormInput label="Pickup Point" value={formData.pickupPoint} onChange={e => setFormData({ ...formData, pickupPoint: e.target.value })} required placeholder="e.g. Central Station" />
+                                    <FormInput label="Drop Point" value={formData.dropPoint} onChange={e => setFormData({ ...formData, dropPoint: e.target.value })} required placeholder="e.g. College Campus" />
                                 </div>
 
                                 <button type="submit" className="btn-primary" style={{ marginTop: '16px', padding: '12px', background: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}>

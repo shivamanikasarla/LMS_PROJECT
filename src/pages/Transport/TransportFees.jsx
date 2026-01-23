@@ -12,6 +12,7 @@ const TransportFees = () => {
     const [fees, setFees] = useState({}); // { routeId: { monthly: 1000, annual: 10000 } }
     const [payments, setPayments] = useState({}); // { studentId: { status: 'Paid', amount: 1000, date: '...' } }
     const [view, setView] = useState('status'); // 'status' or 'config'
+    const [selectedRouteId, setSelectedRouteId] = useState('');
 
     // KPI State
     const [stats, setStats] = useState({ total: 0, collected: 0, pending: 0 });
@@ -180,38 +181,80 @@ const TransportFees = () => {
             ) : (
                 <div className="glass-card" style={{ padding: '32px' }}>
                     <h3 style={{ marginBottom: '24px' }}>Route Fee Configuration</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-                        {routes.map(route => (
-                            <div key={route.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
-                                <div style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <FiTruck color="#64748b" /> {route.name} <span style={{ fontSize: '12px', color: '#6366f1', background: '#eff6ff', padding: '2px 6px', borderRadius: '4px' }}>{route.code}</span>
-                                </div>
+                    <h3 style={{ marginBottom: '24px' }}>Route Fee Configuration</h3>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Monthly Fee (₹)</label>
+                    {/* Route Selection */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Select Route to Configure</label>
+                        <select
+                            value={selectedRouteId}
+                            onChange={(e) => setSelectedRouteId(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '14px',
+                                background: 'white',
+                                color: '#1e293b',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="">-- Select a Route --</option>
+                            {routes.map(route => (
+                                <option key={route.id} value={route.id}>
+                                    {route.name} ({route.code})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Selected Route Configuration */}
+                    {selectedRouteId ? (
+                        <div className="glass-card" style={{ padding: '24px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                            <div style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '16px' }}>
+                                <FiTruck color="#6366f1" size={20} />
+                                {routes.find(r => r.id === selectedRouteId)?.name}
+                                <span style={{ fontSize: '12px', color: '#6366f1', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px', border: '1px solid #e0e7ff' }}>
+                                    {routes.find(r => r.id === selectedRouteId)?.code}
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Monthly Fee (₹)</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>₹</div>
                                         <input
                                             type="number"
-                                            value={fees[route.id]?.monthly || ''}
-                                            onChange={e => updateFeeConfig(route.id, 'monthly', e.target.value)}
+                                            value={fees[selectedRouteId]?.monthly || ''}
+                                            onChange={e => updateFeeConfig(selectedRouteId, 'monthly', e.target.value)}
                                             placeholder="0"
-                                            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                            style={{ width: '100%', padding: '10px 12px 10px 28px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                                         />
                                     </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Annual Fee (₹)</label>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>Annual Fee (₹)</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>₹</div>
                                         <input
                                             type="number"
-                                            value={fees[route.id]?.annual || ''}
-                                            onChange={e => updateFeeConfig(route.id, 'annual', e.target.value)}
+                                            value={fees[selectedRouteId]?.annual || ''}
+                                            onChange={e => updateFeeConfig(selectedRouteId, 'annual', e.target.value)}
                                             placeholder="0"
-                                            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                            style={{ width: '100%', padding: '10px 12px 10px 28px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                                         />
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                            <FiSettings size={28} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                            <div>Please select a route to configure fees.</div>
+                        </div>
+                    )}
 
                     {/* Save Button */}
                     <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
