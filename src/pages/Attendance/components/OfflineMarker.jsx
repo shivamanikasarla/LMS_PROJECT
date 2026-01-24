@@ -28,10 +28,13 @@ const OfflineMarker = ({ isActive }) => {
     };
 
     return (
-        <div className="card border-warning mb-4">
-            <div className="card-header bg-warning bg-opacity-10 fw-bold d-flex align-items-center gap-2">
-                <WifiOff size={18} />
-                Offline Mode Active
+        <div className="card border-danger mb-4 shadow-sm">
+            <div className="card-header bg-danger text-white fw-bold d-flex flex-column gap-1">
+                <div className="d-flex align-items-center gap-2">
+                    <WifiOff size={18} />
+                    <span>Offline Mode Active</span>
+                </div>
+                <small className="opacity-75 fw-normal">Only OFFLINE students can be marked manually</small>
             </div>
 
             <div className="card-body">

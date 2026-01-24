@@ -5,7 +5,8 @@ import { INSTRUCTOR_PERMISSIONS_LIST } from '../../constants/userConstants';
 
 const InstructorForm = ({ onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         mobile: '',
         password: '',
@@ -36,16 +37,44 @@ const InstructorForm = ({ onSubmit, onCancel }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit({ ...formData, role: 'Instructor' });
+        // Backend expects firstName, lastName. We construct full name for consistency if needed by specific non-backend consumers,
+        // but mainly we pass the split fields.
+        onSubmit({
+            ...formData,
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            role: 'Instructor'
+        });
     };
 
     return (
         <form onSubmit={handleSubmit} className="user-form-scroll">
             <h3 className="form-subtitle">Enter details to create instructor account</h3>
 
-            <div className="form-group">
-                <label>Name <span className="req">*</span></label>
-                <input type="text" name="name" className="form-control" placeholder="Enter instructor name" value={formData.name} onChange={handleChange} required />
+            <div className="form-row" style={{ display: 'flex', gap: '15px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label>First Name <span className="req">*</span></label>
+                    <input
+                        type="text"
+                        name="firstName"
+                        className="form-control"
+                        placeholder="First Name"
+                        value={formData.firstName || ''}
+                        onChange={handleChange}
+                        required
+                    />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label>Last Name <span className="req">*</span></label>
+                    <input
+                        type="text"
+                        name="lastName"
+                        className="form-control"
+                        placeholder="Last Name"
+                        value={formData.lastName || ''}
+                        onChange={handleChange}
+                        required
+                    />
+                </div>
             </div>
 
             <div className="form-group">

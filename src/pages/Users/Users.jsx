@@ -75,7 +75,15 @@ const Users = () => {
           return b ? { id: b.batchId, name: b.batchName } : null;
         }).filter(Boolean);
 
-        return { ...normalizedUser, batches: userBatchInfos };
+        // Format joined date
+        const joinedDate = u.createdAt || u.createdDate || u.joiningDate || u.dateJoined;
+        const formattedJoined = joinedDate ? new Date(joinedDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }) : '-';
+
+        return { ...normalizedUser, batches: userBatchInfos, joined: formattedJoined };
       });
 
       setUsers(enrichedUsers);

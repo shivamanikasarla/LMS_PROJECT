@@ -12,6 +12,7 @@ import { courseService } from '../Courses/services/courseService';
 // UPDATED IMPORTS
 import { batchService } from './services/batchService';
 import { enrollmentService } from './services/enrollmentService';
+import { userService } from '../Users/services/userService'; // Import userService
 
 import './styles/batches.css';
 
@@ -26,10 +27,10 @@ const Batches = () => {
         const loadData = async () => {
             setLoadingData(true);
             try {
-                // Use enrollmentService for users
+                // Use userService to get ALL users (including Instructors), not just students
                 const [coursesData, usersData] = await Promise.all([
                     courseService.getCourses(),
-                    enrollmentService.getAllUsers()
+                    userService.getAllUsers()
                 ]);
                 setCourses(coursesData);
                 setAllUsers(usersData);
@@ -44,9 +45,14 @@ const Batches = () => {
 
     // Filter instructors from all users if role exists, otherwise fallback or show all
     const instructors = useMemo(() => {
-        return allUsers.filter(u =>
-            !u.role || u.role === 'Instructor' || u.role === 'Admin' || u.role === 'INSTRUCTOR' || u.role === 'ADMIN'
-        );
+        return allUsers.filter(u => {
+            const r = (u.role || u.roleName || '').toUpperCase();
+            return r === 'INSTRUCTOR' || r === 'ROLE_INSTRUCTOR' || r === 'ADMIN' || r === 'ROLE_ADMIN';
+        }).map(u => ({
+            ...u,
+            // Ensure name is populated for the dropdown
+            name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email
+        }));
     }, [allUsers]);
 
     const {
@@ -71,6 +77,38 @@ const Batches = () => {
         setInstructorFilter,
         loading: loadingBatches
     } = useBatches(courses);
+
+    // Manual Enrichment: backend might not return live student counts.
+    // We calculate it ourselves from enrollmentService.
+    const [enrichedBatches, setEnrichedBatches] = useState([]);
+
+    useEffect(() => {
+        const enrichData = async () => {
+            if (!batches || batches.length === 0) {
+                setEnrichedBatches([]);
+                return;
+            }
+
+            try {
+                // Fetch all enrollments (which now includes local storage fallback)
+                const enrollments = await enrollmentService.getAllEnrollments();
+
+                const updated = batches.map(b => {
+                    const batchEnrollments = enrollments.filter(e => String(e.batchId) === String(b.batchId));
+                    return {
+                        ...b,
+                        students: batchEnrollments.length // Override count
+                    };
+                });
+                setEnrichedBatches(updated);
+            } catch (e) {
+                console.error("Failed to enrich batches", e);
+                setEnrichedBatches(batches);
+            }
+        };
+
+        enrichData();
+    }, [batches]);
 
     if (loadingData && loadingBatches) {
         return <div className="p-4">Loading Batches...</div>;
@@ -128,7 +166,7 @@ const Batches = () => {
                             value={instructorFilter}
                             onChange={(e) => setInstructorFilter(e.target.value)}
                         >
-                            <option value="All">All Trainers</option>
+                            <option value="All">All Instructors</option>
                             {instructors.map(i => <option key={i.id || i.userId} value={i.name}>{i.name}</option>)}
                         </select>
                     </div>
@@ -146,9 +184,9 @@ const Batches = () => {
             </div>
 
             {/* Grid */}
-            {batches.length > 0 ? (
+            {enrichedBatches.length > 0 ? (
                 <div className="batches-grid-layout">
-                    {batches.map(batch => (
+                    {enrichedBatches.map(batch => (
                         <BatchCard
                             key={batch.id}
                             batch={batch}

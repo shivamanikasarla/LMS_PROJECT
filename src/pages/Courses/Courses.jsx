@@ -47,6 +47,54 @@ const CoursesPage = () => {
     filteredCourses,
   } = useCourseFilters(courses);
 
+  // Manual Enrichment for Learners Count
+  const [enrichedCourses, setEnrichedCourses] = React.useState([]);
+
+  React.useEffect(() => {
+    const enrichCourses = async () => {
+      // If we are filtering, we enrich the filtered list. If not, we enrich the main list?
+      // Actually usually better to enrich the base list, but we only display filteredCourses.
+      // Let's enrich filteredCourses for display.
+      if (!filteredCourses) return;
+
+      try {
+        // Dynamic import to avoid circular dependencies if any, though likely safe to import normally
+        const { batchService } = await import('../Batches/services/batchService');
+        const { enrollmentService } = await import('../Batches/services/enrollmentService');
+
+        const [batches, enrollments] = await Promise.all([
+          batchService.getAllBatches().catch(() => []),
+          enrollmentService.getAllEnrollments()
+        ]);
+
+        const updated = filteredCourses.map(course => {
+          // 1. Find all batches for this course
+          const courseBatches = batches.filter(b => String(b.courseId) === String(course.id));
+          const batchIds = courseBatches.map(b => String(b.batchId));
+
+          // 2. Find all enrollments in these batches
+          const courseEnrollments = enrollments.filter(e => batchIds.includes(String(e.batchId)));
+
+          // 3. Count unique students
+          const uniqueStudents = new Set(courseEnrollments.map(e => String(e.studentId)));
+
+          return {
+            ...course,
+            learnersCount: uniqueStudents.size
+          };
+        });
+
+        setEnrichedCourses(updated);
+
+      } catch (err) {
+        console.error("Failed to calculate learners count", err);
+        setEnrichedCourses(filteredCourses);
+      }
+    };
+
+    enrichCourses();
+  }, [filteredCourses]);
+
   return (
     <div className="courses-container">
       {/* Header */}
@@ -72,7 +120,7 @@ const CoursesPage = () => {
 
       {/* Course Grid */}
       <CourseGrid
-        courses={filteredCourses}
+        courses={enrichedCourses}
         onEdit={openModal}
         onDelete={handleDelete}
         onToggleStatus={toggleCourseStatus}

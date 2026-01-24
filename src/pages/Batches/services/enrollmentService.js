@@ -37,18 +37,34 @@ export const enrollmentService = {
     // ================= STUDENT BATCH (HYBRID: REAL + MOCK FALLBACK) =================
 
     // Get students in a specific batch
+    // Get students in a specific batch
     getStudentsByBatch: async (batchId) => {
+        let apiStudents = [];
         try {
             const res = await fetch(`${API_BASE_URL_SB}/batch/${batchId}`, {
                 headers: { ...getAuthHeader(), "Cache-Control": "no-cache" }
             });
-            if (res.ok) return await res.json();
+            if (res.ok) {
+                apiStudents = await res.json();
+            }
         } catch (error) {
             console.warn("API failed, using local storage fallback for getStudents", error);
         }
-        // Fallback
+
+        // Merge with Local Storage Fallback
+        // This ensures if the API didn't save the POST (but returned 200 OK for GET), we still see the local record.
         const sb = getStorage(STORAGE_KEYS.STUDENT_BATCHES);
-        return sb.filter(r => String(r.batchId) === String(batchId));
+        const localStudents = sb.filter(r => String(r.batchId) === String(batchId));
+
+        if (apiStudents.length === 0 && localStudents.length > 0) {
+            return localStudents;
+        }
+
+        // Deduplicate: Add local students only if they are NOT in API results
+        const apiStudentIds = new Set(apiStudents.map(s => String(s.studentId)));
+        const uniqueLocal = localStudents.filter(s => !apiStudentIds.has(String(s.studentId)));
+
+        return [...apiStudents, ...uniqueLocal];
     },
 
     // Add student to a batch (Enroll)
@@ -99,15 +115,28 @@ export const enrollmentService = {
 
     // Get all enrollments (for User List batch info)
     getAllEnrollments: async () => {
+        let apiData = [];
         try {
             const res = await fetch(`${API_BASE_URL_SB}`, {
                 headers: { ...getAuthHeader(), "Cache-Control": "no-cache" }
             });
-            if (res.ok) return await res.json();
+            if (res.ok) {
+                apiData = await res.json();
+            }
         } catch (error) {
             console.warn("API failed for getAllEnrollments, using storage", error);
         }
-        return getStorage(STORAGE_KEYS.STUDENT_BATCHES);
+
+        const localData = getStorage(STORAGE_KEYS.STUDENT_BATCHES);
+
+        if (apiData.length === 0 && localData.length > 0) return localData;
+
+        // Deduplicate using combination of studentId and batchId
+        // This ensures locally added enrollments appear in User List immediately
+        const apiKeys = new Set(apiData.map(e => `${e.studentId}-${e.batchId}`));
+        const uniqueLocal = localData.filter(e => !apiKeys.has(`${e.studentId}-${e.batchId}`));
+
+        return [...apiData, ...uniqueLocal];
     },
 
     // ================= TRANSFERS =================

@@ -53,7 +53,7 @@ const BatchCard = ({ batch, courses = [], onEdit, onDelete, onManageContent }) =
                     </div>
                     {batch.trainerName && (
                         <div className="info-item">
-                            <span>Trainer: {batch.trainerName}</span>
+                            <span>Instructor: {batch.trainerName}</span>
                         </div>
                     )}
                 </div>

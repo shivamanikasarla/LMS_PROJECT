@@ -69,14 +69,14 @@ const BatchModal = ({
 
                         {/* Trainer */}
                         <div className="form-field full-width">
-                            <label>Assigned Trainer</label>
+                            <label>Assigned Instructor</label>
                             <select
                                 className="form-select"
                                 name="trainerName"
                                 value={formData.trainerName}
                                 onChange={handleInputChange}
                             >
-                                <option value="">Select a trainer</option>
+                                <option value="">Select an instructor</option>
                                 {instructors.map(inst => (
                                     <option key={inst.id} value={inst.name}>
                                         {inst.name} ({inst.role})

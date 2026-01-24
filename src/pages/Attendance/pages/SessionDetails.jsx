@@ -30,6 +30,7 @@ const LiveView = () => {
 
     const [activeTab, setActiveTab] = useState('QR'); // 'QR', 'FACE', 'MANUAL'
     const [isOfflineMode, setIsOfflineMode] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState(0);
 
     // Sync offline mode with tab
     useEffect(() => {
@@ -39,13 +40,51 @@ const LiveView = () => {
     // Mock Batch Students for Demo (Assume Session is for Batch B-003)
     const batchStudents = MOCK_STUDENTS.filter(s => s.batchId === 'B-003');
 
+    // Helper to get effective attendance status (store vs default)
+    const getStudentStatus = (student) => {
+        const record = attendanceList.find(r => r.studentId === student.id);
+        return {
+            status: record ? record.status : 'UNMARKED',
+            mode: record ? record.mode : 'OFFLINE', // Default to offline unless marked Online
+            remarks: record?.overrideReason || ''
+        };
+    };
+
     const handleMarkAll = (status) => {
-        if (window.confirm(`Mark all ${batchStudents.length} students as ${status}?`)) {
-            batchStudents.forEach(student => {
-                // Only mark if not already marked (optional, or overwrite)
+        // Filter out ONLINE students
+        const eligibleStudents = batchStudents.filter(s => {
+            const { mode } = getStudentStatus(s);
+            return mode !== 'ONLINE';
+        });
+
+        const onlineCount = batchStudents.length - eligibleStudents.length;
+
+        if (eligibleStudents.length === 0) {
+            alert("No eligible offline students to mark. (Online students are protected)");
+            return;
+        }
+
+        if (window.confirm(`Mark ${eligibleStudents.length} students as ${status}?\n(${onlineCount} Online students excluded)`)) {
+            eligibleStudents.forEach(student => {
                 markAttendance(student.id, status, 'MANUAL');
             });
+            setPendingChanges(prev => prev + eligibleStudents.length);
         }
+    };
+
+    const handleManualMark = (id, status) => {
+        const res = markAttendance(id, status, 'MANUAL');
+        if (res.success) {
+            setPendingChanges(prev => prev + 1);
+        } else {
+            alert(res.message);
+        }
+    };
+
+    const handleSaveChanges = () => {
+        // Simulate API Save
+        setPendingChanges(0);
+        alert('Changes saved successfully!');
     };
 
     // Initialize session if missing (Simulate fetching)
@@ -66,25 +105,36 @@ const LiveView = () => {
         return <Navigate to={`/attendance/sessions/${sessionId}/report`} replace />;
     }
 
-    // Simulate "Student Action" (Instructor can simulate a self-check-in)
-    const handleSimulateStudentScan = () => {
-        // Find a student not yet marked
-        markAttendance('SIMULATED_STUDENT_' + Date.now(), 'PRESENT', 'STUDENT_SELF');
-    };
-
     return (
         <div className="fade-in pb-5">
             {/* Top Tracker / Header */}
             <div className="mb-4 d-flex flex-wrap gap-3 justify-content-between align-items-center bg-white p-3 rounded shadow-sm border">
                 <div>
                     <h4 className="m-0 fw-bold">Live Session: {sessionId}</h4>
-                    <span className="badge bg-success bg-opacity-10 text-success">Active</span>
+                    <div className="d-flex align-items-center gap-2 mt-1">
+                        <span className="badge bg-success bg-opacity-10 text-success">Active</span>
+                        {pendingChanges > 0 && (
+                            <span className="badge bg-warning text-dark animate-pulse">
+                                {pendingChanges} Unsaved Changes
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <div>
+                <div className="d-flex gap-2">
+                    {pendingChanges > 0 && (
+                        <button
+                            className="btn btn-primary btn-sm px-4"
+                            onClick={handleSaveChanges}
+                        >
+                            Save Changes
+                        </button>
+                    )}
                     <button
                         className="btn btn-danger btn-sm px-4"
+                        disabled={pendingChanges > 0}
+                        title={pendingChanges > 0 ? "Save changes before ending session" : ""}
                         onClick={() => {
-                            if (window.confirm('End Session?')) {
+                            if (window.confirm('End Session? This will finalize all records.')) {
                                 stopSession();
                                 navigate(`/attendance/sessions/${sessionId}/report`);
                             }
@@ -97,6 +147,19 @@ const LiveView = () => {
 
             <div className="row g-4">
                 <div className="col-12">
+                    {/* Offline Mode Banner integrated? User wanted it red/orange. 
+                        OfflineMarker component now handles that. Use it here if needed or separate. 
+                        The previous code had OfflineMarker in the header line. 
+                        Ideally it should be distinct. 
+                        Let's put OfflineMarker outside the table card for better visibility if active. */}
+
+                    {/* Note: OfflineMarker has its own 'isActive' check. We pass it `true` to show. 
+                         In this view, the user might want it visible always if 'Manual' logic is primary? 
+                         Or maybe toggleable? 
+                         Currently strict requirement: "Only OFFLINE students can be marked manually".
+                         Let's keep it visible.
+                     */}
+
                     <div className="card border-0 shadow-sm h-100">
                         <div className="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
                             <div className="d-flex align-items-center gap-3">
@@ -106,8 +169,13 @@ const LiveView = () => {
                                 </span>
                             </div>
 
-                            <div className="d-flex gap-2">
-                                <OfflineMarker isActive />
+                            <div className="d-flex gap-2 align-items-center">
+                                {/* We keep OfflineMarker component usage but perhaps styled differently? 
+                                    Actually OfflineMarker is a Block component (card). 
+                                    Putting a Card inside this header flex is layout breaking.
+                                    Let's MOVE OfflineMarker out of here to above the table card.
+                                */}
+
                                 <button
                                     className="btn btn-outline-success btn-sm"
                                     onClick={() => handleMarkAll('PRESENT')}
@@ -122,20 +190,31 @@ const LiveView = () => {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Insert OfflineMarker here if needed, but it's a big block.
+                            Let's put it in the body before table? 
+                            Or effectively replace the "QR" panel location? 
+                            For now, let's place it above the table content. 
+                        */}
+                        <div className="px-3 pt-3">
+                            <OfflineMarker isActive={true} />
+                        </div>
+
                         <div className="card-body p-0">
                             <AttendanceTable
                                 students={batchStudents.map(s => {
-                                    const record = attendanceList.find(r => r.studentId === s.id);
+                                    const { status, remarks, mode } = getStudentStatus(s);
                                     return {
                                         ...s,
                                         studentId: s.id,
-                                        status: record ? record.status : 'UNMARKED',
-                                        remarks: record?.overrideReason || ''
+                                        status,
+                                        mode, // Pass mode explicitly
+                                        remarks
                                     };
                                 })}
-                                onStatusChange={(id, status) => markAttendance(id, status, 'MANUAL')}
-                                onRemarkChange={() => { }}
-                                isEditable={true}
+                                onStatusChange={handleManualMark}
+                                onRemarkChange={() => { setPendingChanges(prev => prev + 1) }}
+                                isEditable={true} // Always editable for Offline students in Live logic
                             />
                         </div>
                     </div>

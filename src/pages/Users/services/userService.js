@@ -62,13 +62,22 @@ export const userService = {
 
             case 'Instructor':
                 endpoint = "/instructors";
-                const iName = splitName(userData.name);
+                // Prefer explicit first/last name, fallback to split if only name provided
+                let iFName = userData.firstName;
+                let iLName = userData.lastName;
+
+                if (!iFName && userData.name) {
+                    const split = splitName(userData.name);
+                    iFName = split.firstName;
+                    iLName = split.lastName;
+                }
+
                 body = {
-                    firstName: iName.firstName,
-                    lastName: iName.lastName,
+                    firstName: iFName,
+                    lastName: iLName,
                     email: userData.email,
                     password: userData.password,
-                    phone: userData.mobile,
+                    phone: userData.mobile || userData.phone,
                     roleName: "ROLE_INSTRUCTOR"
                 };
                 break;

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiUploadCloud, FiInbox, FiRefreshCw } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sessionService } from './services/sessionService';
+import { batchService } from './services/batchService';
 import './styles/CreateClass.css';
 
 const CreateClass = () => {
@@ -18,6 +19,9 @@ const CreateClass = () => {
     const [sessionType, setSessionType] = useState('Online');
     const [meetingLink, setMeetingLink] = useState('');
 
+    // Course ID state
+    const [courseId, setCourseId] = useState(null);
+
     // List state (Real Data)
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -29,6 +33,13 @@ const CreateClass = () => {
     /* ------------------ LOAD CLASSES ------------------ */
     useEffect(() => {
         if (batchId) {
+            // Fetch Batch Details to get Course ID
+            batchService.getBatchById(batchId)
+                .then(data => {
+                    if (data && data.courseId) setCourseId(data.courseId);
+                })
+                .catch(err => console.error("Failed to load batch details", err));
+
             loadSessions();
         }
     }, [batchId]);
@@ -64,6 +75,11 @@ const CreateClass = () => {
             return;
         }
 
+        if (!courseId) {
+            alert("Course information is missing. Please try reloading the page.");
+            return;
+        }
+
         const dateObj = new Date(dateTime);
         const startDate = dateObj.toISOString().split('T')[0];
         // Send HH:MM:00 for LocalTime compatibility
@@ -74,6 +90,7 @@ const CreateClass = () => {
 
         const sessionData = {
             batchId: Number(batchId),
+            courseId: Number(courseId), // Pass courseId strictly
             sessionName: title,
             startDate,
             startTime,

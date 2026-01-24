@@ -114,6 +114,8 @@ const SelectInput = ({ label, value, options, onChange }) => (
 /* ---------------- MAIN COMPONENT ---------------- */
 
 const AttendanceSettings = () => {
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
     const [settings, setSettings] = useState({
         /* -------- Academic Rules -------- */
         academic: {
@@ -123,59 +125,61 @@ const AttendanceSettings = () => {
 
         /* -------- Attendance Rules -------- */
         attendance: {
-            statuses: ['PRESENT', 'LATE', 'PARTIAL', 'EXCUSED', 'MEDICAL', 'PROXY_SUSPECTED'],
             minPresenceMinutes: 30,
             exitEarlyAction: 'MARK_PARTIAL',
-            reverificationInterval: 10
+            // Advanced
+            reverificationInterval: 10,
+            statuses: ['PRESENT', 'LATE', 'PARTIAL', 'EXCUSED', 'MEDICAL', 'PROXY_SUSPECTED']
         },
 
-        /* -------- Session Rules -------- */
+        /* -------- Session Controls -------- */
         session: {
             qrMode: 'ALWAYS',
             gracePeriodMinutes: 15,
-            strictStart: true,
-            primaryMethod: 'FACE',
-            fallbackMethod: 'QR',
-            conflictAction: 'FLAG_FOR_REVIEW'
+            strictStart: true, // ON
+            conflictAction: 'FLAG_FOR_REVIEW',
+            protocolsEnabled: true
         },
 
-        /* -------- Verification Rules -------- */
-        verification: {
-            oneDevicePerSession: true,
-            deviceBinding: true,
-            logIpAddress: true,
-            logDeviceFingerprint: true
-        },
-
-        /* -------- Security Rules -------- */
+        /* -------- Device & Security -------- */
         security: {
-            geoFencingEnabled: true,
+            // Basic
+            oneDevicePerSession: true,
+            logIpAddress: true,
+
+            // Advanced / Hidden by default
+            deviceBinding: false, // Default OFF
+            logDeviceFingerprint: false, // Default OFF
+            geoFencingEnabled: false, // Default OFF
             geoFenceRadiusMeters: 50,
-            faceRecognitionEnabled: true,
-            wifiRestrictionEnabled: true
+            faceRecognitionEnabled: false, // Privacy fear -> OFF
+            wifiRestrictionEnabled: false, // Complaints -> OFF
         },
 
-        /* -------- Exception Rules -------- */
+        /* -------- Exceptions -------- */
         exceptions: {
             cameraFailureAllowed: true,
             networkFailureGraceMinutes: 10,
-            powerFailureGraceMinutes: 15,
-            emergencyUnlockAllowed: true
+            emergencyUnlockAllowed: true,
+            powerFailureGraceMinutes: 15
         },
 
-        /* -------- Notification Rules -------- */
+        /* -------- Alerts -------- */
         notifications: {
-            notifyParents: true,
-            consecutiveAbsenceLimit: 3,
             eligibilityRiskAlert: true,
+            consecutiveAbsenceLimit: 3, // Implicit alert
+            // Advanced
+            notifyParents: false, // Optional -> OFF
             suspiciousActivityAlert: true
         },
 
-        /* -------- Audit & Compliance -------- */
+        /* -------- Manual Control & Audit -------- */
         audit: {
             manualOverrideAllowed: true,
             overrideReasonMandatory: true,
-            auditLogEnabled: true,
+
+            // Advanced
+            auditLogEnabled: false, // "Enable later" -> OFF
             faceDataRetentionDays: 60,
             consentRequired: true,
             dataAccessScope: 'ADMIN_ONLY'
@@ -232,7 +236,7 @@ const AttendanceSettings = () => {
 
             <div className="row g-4">
 
-                {/* Academic Rules */}
+                {/* 1. Academic Standards */}
                 <SectionCard
                     title="Academic Standards"
                     icon={FileBadge}
@@ -250,23 +254,17 @@ const AttendanceSettings = () => {
                     />
                 </SectionCard>
 
-                {/* Attendance Rules */}
+                {/* 2. Attendance Rules */}
                 <SectionCard
-                    title="Attendance Logic"
+                    title="Attendance Rules"
                     icon={Calendar}
-                    description="Define how presence is calculated and recorded."
+                    description="Simple presence logic."
                 >
                     <NumberInput
                         label="Minimum Presence for Credit"
                         value={settings.attendance.minPresenceMinutes}
                         suffix="mins"
                         onChange={v => updateNumber('attendance', 'minPresenceMinutes', v, 0, 300)}
-                    />
-                    <NumberInput
-                        label="Re-verification Interval"
-                        value={settings.attendance.reverificationInterval}
-                        suffix="mins"
-                        onChange={v => updateNumber('attendance', 'reverificationInterval', v, 1, 60)}
                     />
                     <SelectInput
                         label="Action on Early Exit"
@@ -276,11 +274,11 @@ const AttendanceSettings = () => {
                     />
                 </SectionCard>
 
-                {/* Session Rules */}
+                {/* 3. Session Controls */}
                 <SectionCard
-                    title="Session Protocols"
+                    title="Session Controls"
                     icon={QrCode}
-                    description="Configure QR modes and session strictness."
+                    description="Manage class discipline."
                 >
                     <SelectInput
                         label="QR Code Mode"
@@ -302,62 +300,120 @@ const AttendanceSettings = () => {
                     />
                 </SectionCard>
 
-                {/* Verification Rules */}
+                {/* 4. Device Security (Basic) */}
                 <SectionCard
-                    title="Device Verification"
-                    icon={Eye}
-                >
-                    <ToggleInput label="One Device Per Session" value={settings.verification.oneDevicePerSession} onToggle={() => toggle('verification', 'oneDevicePerSession')} />
-                    <ToggleInput label="Device Binding" value={settings.verification.deviceBinding} onToggle={() => toggle('verification', 'deviceBinding')} />
-                    <ToggleInput label="Log IP Address" value={settings.verification.logIpAddress} onToggle={() => toggle('verification', 'logIpAddress')} />
-                    <ToggleInput label="Log Device Fingerprint" value={settings.verification.logDeviceFingerprint} onToggle={() => toggle('verification', 'logDeviceFingerprint')} />
-                </SectionCard>
-
-                {/* Security Rules */}
-                <SectionCard
-                    title="Security & Anti-Fraud"
+                    title="Device Security"
                     icon={ShieldAlert}
+                    description="Basic misuse prevention."
                 >
-                    <ToggleInput label="Geo-Fencing" value={settings.security.geoFencingEnabled} onToggle={() => toggle('security', 'geoFencingEnabled')} />
-                    <ToggleInput label="Face Recognition" value={settings.security.faceRecognitionEnabled} onToggle={() => toggle('security', 'faceRecognitionEnabled')} />
-                    <ToggleInput label="Wi-Fi Restriction" value={settings.security.wifiRestrictionEnabled} onToggle={() => toggle('security', 'wifiRestrictionEnabled')} />
+                    <ToggleInput
+                        label="One Device Per Session"
+                        value={settings.security.oneDevicePerSession}
+                        onToggle={() => toggle('security', 'oneDevicePerSession')}
+                    />
+                    <ToggleInput
+                        label="Log IP Address"
+                        value={settings.security.logIpAddress}
+                        onToggle={() => toggle('security', 'logIpAddress')}
+                    />
                 </SectionCard>
 
-                {/* Exception Rules */}
+                {/* 5. Exceptions */}
                 <SectionCard
-                    title="Exception Handling"
+                    title="Exceptions"
                     icon={AlertTriangle}
+                    description="Reduce daily conflicts."
                 >
                     <ToggleInput label="Allow Camera Failure" value={settings.exceptions.cameraFailureAllowed} onToggle={() => toggle('exceptions', 'cameraFailureAllowed')} />
-                    <ToggleInput label="Emergency Unlock" value={settings.exceptions.emergencyUnlockAllowed} onToggle={() => toggle('exceptions', 'emergencyUnlockAllowed')} />
                     <NumberInput label="Network Failure Grace" value={settings.exceptions.networkFailureGraceMinutes} suffix="mins"
                         onChange={v => updateNumber('exceptions', 'networkFailureGraceMinutes', v, 0, 60)} />
+                    <ToggleInput label="Emergency Unlock" value={settings.exceptions.emergencyUnlockAllowed} onToggle={() => toggle('exceptions', 'emergencyUnlockAllowed')} />
                 </SectionCard>
 
-                {/* Notifications */}
+                {/* 6. Alerts */}
                 <SectionCard
-                    title="Alerts & Notifications"
+                    title="Alerts"
                     icon={Bell}
+                    description="Early intervention triggers."
                 >
-                    <ToggleInput label="Notify Parents" value={settings.notifications.notifyParents} onToggle={() => toggle('notifications', 'notifyParents')} />
                     <ToggleInput label="Eligibility Risk Alert" value={settings.notifications.eligibilityRiskAlert} onToggle={() => toggle('notifications', 'eligibilityRiskAlert')} />
                     <NumberInput label="Consecutive Absence Alert Limit" value={settings.notifications.consecutiveAbsenceLimit} suffix="days"
                         onChange={v => updateNumber('notifications', 'consecutiveAbsenceLimit', v, 1, 10)} />
                 </SectionCard>
 
-                {/* Audit & Compliance */}
+                {/* 7. Manual Control */}
                 <SectionCard
-                    title="Audit & Compliance"
+                    title="Manual Control"
                     icon={Lock}
+                    description="Admin override powers."
                 >
                     <ToggleInput label="Allow Manual Override" value={settings.audit.manualOverrideAllowed} onToggle={() => toggle('audit', 'manualOverrideAllowed')} />
-                    <ToggleInput label="Require Reason for Override" value={settings.audit.overrideReasonMandatory} onToggle={() => toggle('audit', 'overrideReasonMandatory')} />
-                    <ToggleInput label="User Consent Required" value={settings.audit.consentRequired} onToggle={() => toggle('audit', 'consentRequired')} />
-                    <NumberInput label="Face Data Retention" value={settings.audit.faceDataRetentionDays} suffix="days"
-                        onChange={v => updateNumber('audit', 'faceDataRetentionDays', v, 1, 365)} />
+                    <ToggleInput label="Require Reason" value={settings.audit.overrideReasonMandatory} onToggle={() => toggle('audit', 'overrideReasonMandatory')} />
                 </SectionCard>
 
             </div>
+
+            {/* Advanced Settings Toggle */}
+            <div className="d-flex justify-content-center my-5">
+                <button
+                    className={`btn rounded-pill px-4 ${showAdvanced ? 'btn-secondary' : 'btn-outline-secondary'}`}
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                >
+                    {showAdvanced ? 'Hide Advanced Settings' : 'Show Advanced Settings'}
+                </button>
+            </div>
+
+            {/* Advanced Settings Section */}
+            {showAdvanced && (
+                <div className="row g-4 fade-in pb-5">
+                    <div className="col-12"><hr className="text-secondary opacity-25" /></div>
+                    <div className="col-12 mb-2">
+                        <h5 className="text-secondary fw-bold">Advanced Enterprise Controls</h5>
+                        <p className="text-muted small">Features for mature institutions. Use with caution.</p>
+                    </div>
+
+                    {/* Advanced Security */}
+                    <SectionCard
+                        title="Advanced Security"
+                        icon={ShieldAlert}
+                        description="Geo-fencing, Biometrics, Network."
+                    >
+                        <ToggleInput label="Device Binding" value={settings.security.deviceBinding} onToggle={() => toggle('security', 'deviceBinding')} />
+                        <ToggleInput label="Geo-Fencing" value={settings.security.geoFencingEnabled} onToggle={() => toggle('security', 'geoFencingEnabled')} />
+                        <ToggleInput label="Face Recognition" value={settings.security.faceRecognitionEnabled} onToggle={() => toggle('security', 'faceRecognitionEnabled')} />
+                        <ToggleInput label="Wi-Fi Restriction" value={settings.security.wifiRestrictionEnabled} onToggle={() => toggle('security', 'wifiRestrictionEnabled')} />
+                        <ToggleInput label="Log Device Fingerprint" value={settings.security.logDeviceFingerprint} onToggle={() => toggle('security', 'logDeviceFingerprint')} />
+                    </SectionCard>
+
+                    {/* Advanced Audit & Logs */}
+                    <SectionCard
+                        title="Audit & Compliance"
+                        icon={Lock}
+                        description="Data retention and logging."
+                    >
+                        <ToggleInput label="Audit Logs" value={settings.audit.auditLogEnabled} onToggle={() => toggle('audit', 'auditLogEnabled')} />
+                        <ToggleInput label="Parent Notifications" value={settings.notifications.notifyParents} onToggle={() => toggle('notifications', 'notifyParents')} />
+                        <ToggleInput label="User Consent Required" value={settings.audit.consentRequired} onToggle={() => toggle('audit', 'consentRequired')} />
+                        <NumberInput label="Face Data Retention" value={settings.audit.faceDataRetentionDays} suffix="days"
+                            onChange={v => updateNumber('audit', 'faceDataRetentionDays', v, 1, 365)} />
+                    </SectionCard>
+
+                    {/* Advanced Attendance Logic */}
+                    <SectionCard
+                        title="Deep Verification"
+                        icon={Eye}
+                    >
+                        <NumberInput
+                            label="Re-verification Interval"
+                            value={settings.attendance.reverificationInterval}
+                            suffix="mins"
+                            onChange={v => updateNumber('attendance', 'reverificationInterval', v, 1, 60)}
+                        />
+                        <ToggleInput label="Suspicious Activity Alert" value={settings.notifications.suspiciousActivityAlert} onToggle={() => toggle('notifications', 'suspiciousActivityAlert')} />
+                    </SectionCard>
+
+                </div>
+            )}
         </div>
     );
 };

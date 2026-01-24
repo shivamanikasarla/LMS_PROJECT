@@ -57,8 +57,6 @@ const BatchBuilder = () => {
                 batchService.getAllBatches().catch(e => [])
             ]);
 
-            setBatchDetails(batch);
-            setEnrolledStudents(studentsData || []);
             // Normalize users for easier consumption
             const normalizedUsers = (usersData || []).map(u => ({
                 ...u,
@@ -67,6 +65,20 @@ const BatchBuilder = () => {
                 // Normalize role to check both role and roleName
                 normalizedRole: (u.role || u.roleName || '').toUpperCase()
             }));
+
+            // Enrich enrolled students with actual User ID (from normalizedUsers)
+            // The enrollment record usually has 'studentId', but we want to show 'userId' (Global ID)
+            const enrichedStudents = (studentsData || []).map(s => {
+                const userProfile = normalizedUsers.find(u => String(u.studentId) === String(s.studentId));
+                return {
+                    ...s,
+                    // Use found user's ID, or fallback to studentId if not found
+                    displayId: userProfile ? (userProfile.userId || userProfile.id) : s.studentId
+                };
+            });
+
+            setEnrolledStudents(enrichedStudents);
+            setBatchDetails(batch);
 
             // Filter for Students
             setAllUsers(normalizedUsers.filter(u =>
@@ -209,7 +221,7 @@ const BatchBuilder = () => {
 
             <main className="bb-main">
                 {activeTab === 'overview' ? (
-                    <ClassesTab batchId={id} />
+                    <ClassesTab batchId={id} instructorName={batchDetails?.trainerName} />
                 ) : activeTab === 'students' ? (
                     <div className="students-manager">
                         <div className="sm-header">
@@ -247,7 +259,7 @@ const BatchBuilder = () => {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span className="text-muted small">SB-ID: {item.studentBatchId}</span>
+                                                    <span className="text-muted small">ID: #{item.displayId}</span>
                                                 </td>
                                                 <td>
                                                     <div className="d-flex align-items-center gap-2 text-dark">

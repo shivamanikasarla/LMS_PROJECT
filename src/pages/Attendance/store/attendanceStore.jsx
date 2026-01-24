@@ -97,6 +97,11 @@ export const AttendanceProvider = ({ children }) => {
         return stored.length;
     };
 
+    const getModeFromSource = (source) => {
+        const onlineSources = ['QR', 'FACE', 'STUDENT_SELF', 'ONLINE'];
+        return onlineSources.includes(source) ? 'ONLINE' : 'OFFLINE';
+    };
+
     const syncOfflineData = async () => {
         const stored = JSON.parse(localStorage.getItem('offline_attendance') || '[]');
         if (stored.length === 0) return { count: 0 };
@@ -111,6 +116,7 @@ export const AttendanceProvider = ({ children }) => {
                 studentId: s.studentId,
                 timestamp: s.timestamp,
                 source: 'OFFLINE_SYNC',
+                mode: 'OFFLINE',
                 status: s.status
             }));
 
@@ -134,6 +140,14 @@ export const AttendanceProvider = ({ children }) => {
             }
         }
 
+        // Conflict Guard: Check against current state
+        const existingRecord = attendanceList.find(a => a.studentId === studentId);
+        if (existingRecord && existingRecord.mode === 'ONLINE' && source === 'MANUAL') {
+            return { success: false, message: 'Attendance auto-managed for online participants' };
+        }
+
+        const mode = getModeFromSource(source);
+
         setAttendanceList(prev => {
             const existingIndex = prev.findIndex(a => a.studentId === studentId);
             const newRecord = {
@@ -141,12 +155,15 @@ export const AttendanceProvider = ({ children }) => {
                 studentId,
                 timestamp: new Date().toISOString(),
                 source,
+                mode,
                 status,
                 overrideReason // Store reason if provided
             };
 
             if (existingIndex >= 0) {
                 const updated = [...prev];
+                // If switching from Offline to Online (e.g. late check-in), allow update
+                // If switching from Online to Offline, we blocked it above (for manual)
                 updated[existingIndex] = { ...updated[existingIndex], ...newRecord };
                 return updated;
             } else {

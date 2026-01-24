@@ -39,7 +39,7 @@ const getStatusColor = (status) => {
 
 /* ---------------- CARD COMPONENT ---------------- */
 
-const ClassCard = ({ session, onDelete, onEdit, onViewContent }) => {
+const ClassCard = ({ session, onDelete, onEdit, onViewContent, instructorName }) => {
     const status = getStatus(session);
     // Calculated end time for display
     const getEndTime = () => {
@@ -92,9 +92,9 @@ const ClassCard = ({ session, onDelete, onEdit, onViewContent }) => {
                 <div className="class-footer">
                     <div className="instructor-info">
                         <div className="avatar-mini">
-                            T
+                            {(instructorName || 'I').charAt(0).toUpperCase()}
                         </div>
-                        <span>Trainer</span>
+                        <span>{instructorName || 'Instructor'}</span>
                     </div>
 
                     {(status === 'Running' || status === 'Ongoing') && (
@@ -119,7 +119,7 @@ const ClassCard = ({ session, onDelete, onEdit, onViewContent }) => {
 
 /* ---------------- MAIN TAB ---------------- */
 
-const ClassesTab = ({ batchId }) => {
+const ClassesTab = ({ batchId, instructorName }) => {
     const navigate = useNavigate();
     const [classes, setClasses] = useState([]);
     const [filter, setFilter] = useState('upcoming');
@@ -224,6 +224,7 @@ const ClassesTab = ({ batchId }) => {
                                 key={c.sessionId}
                                 session={c}
                                 onDelete={handleDeleteClass}
+                                instructorName={instructorName}
                             />
                         )) : (
                             <div className="empty-section">No ongoing classes.</div>
@@ -246,6 +247,7 @@ const ClassesTab = ({ batchId }) => {
                                 session={c}
                                 onDelete={handleDeleteClass}
                                 onEdit={handleEditClass}
+                                instructorName={instructorName}
                             />
                         )) : (
                             <div className="empty-section">No upcoming classes.</div>
@@ -268,6 +270,7 @@ const ClassesTab = ({ batchId }) => {
                                 session={c}
                                 onDelete={handleDeleteClass}
                                 onViewContent={handleViewContent}
+                                instructorName={instructorName}
                             />
                         )) : (
                             <div className="empty-section">No completed classes.</div>
