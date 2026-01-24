@@ -19,7 +19,7 @@ const LiveTracking = () => {
     useEffect(() => {
         // Load active vehicles from storage or default
         const savedVehicles = JSON.parse(localStorage.getItem('lms_transport_vehicles') || '[]');
-        const activeVehicles = savedVehicles.length > 0 ? savedVehicles.filter(v => v.status === 'Active') : [
+        const activeVehicles = savedVehicles.length > 0 ? savedVehicles.filter(v => v.status === 'Active' && v.gps === true) : [
             { id: 1, number: 'KA-01-AB-1234', route: 'R-01', type: 'Bus' },
             { id: 2, number: 'KA-05-XY-9876', route: 'R-02', type: 'Van' },
             { id: 4, number: 'KA-52-MM-1122', route: 'R-05', type: 'Bus' }

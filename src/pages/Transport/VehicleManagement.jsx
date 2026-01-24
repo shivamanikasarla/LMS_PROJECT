@@ -4,38 +4,91 @@ import {
     FiTruck, FiPlus, FiSearch, FiEdit2, FiTrash2,
     FiAlertCircle, FiCheckCircle, FiTool, FiX
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const VehicleManagement = () => {
     // --- State ---
-    const [vehicles, setVehicles] = useState(() => {
-        const saved = localStorage.getItem('lms_transport_vehicles');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, number: 'KA-01-AB-1234', type: 'Bus', capacity: 50, occupiedSeats: 45, gps: true, route: 'R-01', status: 'Active' },
-            { id: 2, number: 'KA-05-XY-9876', type: 'Van', capacity: 20, occupiedSeats: 12, gps: true, route: 'R-04', status: 'Active' },
-            { id: 3, number: 'KA-53-ZZ-5555', type: 'Bus', capacity: 45, occupiedSeats: 0, gps: false, route: '', status: 'Maintenance' },
-        ];
-    });
-
+    const [vehicles, setVehicles] = useState([]);
+    const [routes, setRoutes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVehicle, setEditingVehicle] = useState(null);
+    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        number: '', type: 'Bus', capacity: '', occupiedSeats: '', gps: false, route: '', status: 'Active'
+        vehicleNumber: '',
+        vehicletype: 'BUS',
+        capacity: '',
+        occupiedSeats: '',
+        gpsEnabled: false,
+        route: null,  // Will be route object with just id
+        vehicleStatus: 'ACTIVE'
     });
 
-    // --- Persist Data ---
+    // --- Fetch Vehicles from Backend ---
+    const fetchVehicles = async () => {
+        try {
+            setLoading(true);
+            const data = await TransportService.Vehicle.getAllVehicles();
+            setVehicles(data);
+        } catch (error) {
+            console.error('Error fetching vehicles:', error);
+            console.error('Error details:', error);
+
+            // Check if it's a JSON parsing error
+            if (error.message.includes('JSON')) {
+                alert(
+                    'Backend Response Error!\n\n' +
+                    'The backend is returning invalid JSON. This is likely due to circular references in the Vehicle-RouteWay relationship.\n\n' +
+                    'Ask your backend developer to add @JsonIgnore to the "vehicles" field in RouteWay model.\n\n' +
+                    'Error: ' + error.message
+                );
+            } else {
+                alert('Failed to fetch vehicles: ' + error.message);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // --- Fetch Routes from Backend ---
+    const fetchRoutes = async () => {
+        try {
+            console.log('🔄 Fetching routes from backend...');
+            const data = await TransportService.Route.getAllRoutes();
+            console.log('✅ Routes fetched:', data);
+            setRoutes(data);
+        } catch (error) {
+            console.error('❌ Error fetching routes:', error);
+            console.error('Error details:', error.message);
+            // Don't alert for routes, just log - vehicles can work without routes
+        }
+    };
+
+    // Load vehicles and routes on mount
     useEffect(() => {
-        localStorage.setItem('lms_transport_vehicles', JSON.stringify(vehicles));
-    }, [vehicles]);
+        fetchVehicles();
+        fetchRoutes();
+    }, []);
 
     // --- Handlers ---
     const handleOpenModal = (vehicle = null) => {
         if (vehicle) {
             setEditingVehicle(vehicle);
-            setFormData(vehicle);
+            setFormData({
+                ...vehicle,
+                route: vehicle.route ? vehicle.route.id : null  // Extract route id
+            });
         } else {
             setEditingVehicle(null);
-            setFormData({ number: '', type: 'Bus', capacity: '', occupiedSeats: '', gps: false, route: '', status: 'Active' });
+            setFormData({
+                vehicleNumber: '',
+                vehicletype: 'BUS',
+                capacity: '',
+                occupiedSeats: '',
+                gpsEnabled: false,
+                route: null,
+                vehicleStatus: 'ACTIVE'
+            });
         }
         setIsModalOpen(true);
     };
@@ -45,27 +98,58 @@ const VehicleManagement = () => {
         setEditingVehicle(null);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (vehicleNumber) => {
         if (window.confirm('Are you sure you want to delete this vehicle?')) {
-            setVehicles(vehicles.filter(v => v.id !== id));
+            try {
+                await TransportService.Vehicle.deleteVehicle(vehicleNumber);
+                setVehicles(vehicles.filter(v => v.vehicleNumber !== vehicleNumber));
+            } catch (error) {
+                console.error('Error deleting vehicle:', error);
+                alert('Failed to delete vehicle: ' + error.message);
+            }
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validation: Maintenance vehicles cannot have active routes
-        if (formData.status === 'Maintenance' && formData.route) {
+        if (formData.vehicleStatus === 'MAINTENANCE' && formData.route) {
             alert('Maintenance vehicles cannot be assigned to a route.');
             return;
         }
 
-        if (editingVehicle) {
-            setVehicles(vehicles.map(v => v.id === editingVehicle.id ? { ...formData, id: v.id } : v));
-        } else {
-            setVehicles([...vehicles, { ...formData, id: Date.now() }]);
+        try {
+            setLoading(true);
+
+            // Prepare payload - convert route id to object format
+            const payload = {
+                ...formData,
+                route: formData.route ? { id: formData.route } : null
+            };
+
+            if (editingVehicle) {
+                // Update existing vehicle
+                const updatedVehicle = await TransportService.Vehicle.updateVehicle(
+                    editingVehicle.vehicleNumber,
+                    payload
+                );
+                setVehicles(vehicles.map(v =>
+                    v.vehicleNumber === editingVehicle.vehicleNumber ? updatedVehicle : v
+                ));
+                handleCloseModal();
+            } else {
+                // Create new vehicle
+                const newVehicle = await TransportService.Vehicle.addVehicle(payload);
+                setVehicles([...vehicles, newVehicle]);
+                handleCloseModal();
+            }
+        } catch (error) {
+            console.error('Error saving vehicle:', error);
+            alert('Failed to save vehicle: ' + error.message);
+        } finally {
+            setLoading(false);
         }
-        handleCloseModal();
     };
 
     const getStatusColor = (status) => {
@@ -78,8 +162,8 @@ const VehicleManagement = () => {
     };
 
     const filteredVehicles = vehicles.filter(v =>
-        v.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.type.toLowerCase().includes(searchTerm.toLowerCase())
+        (v.vehicleNumber && v.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (v.vehicletype && v.vehicletype.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -96,19 +180,41 @@ const VehicleManagement = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="btn-primary"
-                    style={{
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                        color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600'
-                    }}
-                >
-                    <FiPlus /> Add Vehicle
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={fetchVehicles}
+                        disabled={loading}
+                        style={{
+                            background: loading ? '#94a3b8' : '#10b981',
+                            color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                            cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600',
+                            opacity: loading ? 0.6 : 1
+                        }}
+                    >
+                        <FiTool /> {loading ? 'Loading...' : 'Refresh'}
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        disabled={loading}
+                        className="btn-primary"
+                        style={{
+                            background: loading ? '#94a3b8' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                            cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600',
+                            opacity: loading ? 0.6 : 1
+                        }}
+                    >
+                        <FiPlus /> Add Vehicle
+                    </button>
+                </div>
             </div>
 
+            {/* Loading State */}
+            {loading && vehicles.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                    <div>Loading vehicles...</div>
+                </div>
+            )}
             {/* Vehicle List */}
             <div className="table-container glass-card" style={{ overflowX: 'auto' }}>
                 <table className="premium-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -139,8 +245,8 @@ const VehicleManagement = () => {
                                                     <FiTruck />
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>{vehicle.number}</div>
-                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>{vehicle.type}</div>
+                                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>{vehicle.vehicleNumber}</div>
+                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>{vehicle.vehicletype}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -148,7 +254,7 @@ const VehicleManagement = () => {
                                             {vehicle.occupiedSeats || 0} / {vehicle.capacity} Seats
                                         </td>
                                         <td style={{ padding: '16px' }}>
-                                            {vehicle.gps ? (
+                                            {vehicle.gpsEnabled ? (
                                                 <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontSize: '13px' }}>
                                                     <FiCheckCircle /> Active
                                                 </span>
@@ -161,7 +267,7 @@ const VehicleManagement = () => {
                                         <td style={{ padding: '16px' }}>
                                             {vehicle.route ? (
                                                 <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: 4, fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>
-                                                    {vehicle.route}
+                                                    {vehicle.route.routeCode || vehicle.route.routeName || 'Route Assigned'}
                                                 </span>
                                             ) : (
                                                 <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>Unassigned</span>
@@ -169,14 +275,14 @@ const VehicleManagement = () => {
                                         </td>
                                         <td style={{ padding: '16px' }}>
                                             <span style={{
-                                                background: `${getStatusColor(vehicle.status)}15`,
-                                                color: getStatusColor(vehicle.status),
+                                                background: `${getStatusColor(vehicle.vehicleStatus)}15`,
+                                                color: getStatusColor(vehicle.vehicleStatus),
                                                 padding: '4px 12px', borderRadius: '20px',
                                                 fontSize: '12px', fontWeight: '600',
                                                 display: 'inline-flex', alignItems: 'center', gap: 6
                                             }}>
                                                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                                                {vehicle.status}
+                                                {vehicle.vehicleStatus}
                                             </span>
                                         </td>
                                         <td style={{ padding: '16px', textAlign: 'right' }}>
@@ -188,7 +294,7 @@ const VehicleManagement = () => {
                                                     <FiEdit2 />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(vehicle.id)}
+                                                    onClick={() => handleDelete(vehicle.vehicleNumber)}
                                                     style={{ border: 'none', background: '#fef2f2', padding: 8, borderRadius: 6, cursor: 'pointer', color: '#ef4444' }}
                                                 >
                                                     <FiTrash2 />
@@ -228,10 +334,10 @@ const VehicleManagement = () => {
                             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
                             exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
                             style={{
-                                position: 'fixed', top: '50%', left: '50%',
+                                position: 'fixed', top: '55%', left: '50%',
                                 width: '100%', maxWidth: '500px', background: 'white', borderRadius: '16px',
                                 padding: '24px', zIndex: 51, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-                                maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden'
+                                maxHeight: '85vh', overflowY: 'auto', overflowX: 'hidden'
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -240,19 +346,19 @@ const VehicleManagement = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <FormInput label="Vehicle Number" value={formData.number} onChange={e => setFormData({ ...formData, number: e.target.value })} required placeholder="e.g. KA-01-AB-1234" />
+                                <FormInput label="Vehicle Number" value={formData.vehicleNumber} onChange={e => setFormData({ ...formData, vehicleNumber: e.target.value })} required placeholder="e.g. KA-01-AB-1234" />
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Type</label>
                                         <select
                                             className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                            value={formData.type}
-                                            onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                            value={formData.vehicletype}
+                                            onChange={e => setFormData({ ...formData, vehicletype: e.target.value })}
                                         >
-                                            <option>Bus</option>
-                                            <option>Van</option>
-                                            <option>Cab</option>
+                                            <option value="BUS">Bus</option>
+                                            <option value="VAN">Van</option>
+                                            <option value="CAB">Cab</option>
                                         </select>
                                     </div>
                                     <FormInput label="Capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || '' })} required placeholder="e.g. 50" />
@@ -273,23 +379,38 @@ const VehicleManagement = () => {
                                         <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Status</label>
                                         <select
                                             className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                            value={formData.status}
-                                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                            value={formData.vehicleStatus}
+                                            onChange={e => setFormData({ ...formData, vehicleStatus: e.target.value })}
                                         >
-                                            <option value="Active">Active</option>
-                                            <option value="Maintenance">Maintenance</option>
-                                            <option value="Inactive">Inactive</option>
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="MAINTENANCE">Maintenance</option>
+                                            <option value="INACTIVE">Inactive</option>
                                         </select>
                                     </div>
-                                    <FormInput label="Route Assignment" value={formData.route} onChange={e => setFormData({ ...formData, route: e.target.value })} placeholder="e.g. R-01 (Optional)" />
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Route Assignment</label>
+                                        <select
+                                            className="form-select"
+                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                            value={formData.route || ''}
+                                            onChange={e => setFormData({ ...formData, route: e.target.value ? parseInt(e.target.value) : null })}
+                                        >
+                                            <option value="">No Route (Unassigned)</option>
+                                            {routes.map(route => (
+                                                <option key={route.id} value={route.id}>
+                                                    {route.routeCode ? `R-${route.routeCode}` : ''} {route.routeName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
                                     <input
                                         type="checkbox"
                                         id="gps-toggle"
-                                        checked={formData.gps}
-                                        onChange={e => setFormData({ ...formData, gps: e.target.checked })}
+                                        checked={formData.gpsEnabled}
+                                        onChange={e => setFormData({ ...formData, gpsEnabled: e.target.checked })}
                                         style={{ width: 18, height: 18 }}
                                     />
                                     <label htmlFor="gps-toggle" style={{ fontSize: '14px', fontWeight: '500', color: '#334155' }}>Enable GPS Tracking</label>

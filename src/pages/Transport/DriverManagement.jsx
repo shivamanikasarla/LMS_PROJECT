@@ -13,19 +13,19 @@ const DriverManagement = () => {
         return saved ? JSON.parse(saved) : [
             {
                 id: 1, name: 'Ramesh Kumar', contact: '9876543210', license: 'KA2001000123', expiry: '2026-12-31',
-                experienceYears: 5, licenseStatus: 'Valid', driverStatus: 'Verified',
+                experienceYears: 5, experienceCategory: 'Heavy Vehicle', licenseStatus: 'Valid', driverStatus: 'Verified',
                 assignedVehicle: 'KA-01-AB-1234', assignedRoute: 'R-01', conductorId: 'CID-001',
                 shift: 'Morning', verification: { police: true, medical: true }
             },
             {
                 id: 2, name: 'Suresh Singh', contact: '8765432109', license: 'KA2005000456', expiry: '2025-02-15',
-                experienceYears: 8, licenseStatus: 'Expiring Soon', driverStatus: 'Pending',
+                experienceYears: 8, experienceCategory: 'School Bus', licenseStatus: 'Expiring Soon', driverStatus: 'Pending',
                 assignedVehicle: 'KA-05-XY-9876', assignedRoute: 'R-04', conductorId: 'CID-002',
                 shift: 'Evening', verification: { police: true, medical: false }
             },
             {
                 id: 3, name: 'Mahesh Babu', contact: '7654321098', license: 'KA2010000789', expiry: '2024-01-01',
-                experienceYears: 3, licenseStatus: 'Expired', driverStatus: 'Suspended',
+                experienceYears: 3, experienceCategory: 'Light Vehicle', licenseStatus: 'Expired', driverStatus: 'Suspended',
                 assignedVehicle: '', assignedRoute: '', conductorId: '',
                 shift: 'Morning', verification: { police: false, medical: false }
             },
@@ -36,7 +36,7 @@ const DriverManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDriver, setEditingDriver] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', contact: '', license: '', expiry: '', experienceYears: '',
+        name: '', contact: '', license: '', expiry: '', experienceYears: '', experienceCategory: 'School Bus',
         licenseStatus: 'Valid', driverStatus: 'Pending',
         assignedVehicle: '', assignedRoute: '', conductorId: '',
         shift: 'Morning', verification: { police: false, medical: false }
@@ -67,7 +67,7 @@ const DriverManagement = () => {
         } else {
             setEditingDriver(null);
             setFormData({
-                name: '', contact: '', license: '', expiry: '', experienceYears: '',
+                name: '', contact: '', license: '', expiry: '', experienceYears: '', experienceCategory: 'School Bus',
                 licenseStatus: 'Valid', driverStatus: 'Pending',
                 assignedVehicle: '', assignedRoute: '', conductorId: '',
                 shift: 'Morning', verification: { police: false, medical: false }
@@ -173,6 +173,11 @@ const DriverManagement = () => {
                                                         <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                             <FiPhone size={10} /> {driver.contact}
                                                         </div>
+                                                        {driver.experienceCategory && (
+                                                            <div style={{ fontSize: '11px', color: '#6366f1', background: '#eef2ff', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
+                                                                {driver.experienceCategory}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -286,11 +291,13 @@ const DriverManagement = () => {
                             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
                             exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
                             style={{
-                                position: 'fixed', top: '50%', left: '50%',
+                                position: 'fixed', top: '55%', left: '50%',
                                 width: '100%', maxWidth: '600px', background: 'white', borderRadius: '16px',
                                 padding: '24px', zIndex: 51, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-                                maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden'
+                                maxHeight: '85vh', overflowY: 'auto', overflowX: 'hidden',
+                                scrollbarWidth: 'none', msOverflowStyle: 'none'
                             }}
+                            className="hide-scrollbar"
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                                 <h3 style={{ margin: 0, fontSize: '20px' }}>{editingDriver ? 'Edit Driver' : 'Add New Driver'}</h3>
@@ -330,6 +337,19 @@ const DriverManagement = () => {
                                         onChange={e => setFormData({ ...formData, experienceYears: e.target.value })}
                                         placeholder="e.g. 5"
                                     />
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Experience Category</label>
+                                        <select
+                                            className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                            value={formData.experienceCategory}
+                                            onChange={e => setFormData({ ...formData, experienceCategory: e.target.value })}
+                                        >
+                                            <option>School Bus</option>
+                                            <option>Heavy Vehicle</option>
+                                            <option>Light Vehicle</option>
+                                            <option>Both</option>
+                                        </select>
+                                    </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Driver Status</label>
                                         <select

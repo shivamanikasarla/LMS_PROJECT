@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiUserCheck, FiSearch, FiMapPin, FiTruck,
-    FiAlertCircle, FiCheckCircle, FiTrash2, FiEdit2, FiPlus, FiX
+    FiAlertCircle, FiCheckCircle, FiTrash2, FiEdit2, FiPlus, FiX, FiGrid
 } from 'react-icons/fi';
+import StudentQRDisplay from '../../components/Transport/StudentQRDisplay';
 
 const StudentMapping = () => {
     // --- State ---
@@ -31,6 +32,10 @@ const StudentMapping = () => {
     const [newStudentForm, setNewStudentForm] = useState({
         name: '', class: '', routeId: '', pickup: '', shift: 'Morning'
     });
+
+    // QR Code Modal State
+    const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+    const [qrStudent, setQRStudent] = useState(null);
 
     // --- Effects ---
     useEffect(() => {
@@ -212,6 +217,28 @@ const StudentMapping = () => {
                                     <td style={{ padding: '16px', fontSize: '13px', color: '#334155' }}>{student.shift || '-'}</td>
                                     <td style={{ padding: '16px', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                            {student.routeId && (
+                                                <button
+                                                    onClick={() => {
+                                                        setQRStudent(student);
+                                                        setIsQRModalOpen(true);
+                                                    }}
+                                                    style={{
+                                                        border: 'none',
+                                                        background: '#eff6ff',
+                                                        padding: 8,
+                                                        borderRadius: 6,
+                                                        cursor: 'pointer',
+                                                        color: '#6366f1',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}
+                                                    title="View QR Codes"
+                                                >
+                                                    <FiGrid size={16} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => handleOpenAssign(student)}
                                                 className="btn-primary"
@@ -425,6 +452,42 @@ const StudentMapping = () => {
                                     Add Student
                                 </button>
                             </form>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* QR Code Modal */}
+            <AnimatePresence>
+                {isQRModalOpen && qrStudent && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsQRModalOpen(false)}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0,0,0,0.6)',
+                                zIndex: 1000,
+                                backdropFilter: 'blur(4px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '20px'
+                            }}
+                        >
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <StudentQRDisplay
+                                    student={qrStudent}
+                                    route={getRouteDetails(qrStudent.routeId)}
+                                    onClose={() => setIsQRModalOpen(false)}
+                                />
+                            </div>
                         </motion.div>
                     </>
                 )}

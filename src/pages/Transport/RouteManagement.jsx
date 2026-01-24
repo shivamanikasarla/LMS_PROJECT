@@ -10,8 +10,8 @@ const RouteManagement = () => {
     const [routes, setRoutes] = useState(() => {
         const saved = localStorage.getItem('lms_transport_routes');
         return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Route 01: North City', code: 'R-01', vehicle: 'KA-01-AB-1234', capacity: 50, enrolled: 42, distance: '15 km', time: '45 mins', pickupPoint: 'Central Station', dropPoint: 'College Campus' },
-            { id: 2, name: 'Route 02: South City', code: 'R-02', vehicle: 'KA-05-XY-9876', capacity: 20, enrolled: 18, distance: '12 km', time: '40 mins', pickupPoint: 'South Park', dropPoint: 'College Campus' },
+            { id: 1, name: 'Route 01: North City', code: 'R-01', vehicle: 'KA-01-AB-1234', capacity: 50, enrolled: 42, distance: '15 km', time: '45 mins', pickupPoints: ['Central Station', 'Mall Road', 'Station Area'], dropPoints: ['Main Gate', 'Hostel Block'] },
+            { id: 2, name: 'Route 02: South City', code: 'R-02', vehicle: 'KA-05-XY-9876', capacity: 20, enrolled: 18, distance: '12 km', time: '40 mins', pickupPoints: ['South Park', 'Market Square'], dropPoints: ['College Campus'] },
         ];
     });
 
@@ -19,8 +19,10 @@ const RouteManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRoute, setEditingRoute] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', code: '', vehicle: '', capacity: '', distance: '', time: '', pickupPoint: '', dropPoint: ''
+        name: '', code: '', vehicle: '', capacity: '', distance: '', time: '', pickupPoints: [], dropPoints: []
     });
+    const [newPickupPoint, setNewPickupPoint] = useState('');
+    const [newDropPoint, setNewDropPoint] = useState('');
 
     // --- Persist Data ---
     useEffect(() => {
@@ -35,7 +37,7 @@ const RouteManagement = () => {
         } else {
             setEditingRoute(null);
             setFormData({
-                name: '', code: '', vehicle: '', capacity: '', enrolled: 0, distance: '', time: '', pickupPoint: '', dropPoint: ''
+                name: '', code: '', vehicle: '', capacity: '', enrolled: 0, distance: '', time: '', pickupPoints: [], dropPoints: []
             });
         }
         setIsModalOpen(true);
@@ -131,29 +133,31 @@ const RouteManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* Pickup → Drop Point */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '16px',
-                                    padding: '16px 20px',
-                                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                                    borderRadius: '12px',
-                                    border: '1px solid #bae6fd',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)' }} />
-                                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#0f766e' }}>{startPoint}</span>
+                                {/* Pickup Points */}
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        🚏 Pickup Points
                                     </div>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <div style={{ height: '3px', flex: 1, background: 'linear-gradient(90deg, #10b981, #6366f1)', borderRadius: '3px' }} />
-                                        <span style={{ margin: '0 12px', fontSize: '20px', color: '#6366f1', fontWeight: 'bold' }}>→</span>
-                                        <div style={{ height: '3px', flex: 1, background: 'linear-gradient(90deg, #6366f1, #ef4444)', borderRadius: '3px' }} />
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {(route.pickupPoints || [route.pickupPoint]).filter(Boolean).map((point, idx) => (
+                                            <span key={idx} style={{ padding: '6px 12px', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', fontSize: '12px', color: '#065f46', fontWeight: '500' }}>
+                                                {point}
+                                            </span>
+                                        ))}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>{endPoint}</span>
-                                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.2)' }} />
+                                </div>
+
+                                {/* Drop Points */}
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        📍 Drop Points
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {(route.dropPoints || [route.dropPoint]).filter(Boolean).map((point, idx) => (
+                                            <span key={idx} style={{ padding: '6px 12px', background: '#fef2f2', border: '1px solid #ef4444', borderRadius: '6px', fontSize: '12px', color: '#991b1b', fontWeight: '500' }}>
+                                                {point}
+                                            </span>
+                                        ))}
                                     </div>
                                 </div>
 
@@ -198,7 +202,9 @@ const RouteManagement = () => {
                                 position: 'fixed', top: '80px', left: '50%',
                                 width: 'calc(100% - 32px)', maxWidth: '480px', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto',
                                 background: 'white', borderRadius: '16px', padding: '20px', zIndex: 51,
-                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+                                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+                                scrollbarWidth: 'none',
+                                msOverflowStyle: 'none'
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -222,9 +228,106 @@ const RouteManagement = () => {
                                     <FormInput label="Total Capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || '' })} required />
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Pickup Point" value={formData.pickupPoint} onChange={e => setFormData({ ...formData, pickupPoint: e.target.value })} required placeholder="e.g. Central Station" />
-                                    <FormInput label="Drop Point" value={formData.dropPoint} onChange={e => setFormData({ ...formData, dropPoint: e.target.value })} required placeholder="e.g. College Campus" />
+                                {/* Pickup Points */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
+                                        🚏 Pickup Points <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                        <input
+                                            type="text"
+                                            value={newPickupPoint}
+                                            onChange={e => setNewPickupPoint(e.target.value)}
+                                            placeholder="Add pickup point..."
+                                            style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
+                                            onKeyPress={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (newPickupPoint.trim()) {
+                                                        setFormData({ ...formData, pickupPoints: [...(formData.pickupPoints || []), newPickupPoint.trim()] });
+                                                        setNewPickupPoint('');
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (newPickupPoint.trim()) {
+                                                    setFormData({ ...formData, pickupPoints: [...(formData.pickupPoints || []), newPickupPoint.trim()] });
+                                                    setNewPickupPoint('');
+                                                }
+                                            }}
+                                            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#10b981', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {(formData.pickupPoints || []).map((point, idx) => (
+                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', fontSize: '13px', color: '#065f46' }}>
+                                                {point}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, pickupPoints: formData.pickupPoints.filter((_, i) => i !== idx) })}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#10b981' }}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Drop Points */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
+                                        📍 Drop Points <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                        <input
+                                            type="text"
+                                            value={newDropPoint}
+                                            onChange={e => setNewDropPoint(e.target.value)}
+                                            placeholder="Add drop point..."
+                                            style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
+                                            onKeyPress={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (newDropPoint.trim()) {
+                                                        setFormData({ ...formData, dropPoints: [...(formData.dropPoints || []), newDropPoint.trim()] });
+                                                        setNewDropPoint('');
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (newDropPoint.trim()) {
+                                                    setFormData({ ...formData, dropPoints: [...(formData.dropPoints || []), newDropPoint.trim()] });
+                                                    setNewDropPoint('');
+                                                }
+                                            }}
+                                            style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#ef4444', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {(formData.dropPoints || []).map((point, idx) => (
+                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: '#fef2f2', border: '1px solid #ef4444', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+                                                {point}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, dropPoints: formData.dropPoints.filter((_, i) => i !== idx) })}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#ef4444' }}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <button type="submit" className="btn-primary" style={{ marginTop: '16px', padding: '12px', background: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}>
