@@ -7,7 +7,7 @@ import {
     FiCheckCircle,
     FiLock,
 } from "react-icons/fi";
-import { courseService } from "../services/courseService";
+import { courseService } from "./services/courseService";
 
 const CourseOverview = () => {
     const { id, shareCode } = useParams();
