@@ -69,7 +69,7 @@ const LiveTracking = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Moving': return '#10b981';
+            case 'Moving': return '#1bce72ff';
             case 'Stopped': return '#f59e0b';
             case 'Offline': return '#94a3b8';
             case 'Alert': return '#ef4444';

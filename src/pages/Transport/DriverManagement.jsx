@@ -1,77 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    FiUsers, FiPlus, FiSearch, FiEdit2, FiTrash2,
-    FiCheckCircle, FiAlertTriangle, FiX, FiShield,
-    FiCalendar, FiPhone, FiActivity // Added missing imports
+    FiUser, FiPlus, FiSearch, FiEdit2, FiTrash2,
+    FiPhone, FiCheckCircle, FiXCircle, FiTruck, FiMapPin, FiX
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const DriverManagement = () => {
     // --- State ---
-    const [drivers, setDrivers] = useState(() => {
-        const saved = localStorage.getItem('lms_transport_drivers');
-        return saved ? JSON.parse(saved) : [
-            {
-                id: 1, name: 'Ramesh Kumar', contact: '9876543210', license: 'KA2001000123', expiry: '2026-12-31',
-                experienceYears: 5, experienceCategory: 'Heavy Vehicle', licenseStatus: 'Valid', driverStatus: 'Verified',
-                assignedVehicle: 'KA-01-AB-1234', assignedRoute: 'R-01', conductorId: 'CID-001',
-                shift: 'Morning', verification: { police: true, medical: true }
-            },
-            {
-                id: 2, name: 'Suresh Singh', contact: '8765432109', license: 'KA2005000456', expiry: '2025-02-15',
-                experienceYears: 8, experienceCategory: 'School Bus', licenseStatus: 'Expiring Soon', driverStatus: 'Pending',
-                assignedVehicle: 'KA-05-XY-9876', assignedRoute: 'R-04', conductorId: 'CID-002',
-                shift: 'Evening', verification: { police: true, medical: false }
-            },
-            {
-                id: 3, name: 'Mahesh Babu', contact: '7654321098', license: 'KA2010000789', expiry: '2024-01-01',
-                experienceYears: 3, experienceCategory: 'Light Vehicle', licenseStatus: 'Expired', driverStatus: 'Suspended',
-                assignedVehicle: '', assignedRoute: '', conductorId: '',
-                shift: 'Morning', verification: { police: false, medical: false }
-            },
-        ];
-    });
-
+    const [drivers, setDrivers] = useState([]);
+    const [vehicles, setVehicles] = useState([]);
+    const [routes, setRoutes] = useState([]); // For assignment
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDriver, setEditingDriver] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '', contact: '', license: '', expiry: '', experienceYears: '', experienceCategory: 'School Bus',
-        licenseStatus: 'Valid', driverStatus: 'Pending',
-        assignedVehicle: '', assignedRoute: '', conductorId: '',
-        shift: 'Morning', verification: { police: false, medical: false }
-    });
+    const [loading, setLoading] = useState(false);
 
-    // --- Persist Data ---
-    useEffect(() => {
-        localStorage.setItem('lms_transport_drivers', JSON.stringify(drivers));
-    }, [drivers]);
-
-    // --- Helpers ---
-    const getLicenseStatus = (expiryDate) => {
-        const today = new Date();
-        const expiry = new Date(expiryDate);
-        const diffTime = expiry - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) return { status: 'Expired', color: '#ef4444', label: 'Expired' };
-        if (diffDays < 30) return { status: 'Expiring', color: '#f59e0b', label: `Expires in ${diffDays}d` };
-        return { status: 'Valid', color: '#10b981', label: 'Valid' };
+    // Initial Form State matching Backend Entity
+    const initialFormState = {
+        fullName: '',
+        contactNumber: '',
+        licenseNumber: '',
+        licenseExpiryDate: '',
+        role: 'DRIVER',
+        experienceCategory: 'SCHOOLBUS',
+        backgroundVerified: false,
+        shift: 'MORNING',
+        experienceYears: '',
+        licenseValidityStatus: 'VALID',
+        verificationStatus: 'PENDING',
+        active: true,
+        vehicle: null, // { vehicleId: ... } or null
+        route: null    // { routeId: ... } or null
     };
+
+    const [formData, setFormData] = useState(initialFormState);
+
+    // --- Fetch Data ---
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [driversData, vehiclesData, routesData] = await Promise.all([
+                TransportService.Driver.getAllDrivers(),
+                TransportService.Vehicle.getAllVehicles(),
+                TransportService.Route.getAllRoutes()
+            ]);
+            setDrivers(driversData || []);
+            setVehicles(vehiclesData || []);
+            setRoutes(routesData || []);
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+            // alert('Error fetching data: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     // --- Handlers ---
     const handleOpenModal = (driver = null) => {
         if (driver) {
             setEditingDriver(driver);
-            setFormData(driver);
+            setFormData({
+                ...driver,
+                vehicle: driver.vehicle ? driver.vehicle.id : '', // Use 'id' matching backend/other components
+                route: driver.route ? driver.route.id : ''        // Use 'id' matching backend/other components
+            });
         } else {
             setEditingDriver(null);
-            setFormData({
-                name: '', contact: '', license: '', expiry: '', experienceYears: '', experienceCategory: 'School Bus',
-                licenseStatus: 'Valid', driverStatus: 'Pending',
-                assignedVehicle: '', assignedRoute: '', conductorId: '',
-                shift: 'Morning', verification: { police: false, medical: false }
-            });
+            setFormData(initialFormState);
         }
         setIsModalOpen(true);
     };
@@ -81,34 +81,61 @@ const DriverManagement = () => {
         setEditingDriver(null);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (driverId) => {
         if (window.confirm('Are you sure you want to delete this driver?')) {
-            setDrivers(drivers.filter(d => d.id !== id));
+            try {
+                await TransportService.Driver.deleteDriver(driverId);
+                setDrivers(drivers.filter(d => d.driverId !== driverId));
+            } catch (error) {
+                console.error('Error deleting driver:', error);
+                alert('Failed to delete driver');
+            }
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
-        // Auto-block assignment if license expired
-        const licenseStatus = getLicenseStatus(formData.expiry);
-        if (licenseStatus.status === 'Expired' && formData.assignedVehicle) {
-            alert('Cannot assign vehicle to a driver with expired license!');
-            return;
-        }
+        try {
+            // Prepare payload
+            const payload = {
+                ...formData,
+                // Use 'id' for relationships as observed in other components
+                vehicle: formData.vehicle ? { id: formData.vehicle } : null,
+                route: formData.route ? { id: formData.route } : null,
+                experienceYears: parseInt(formData.experienceYears) || 0
+            };
 
-        if (editingDriver) {
-            setDrivers(drivers.map(d => d.id === editingDriver.id ? { ...formData, id: d.id } : d));
-        } else {
-            setDrivers([...drivers, { ...formData, id: Date.now() }]);
+            if (editingDriver) {
+                const updated = await TransportService.Driver.updateDriver(editingDriver.driverId, payload);
+                setDrivers(drivers.map(d => d.driverId === editingDriver.driverId ? updated : d));
+            } else {
+                const created = await TransportService.Driver.addDriver(payload);
+                setDrivers([...drivers, created]);
+            }
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error saving driver:', error);
+            alert('Failed to save driver: ' + error.message);
+        } finally {
+            setLoading(false);
         }
-        handleCloseModal();
     };
 
+    // --- Helpers ---
+    const getLicenseStatusColor = (status) => {
+        switch (status) {
+            case 'VALID': return '#10b981';
+            case 'EXPIRINGSOON': return '#f59e0b';
+            case 'EXPIRED': return '#ef4444';
+            default: return '#64748b';
+        }
+    };
 
     const filteredDrivers = drivers.filter(d =>
-        d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.license.toLowerCase().includes(searchTerm.toLowerCase())
+        (d.fullName && d.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (d.licenseNumber && d.licenseNumber.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -119,23 +146,28 @@ const DriverManagement = () => {
                     <FiSearch color="#94a3b8" />
                     <input
                         type="text"
-                        placeholder="Search driver by name or license..."
+                        placeholder="Search by name or license..."
                         style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '14px' }}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="btn-primary"
-                    style={{
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                        color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600'
-                    }}
-                >
-                    <FiPlus /> Add Driver
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={fetchData} className="btn-secondary" style={{ padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: '#e2e8f0' }}>
+                        <FiRefreshCw />
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="btn-primary"
+                        style={{
+                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600'
+                        }}
+                    >
+                        <FiPlus /> Add Driver
+                    </button>
+                </div>
             </div>
 
             {/* Drivers List */}
@@ -143,128 +175,94 @@ const DriverManagement = () => {
                 <table className="premium-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', textAlign: 'left', color: '#64748b', fontSize: '13px', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '16px' }}>Driver Details</th>
-                            <th style={{ padding: '16px' }}>License Info</th>
-                            <th style={{ padding: '16px' }}>Shift & Vehicle</th>
-                            <th style={{ padding: '16px' }}>Verification</th>
+                            <th style={{ padding: '16px' }}>Driver Info</th>
+                            <th style={{ padding: '16px' }}>License Details</th>
+                            <th style={{ padding: '16px' }}>Assignment & Shift</th>
+                            <th style={{ padding: '16px' }}>Status</th>
                             <th style={{ padding: '16px', textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <AnimatePresence>
                             {filteredDrivers.length > 0 ? (
-                                filteredDrivers.map(driver => {
-                                    const licenseStatus = getLicenseStatus(driver.expiry);
-                                    return (
-                                        <motion.tr
-                                            key={driver.id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, x: -10 }}
-                                            style={{ borderBottom: '1px solid #f1f5f9' }}
-                                        >
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', fontWeight: 'bold' }}>
-                                                        {driver.name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontWeight: '600', color: '#1e293b' }}>{driver.name}</div>
-                                                        <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <FiPhone size={10} /> {driver.contact}
-                                                        </div>
-                                                        {driver.experienceCategory && (
-                                                            <div style={{ fontSize: '11px', color: '#6366f1', background: '#eef2ff', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
-                                                                {driver.experienceCategory}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                filteredDrivers.map(driver => (
+                                    <motion.tr
+                                        key={driver.driverId}
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        style={{ borderBottom: '1px solid #f1f5f9' }}
+                                    >
+                                        <td style={{ padding: '16px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', fontWeight: 'bold' }}>
+                                                    {driver.fullName ? driver.fullName.charAt(0) : '?'}
                                                 </div>
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ fontWeight: '500', color: '#334155' }}>{driver.license}</div>
+                                                <div>
+                                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>{driver.fullName}</div>
+                                                    <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <FiPhone size={10} /> {driver.contactNumber}
+                                                    </div>
+                                                    <span style={{ fontSize: '10px', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, color: '#64748b' }}>
+                                                        {driver.role}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '16px' }}>
+                                            <div style={{ fontWeight: '500', color: '#334155' }}>{driver.licenseNumber}</div>
+                                            <div style={{ fontSize: '12px', color: getLicenseStatusColor(driver.licenseValidityStatus), fontWeight: '500' }}>
+                                                {driver.licenseValidityStatus}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>Exp: {driver.licenseExpiryDate}</div>
+                                        </td>
+                                        <td style={{ padding: '16px' }}>
+                                            <div style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <FiTruck size={12} color="#64748b" />
+                                                {driver.vehicle ? (
+                                                    <span style={{ fontWeight: '500' }}>{driver.vehicle.vehicleNumber}</span>
+                                                ) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No Vehicle</span>}
+                                            </div>
+                                            <div style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                <FiMapPin size={12} color="#64748b" />
+                                                {driver.route ? (
+                                                    <span>{driver.route.routeName}</span>
+                                                ) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No Route</span>}
+                                            </div>
+                                            <div style={{ fontSize: '11px', marginTop: 4, color: '#6366f1', fontWeight: '500' }}>
+                                                Shift: {driver.shift}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '16px' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                 <span style={{
-                                                    fontSize: '11px', fontWeight: '600', color: licenseStatus.color,
-                                                    display: 'flex', alignItems: 'center', gap: 4
+                                                    fontSize: '11px', fontWeight: '600',
+                                                    color: driver.verificationStatus === 'VERIFIED' ? '#10b981' : '#f59e0b',
+                                                    background: driver.verificationStatus === 'VERIFIED' ? '#ecfdf5' : '#fffbeb',
+                                                    padding: '2px 8px', borderRadius: 10, alignSelf: 'flex-start'
                                                 }}>
-                                                    {licenseStatus.status === 'Valid' ? <FiCheckCircle size={10} /> : <FiAlertTriangle size={10} />}
-                                                    {licenseStatus.label}
+                                                    {driver.verificationStatus}
                                                 </span>
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ fontSize: '13px', color: '#334155' }}>
-                                                    <span style={{ fontWeight: '600' }}>Shift:</span> {driver.shift}
-                                                </div>
-                                                <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                                    Route: {driver.assignedRoute || 'N/A'}
-                                                </div>
-                                                <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                                    Conductor: {driver.conductorId || 'N/A'}
-                                                </div>
-                                                {driver.assignedVehicle && (
-                                                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                                                        Vehicle: {driver.assignedVehicle}
-                                                    </div>
+                                                {driver.backgroundVerified && (
+                                                    <span style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <FiCheckCircle size={10} /> BG Verified
+                                                    </span>
                                                 )}
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <span style={{
-                                                    padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600',
-                                                    background: driver.driverStatus === 'Verified' ? '#ecfdf5' : driver.driverStatus === 'Rejected' ? '#fef2f2' : '#fffbeb',
-                                                    color: driver.driverStatus === 'Verified' ? '#10b981' : driver.driverStatus === 'Rejected' ? '#ef4444' : '#f59e0b',
-                                                    marginBottom: '4px', display: 'inline-block'
-                                                }}>
-                                                    {driver.driverStatus}
-                                                </span>
-                                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                                    <span
-                                                        title="Police Verification"
-                                                        style={{
-                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600',
-                                                            background: driver.verification.police ? '#ecfdf5' : '#fef2f2',
-                                                            color: driver.verification.police ? '#10b981' : '#ef4444',
-                                                            display: 'flex', alignItems: 'center', gap: 2
-                                                        }}
-                                                    >
-                                                        <FiShield size={10} /> {driver.verification.police ? 'Pol.' : 'No Pol.'}
-                                                    </span>
-                                                    <span
-                                                        title="Medical Check"
-                                                        style={{
-                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: '600',
-                                                            background: driver.verification.medical ? '#ecfdf5' : '#fef2f2',
-                                                            color: driver.verification.medical ? '#10b981' : '#ef4444',
-                                                            display: 'flex', alignItems: 'center', gap: 2
-                                                        }}
-                                                    >
-                                                        <FiActivity size={10} /> {driver.verification.medical ? 'Med.' : 'No Med.'}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '16px', textAlign: 'right' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                                    <button
-                                                        onClick={() => handleOpenModal(driver)}
-                                                        style={{ border: 'none', background: '#f1f5f9', padding: 8, borderRadius: 6, cursor: 'pointer', color: '#475569' }}
-                                                    >
-                                                        <FiEdit2 />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(driver.id)}
-                                                        style={{ border: 'none', background: '#fef2f2', padding: 8, borderRadius: 6, cursor: 'pointer', color: '#ef4444' }}
-                                                    >
-                                                        <FiTrash2 />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </motion.tr>
-                                    );
-                                })
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                                <button onClick={() => handleOpenModal(driver)} style={{ border: 'none', background: '#f1f5f9', padding: 8, borderRadius: 6, cursor: 'pointer', color: '#475569' }}>
+                                                    <FiEdit2 />
+                                                </button>
+                                                <button onClick={() => handleDelete(driver.driverId)} style={{ border: 'none', background: '#fef2f2', padding: 8, borderRadius: 6, cursor: 'pointer', color: '#ef4444' }}>
+                                                    <FiTrash2 />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </motion.tr>
+                                ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                                        No drivers found matching your search.
-                                    </td>
+                                    <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>No drivers found.</td>
                                 </tr>
                             )}
                         </AnimatePresence>
@@ -276,142 +274,95 @@ const DriverManagement = () => {
             <AnimatePresence>
                 {isModalOpen && (
                     <>
-                        {/* Backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={handleCloseModal}
-                            style={{
-                                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                                zIndex: 50, backdropFilter: 'blur(4px)'
-                            }}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, backdropFilter: 'blur(4px)' }}
                         />
-                        {/* Content */}
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
                             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
                             exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
                             style={{
-                                position: 'fixed', top: '55%', left: '50%',
-                                width: '100%', maxWidth: '600px', background: 'white', borderRadius: '16px',
-                                padding: '24px', zIndex: 51, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-                                maxHeight: '85vh', overflowY: 'auto', overflowX: 'hidden',
-                                scrollbarWidth: 'none', msOverflowStyle: 'none'
+                                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                width: '100%', maxWidth: '700px', background: 'white', borderRadius: '16px',
+                                padding: '24px', zIndex: 51, maxHeight: '90vh', overflowY: 'auto'
                             }}
-                            className="hide-scrollbar"
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                                <h3 style={{ margin: 0, fontSize: '20px' }}>{editingDriver ? 'Edit Driver' : 'Add New Driver'}</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                                <h3 style={{ margin: 0 }}>{editingDriver ? 'Edit Driver' : 'Add New Driver'}</h3>
                                 <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><FiX size={24} /></button>
                             </div>
 
-                            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Full Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Ramesh Kumar" />
-                                    <FormInput label="Contact Number" value={formData.contact} onChange={e => setFormData({ ...formData, contact: e.target.value })} required placeholder="e.g. 9876543210" />
-                                </div>
+                            <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <FormInput label="Full Name" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} required />
+                                <FormInput label="Contact Number" value={formData.contactNumber} onChange={e => setFormData({ ...formData, contactNumber: e.target.value })} required />
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="License Number" value={formData.license} onChange={e => setFormData({ ...formData, license: e.target.value })} required placeholder="DL-XXXXX" />
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <FormInput label="Expiry Date" type="date" value={formData.expiry} onChange={e => setFormData({ ...formData, expiry: e.target.value })} required />
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Status</label>
-                                            <select
-                                                className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                                value={formData.licenseStatus}
-                                                onChange={e => setFormData({ ...formData, licenseStatus: e.target.value })}
-                                            >
-                                                <option>Valid</option>
-                                                <option>Expiring Soon</option>
-                                                <option>Expired</option>
-                                            </select>
-                                        </div>
+                                <FormInput label="License Number" value={formData.licenseNumber} onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })} required />
+                                <FormInput label="Expiry Date" type="date" value={formData.licenseExpiryDate} onChange={e => setFormData({ ...formData, licenseExpiryDate: e.target.value })} required />
+
+                                <FormSelect label="Role" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
+                                    <option value="DRIVER">Driver</option>
+                                    <option value="CONDUCTOR">Conductor</option>
+                                    <option value="HELPER">Helper</option>
+                                </FormSelect>
+
+                                <FormSelect label="Shift" value={formData.shift} onChange={e => setFormData({ ...formData, shift: e.target.value })}>
+                                    <option value="MORNING">Morning</option>
+                                    <option value="EVENING">Evening</option>
+                                    <option value="BOTH">Both</option>
+                                </FormSelect>
+
+                                <FormInput label="Experience (Years)" type="number" value={formData.experienceYears} onChange={e => setFormData({ ...formData, experienceYears: e.target.value })} required />
+
+                                <FormSelect label="Exp. Category" value={formData.experienceCategory} onChange={e => setFormData({ ...formData, experienceCategory: e.target.value })}>
+                                    <option value="SCHOOLBUS">School Bus</option>
+                                    <option value="HEAVYVEHICLE">Heavy Vehicle</option>
+                                    <option value="LIGHTVEHICLE">Light Vehicle</option>
+                                    <option value="BOTHSCHOOLBUSANDHEAVYVEHICLE">Both (School & Heavy)</option>
+                                </FormSelect>
+
+                                <FormSelect label="License Status" value={formData.licenseValidityStatus} onChange={e => setFormData({ ...formData, licenseValidityStatus: e.target.value })}>
+                                    <option value="VALID">Valid</option>
+                                    <option value="EXPIRINGSOON">Expiring Soon</option>
+                                    <option value="EXPIRED">Expired</option>
+                                </FormSelect>
+
+                                <FormSelect label="Verification Status" value={formData.verificationStatus} onChange={e => setFormData({ ...formData, verificationStatus: e.target.value })}>
+                                    <option value="PENDING">Pending</option>
+                                    <option value="VERIFIED">Verified</option>
+                                    <option value="SUSPENDED">Suspended</option>
+                                    <option value="REJECTED">Rejected</option>
+                                </FormSelect>
+
+                                {/* Assignments */}
+                                <FormSelect label="Assign Vehicle (Optional)" value={formData.vehicle || ''} onChange={e => setFormData({ ...formData, vehicle: e.target.value || null })}>
+                                    <option value="">-- No Vehicle --</option>
+                                    {vehicles.map(v => (
+                                        <option key={v.id} value={v.id}>{v.vehicleNumber} ({v.vehicletype})</option>
+                                    ))}
+                                </FormSelect>
+
+                                <FormSelect label="Assign Route (Optional)" value={formData.route || ''} onChange={e => setFormData({ ...formData, route: e.target.value || null })}>
+                                    <option value="">-- No Route --</option>
+                                    {routes.map(r => (
+                                        <option key={r.id} value={r.id}>{r.routeName} ({r.routeCode})</option>
+                                    ))}
+                                </FormSelect>
+
+                                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 20, alignItems: 'center', background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input type="checkbox" checked={formData.backgroundVerified} onChange={e => setFormData({ ...formData, backgroundVerified: e.target.checked })} style={{ width: 16, height: 16 }} />
+                                        <label style={{ fontSize: 13, fontWeight: 500 }}>Background Verified</label>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input type="checkbox" checked={formData.active} onChange={e => setFormData({ ...formData, active: e.target.checked })} style={{ width: 16, height: 16 }} />
+                                        <label style={{ fontSize: 13, fontWeight: 500 }}>Active Driver</label>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput
-                                        label="Experience (Years)"
-                                        type="number"
-                                        value={formData.experienceYears}
-                                        onChange={e => setFormData({ ...formData, experienceYears: e.target.value })}
-                                        placeholder="e.g. 5"
-                                    />
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Experience Category</label>
-                                        <select
-                                            className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                            value={formData.experienceCategory}
-                                            onChange={e => setFormData({ ...formData, experienceCategory: e.target.value })}
-                                        >
-                                            <option>School Bus</option>
-                                            <option>Heavy Vehicle</option>
-                                            <option>Light Vehicle</option>
-                                            <option>Both</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Driver Status</label>
-                                        <select
-                                            className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                            value={formData.driverStatus}
-                                            onChange={e => setFormData({ ...formData, driverStatus: e.target.value })}
-                                        >
-                                            <option>Pending</option>
-                                            <option>Verified</option>
-                                            <option>Suspended</option>
-                                            <option>Rejected</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Shift</label>
-                                        <select
-                                            className="form-select" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                            value={formData.shift}
-                                            onChange={e => setFormData({ ...formData, shift: e.target.value })}
-                                        >
-                                            <option>Morning</option>
-                                            <option>Evening</option>
-                                            <option>Both</option>
-                                        </select>
-                                    </div>
-                                    <FormInput label="Assigned Vehicle" value={formData.assignedVehicle} onChange={e => setFormData({ ...formData, assignedVehicle: e.target.value })} placeholder="e.g. KA-01 (Optional)" />
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Assigned Route" value={formData.assignedRoute} onChange={e => setFormData({ ...formData, assignedRoute: e.target.value })} placeholder="e.g. R-10" />
-                                    <FormInput label="Conductor ID" value={formData.conductorId} onChange={e => setFormData({ ...formData, conductorId: e.target.value })} placeholder="e.g. C-101" />
-                                </div>
-
-                                <div style={{ marginTop: '8px' }}>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>Verifications</label>
-                                    <div style={{ display: 'flex', gap: '16px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', flex: 1 }}>
-                                            <input
-                                                type="checkbox" id="police-chk"
-                                                checked={formData.verification.police}
-                                                onChange={e => setFormData({ ...formData, verification: { ...formData.verification, police: e.target.checked } })}
-                                                style={{ width: 16, height: 16 }}
-                                            />
-                                            <label htmlFor="police-chk" style={{ fontSize: '13px', fontWeight: '500', color: '#334155' }}>Police Verification</label>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', flex: 1 }}>
-                                            <input
-                                                type="checkbox" id="medical-chk"
-                                                checked={formData.verification.medical}
-                                                onChange={e => setFormData({ ...formData, verification: { ...formData.verification, medical: e.target.checked } })}
-                                                style={{ width: 16, height: 16 }}
-                                            />
-                                            <label htmlFor="medical-chk" style={{ fontSize: '13px', fontWeight: '500', color: '#334155' }}>Medical Check</label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button type="submit" className="btn-primary" style={{ marginTop: '16px', padding: '12px', background: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}>
-                                    {editingDriver ? 'Update Driver' : 'Add Driver'}
+                                <button type="submit" disabled={loading} className="btn-primary" style={{ gridColumn: 'span 2', marginTop: 10, padding: 12, background: '#4f46e5', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                                    {loading ? 'Saving...' : (editingDriver ? 'Update Driver' : 'Create Driver')}
                                 </button>
                             </form>
                         </motion.div>
@@ -422,20 +373,22 @@ const DriverManagement = () => {
     );
 };
 
-const FormInput = ({ label, type = "text", value, onChange, placeholder, required = false }) => (
+const FormInput = ({ label, type = "text", value, onChange, placeholder, required }) => (
     <div>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>{label} {required && <span style={{ color: '#ef4444' }}>*</span>}</label>
-        <input
-            type={type}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            required={required}
-            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', transition: 'border 0.2s' }}
-            onFocus={e => e.target.style.borderColor = '#6366f1'}
-            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-        />
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>{label} {required && '*'}</label>
+        <input type={type} value={value} onChange={onChange} placeholder={placeholder} required={required} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
     </div>
 );
+
+const FormSelect = ({ label, value, onChange, children }) => (
+    <div>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>{label}</label>
+        <select value={value} onChange={onChange} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            {children}
+        </select>
+    </div>
+);
+
+const FiRefreshCw = () => <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
 
 export default DriverManagement;

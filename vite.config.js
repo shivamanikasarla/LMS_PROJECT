@@ -10,12 +10,40 @@ export default defineConfig({
     proxy: {
       // Proxy all /transport API requests to Spring Boot backend
       '/transport': {
-        target: 'http://192.168.1.27:9191',
+        // Use environment variable or default to friend's backend
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:9191',
         changeOrigin: true,
         secure: false,
-      },
-      // You can add more API paths here if needed
-      // Example: '/api': { target: 'http://localhost:9191', changeOrigin: true },
+        // Bypass proxy for browser page requests (HTML)
+        bypass: (req, res, options) => {
+          if (req.headers.accept && req.headers.accept.includes('text/html')) {
+            return req.url;
+          }
+        },
+        // Explicitly preserve headers
+        headers: {
+          'Connection': 'keep-alive'
+        },
+        // Add logging for debugging
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('❌ Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('🔄 Proxying:', req.method, req.url, '→', options.target);
+            // Log if Authorization header is present
+            const authHeader = req.headers['authorization'];
+            if (authHeader) {
+              console.log('✅ Auth header present:', authHeader.substring(0, 20) + '...');
+            } else {
+              console.log('⚠️  No Authorization header');
+            }
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('📥 Response:', req.method, req.url, '→', proxyRes.statusCode);
+          });
+        }
+      }
     }
   }
 })

@@ -2,42 +2,74 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiMap, FiPlus, FiSearch, FiEdit2, FiTrash2,
-    FiMapPin, FiTruck, FiUsers, FiClock, FiX
+    FiMapPin, FiTruck, FiUsers, FiClock, FiX, FiRefreshCw
 } from 'react-icons/fi';
+import { RouteService } from '../../services/transportService';
 
 const RouteManagement = () => {
     // --- State ---
-    const [routes, setRoutes] = useState(() => {
-        const saved = localStorage.getItem('lms_transport_routes');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Route 01: North City', code: 'R-01', vehicle: 'KA-01-AB-1234', capacity: 50, enrolled: 42, distance: '15 km', time: '45 mins', pickupPoints: ['Central Station', 'Mall Road', 'Station Area'], dropPoints: ['Main Gate', 'Hostel Block'] },
-            { id: 2, name: 'Route 02: South City', code: 'R-02', vehicle: 'KA-05-XY-9876', capacity: 20, enrolled: 18, distance: '12 km', time: '40 mins', pickupPoints: ['South Park', 'Market Square'], dropPoints: ['College Campus'] },
-        ];
-    });
-
+    const [routes, setRoutes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRoute, setEditingRoute] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', code: '', vehicle: '', capacity: '', distance: '', time: '', pickupPoints: [], dropPoints: []
+        routeName: '',
+        routeCode: '',
+        pickupPoints: [],
+        dropPoints: [],
+        distanceKm: '',
+        estimatedTimeMinutes: '',
+        active: true
     });
     const [newPickupPoint, setNewPickupPoint] = useState('');
     const [newDropPoint, setNewDropPoint] = useState('');
 
-    // --- Persist Data ---
+    // --- Fetch Routes from Backend ---
+    const fetchRoutes = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await RouteService.getAllRoutes();
+            setRoutes(data || []);
+        } catch (err) {
+            setError(err.message);
+            console.error('Failed to fetch routes:', err);
+            alert('Failed to fetch routes: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Load routes on mount
     useEffect(() => {
-        localStorage.setItem('lms_transport_routes', JSON.stringify(routes));
-    }, [routes]);
+        fetchRoutes();
+    }, []);
 
     // --- Handlers ---
     const handleOpenModal = (route = null) => {
         if (route) {
             setEditingRoute(route);
-            setFormData(route);
+            setFormData({
+                routeName: route.routeName || '',
+                routeCode: route.routeCode || '',
+                pickupPoints: route.pickupPoints || [],
+                dropPoints: route.dropPoints || [],
+                distanceKm: route.distanceKm || '',
+                estimatedTimeMinutes: route.estimatedTimeMinutes || '',
+                active: route.active !== undefined ? route.active : true
+            });
         } else {
             setEditingRoute(null);
             setFormData({
-                name: '', code: '', vehicle: '', capacity: '', enrolled: 0, distance: '', time: '', pickupPoints: [], dropPoints: []
+                routeName: '',
+                routeCode: '',
+                pickupPoints: [],
+                dropPoints: [],
+                distanceKm: '',
+                estimatedTimeMinutes: '',
+                active: true
             });
         }
         setIsModalOpen(true);
@@ -48,30 +80,68 @@ const RouteManagement = () => {
         setEditingRoute(null);
     };
 
-    const handleDelete = (id) => {
-        const route = routes.find(r => r.id === id);
-        if (route.enrolled > 0) {
-            alert('Cannot delete a route with enrolled students!');
-            return;
-        }
+    const handleDelete = async (routeCode) => {
         if (window.confirm('Are you sure you want to delete this route?')) {
-            setRoutes(routes.filter(r => r.id !== id));
+            try {
+                setLoading(true);
+                await RouteService.deleteRoute(routeCode);
+                setRoutes(routes.filter(r => r.routeCode !== routeCode));
+            } catch (error) {
+                console.error('Error deleting route:', error);
+                alert('Failed to delete route: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (editingRoute) {
-            setRoutes(routes.map(r => r.id === editingRoute.id ? { ...formData, id: r.id } : r));
-        } else {
-            setRoutes([...routes, { ...formData, id: Date.now(), enrolled: 0 }]);
+
+        if (!formData.pickupPoints || formData.pickupPoints.length === 0) {
+            alert('Please add at least one pickup point');
+            return;
         }
-        handleCloseModal();
+        if (!formData.dropPoints || formData.dropPoints.length === 0) {
+            alert('Please add at least one drop point');
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            // Prepare payload matching backend RouteWay model
+            const payload = {
+                routeName: formData.routeName,
+                routeCode: formData.routeCode,
+                pickupPoints: formData.pickupPoints,
+                dropPoints: formData.dropPoints,
+                distanceKm: parseFloat(formData.distanceKm) || null,
+                estimatedTimeMinutes: parseInt(formData.estimatedTimeMinutes) || null,
+                active: formData.active
+            };
+
+            if (editingRoute) {
+                // Update existing route
+                const updated = await RouteService.updateRoute(editingRoute.routeCode, payload);
+                setRoutes(routes.map(r => r.routeCode === editingRoute.routeCode ? updated : r));
+            } else {
+                // Create new route
+                const newRoute = await RouteService.addRoute(payload);
+                setRoutes([...routes, newRoute]);
+            }
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error saving route:', error);
+            alert('Failed to save route: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const filteredRoutes = routes.filter(r =>
-        r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.code.toLowerCase().includes(searchTerm.toLowerCase())
+        (r.routeName && r.routeName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.routeCode && r.routeCode.toString().toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -88,26 +158,40 @@ const RouteManagement = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="btn-primary"
-                    style={{
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                        color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600'
-                    }}
-                >
-                    <FiPlus /> Create Route
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={fetchRoutes}
+                        disabled={loading}
+                        style={{
+                            background: loading ? '#94a3b8' : '#10b981',
+                            color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                            cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600',
+                            opacity: loading ? 0.6 : 1
+                        }}
+                    >
+                        <FiRefreshCw /> {loading ? 'Loading...' : 'Refresh'}
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        disabled={loading}
+                        className="btn-primary"
+                        style={{
+                            background: loading ? '#94a3b8' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            color: 'white', padding: '10px 20px', borderRadius: '8px', border: 'none',
+                            cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: '600',
+                            opacity: loading ? 0.6 : 1
+                        }}
+                    >
+                        <FiPlus /> Create Route
+                    </button>
+                </div>
             </div>
 
             {/* Routes Grid - Only 2 cards per row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '28px', maxWidth: '100%' }}>
                 <AnimatePresence>
                     {filteredRoutes.map(route => {
-                        const occupancy = (route.enrolled / route.capacity) * 100;
-                        const startPoint = route.pickupPoint || 'Not Set';
-                        const endPoint = route.dropPoint || 'Not Set';
+                        const vehiclesCount = (route.vehicles && route.vehicles.length) || 0;
                         return (
                             <motion.div
                                 key={route.id}
@@ -120,16 +204,16 @@ const RouteManagement = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6366f1', background: '#e0e7ff', padding: '4px 12px', borderRadius: '6px' }}>{route.code}</span>
-                                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>{route.name}</h3>
+                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6366f1', background: '#e0e7ff', padding: '4px 12px', borderRadius: '6px' }}>R-{route.routeCode}</span>
+                                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>{route.routeName}</h3>
                                         </div>
                                         <div style={{ fontSize: '14px', color: '#64748b', marginTop: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <FiTruck size={14} /> {route.vehicle || 'No Vehicle Assigned'}
+                                            <FiTruck size={14} /> {vehiclesCount > 0 ? `${vehiclesCount} vehicle(s) assigned` : 'No vehicles assigned'}
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <button onClick={() => handleOpenModal(route)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', padding: '8px', borderRadius: '8px' }}><FiEdit2 size={16} /></button>
-                                        <button onClick={() => handleDelete(route.id)} style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '8px', borderRadius: '8px' }}><FiTrash2 size={16} /></button>
+                                        <button onClick={() => handleDelete(route.routeCode)} style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '8px', borderRadius: '8px' }}><FiTrash2 size={16} /></button>
                                     </div>
                                 </div>
 
@@ -162,22 +246,14 @@ const RouteManagement = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#475569', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiClock /> {route.time}</div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiMap /> {route.distance}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiClock /> {route.estimatedTimeMinutes ? `${route.estimatedTimeMinutes} mins` : 'N/A'}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiMap /> {route.distanceKm ? `${route.distanceKm} km` : 'N/A'}</div>
                                 </div>
 
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                                        <span style={{ color: '#64748b' }}>Occupancy ({route.enrolled}/{route.capacity})</span>
-                                        <span style={{ fontWeight: '600', color: occupancy > 90 ? '#ef4444' : '#10b981' }}>{occupancy.toFixed(0)}%</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${occupancy}%` }}
-                                            style={{ height: '100%', background: occupancy > 90 ? '#ef4444' : '#10b981', borderRadius: '4px' }}
-                                        />
-                                    </div>
+                                <div style={{ background: route.active ? '#ecfdf5' : '#fef2f2', padding: '8px 12px', borderRadius: '6px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: '600', color: route.active ? '#10b981' : '#ef4444' }}>
+                                        {route.active ? '✅ Active' : '❌ Inactive'}
+                                    </span>
                                 </div>
                             </motion.div>
                         );
@@ -214,18 +290,39 @@ const RouteManagement = () => {
 
                             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Route Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. North City Route" />
-                                    <FormInput label="Route Code" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} required placeholder="e.g. R-01" />
+                                    <FormInput
+                                        label="Route Name"
+                                        value={formData.routeName}
+                                        onChange={e => setFormData({ ...formData, routeName: e.target.value })}
+                                        required
+                                        placeholder="e.g. North City Route"
+                                    />
+                                    <FormInput
+                                        label="Route Code"
+                                        type="number"
+                                        value={formData.routeCode}
+                                        onChange={e => setFormData({ ...formData, routeCode: e.target.value })}
+                                        required
+                                        placeholder="e.g. 101"
+                                    />
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Est. Distance" value={formData.distance} onChange={e => setFormData({ ...formData, distance: e.target.value })} placeholder="e.g. 15 km" />
-                                    <FormInput label="Est. Time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} placeholder="e.g. 45 mins" />
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <FormInput label="Vehicle Assignment" value={formData.vehicle} onChange={e => setFormData({ ...formData, vehicle: e.target.value })} placeholder="e.g. KA-01-AB-1234" />
-                                    <FormInput label="Total Capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || '' })} required />
+                                    <FormInput
+                                        label="Distance (km)"
+                                        type="number"
+                                        step="0.1"
+                                        value={formData.distanceKm}
+                                        onChange={e => setFormData({ ...formData, distanceKm: e.target.value })}
+                                        placeholder="e.g. 15.5"
+                                    />
+                                    <FormInput
+                                        label="Est. Time (minutes)"
+                                        type="number"
+                                        value={formData.estimatedTimeMinutes}
+                                        onChange={e => setFormData({ ...formData, estimatedTimeMinutes: e.target.value })}
+                                        placeholder="e.g. 45"
+                                    />
                                 </div>
 
                                 {/* Pickup Points */}
@@ -330,8 +427,35 @@ const RouteManagement = () => {
                                     </div>
                                 </div>
 
-                                <button type="submit" className="btn-primary" style={{ marginTop: '16px', padding: '12px', background: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}>
-                                    {editingRoute ? 'Update Route' : 'Create Route'}
+                                {/* Active Status Toggle */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="active-toggle"
+                                        checked={formData.active}
+                                        onChange={e => setFormData({ ...formData, active: e.target.checked })}
+                                        style={{ width: 18, height: 18 }}
+                                    />
+                                    <label htmlFor="active-toggle" style={{ fontSize: '14px', fontWeight: '500', color: '#334155' }}>Route is Active</label>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="btn-primary"
+                                    style={{
+                                        marginTop: '16px',
+                                        padding: '12px',
+                                        background: loading ? '#94a3b8' : '#4f46e5',
+                                        color: 'white',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        fontWeight: '600',
+                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                        opacity: loading ? 0.6 : 1
+                                    }}
+                                >
+                                    {loading ? 'Saving...' : (editingRoute ? 'Update Route' : 'Create Route')}
                                 </button>
                             </form>
                         </motion.div>
@@ -342,7 +466,7 @@ const RouteManagement = () => {
     );
 };
 
-const FormInput = ({ label, type = "text", value, onChange, placeholder, required = false }) => (
+const FormInput = ({ label, type = "text", value, onChange, placeholder, required = false, step }) => (
     <div>
         <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>{label} {required && <span style={{ color: '#ef4444' }}>*</span>}</label>
         <input
@@ -351,6 +475,7 @@ const FormInput = ({ label, type = "text", value, onChange, placeholder, require
             onChange={onChange}
             placeholder={placeholder}
             required={required}
+            step={step}
             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', transition: 'border 0.2s' }}
             onFocus={e => e.target.style.borderColor = '#6366f1'}
             onBlur={e => e.target.style.borderColor = '#e2e8f0'}

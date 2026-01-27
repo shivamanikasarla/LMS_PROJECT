@@ -76,7 +76,7 @@ const VehicleManagement = () => {
             setEditingVehicle(vehicle);
             setFormData({
                 ...vehicle,
-                route: vehicle.route ? vehicle.route.id : null  // Extract route id
+                route: vehicle.route ? vehicle.route.routeCode : null  // Extract routeCode
             });
         } else {
             setEditingVehicle(null);
@@ -122,10 +122,10 @@ const VehicleManagement = () => {
         try {
             setLoading(true);
 
-            // Prepare payload - convert route id to object format
+            // Prepare payload - convert route id to routeCode object format expected by backend
             const payload = {
                 ...formData,
-                route: formData.route ? { id: formData.route } : null
+                route: formData.route ? { routeCode: parseInt(formData.route) } : null
             };
 
             if (editingVehicle) {
@@ -143,6 +143,8 @@ const VehicleManagement = () => {
                 const newVehicle = await TransportService.Vehicle.addVehicle(payload);
                 setVehicles([...vehicles, newVehicle]);
                 handleCloseModal();
+                // Refresh list to ensure relationships are loaded
+                fetchVehicles();
             }
         } catch (error) {
             console.error('Error saving vehicle:', error);
@@ -267,7 +269,7 @@ const VehicleManagement = () => {
                                         <td style={{ padding: '16px' }}>
                                             {vehicle.route ? (
                                                 <span style={{ background: '#f1f5f9', padding: '4px 10px', borderRadius: 4, fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>
-                                                    {vehicle.route.routeCode || vehicle.route.routeName || 'Route Assigned'}
+                                                    {vehicle.route.routeName} {vehicle.route.routeCode ? `(R-${vehicle.route.routeCode})` : ''}
                                                 </span>
                                             ) : (
                                                 <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>Unassigned</span>
@@ -397,7 +399,7 @@ const VehicleManagement = () => {
                                         >
                                             <option value="">No Route (Unassigned)</option>
                                             {routes.map(route => (
-                                                <option key={route.id} value={route.id}>
+                                                <option key={route.id} value={route.routeCode}>
                                                     {route.routeCode ? `R-${route.routeCode}` : ''} {route.routeName}
                                                 </option>
                                             ))}

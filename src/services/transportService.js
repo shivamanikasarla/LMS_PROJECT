@@ -3,25 +3,46 @@ const API_BASE_URL = "/transport";
 
 // Get token from localStorage or sessionStorage
 const getAuthToken = () => {
-    // First try environment variable (for development)
-    const envToken = import.meta.env.VITE_AUTH_TOKEN;
-    if (envToken) return envToken;
+    // Debugging: Check all sources
+    const local = localStorage.getItem('authToken');
+    const session = sessionStorage.getItem('authToken');
+    const env = import.meta.env.VITE_AUTH_TOKEN;
 
-    // Fallback to localStorage/sessionStorage
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    console.groupCollapsed('🔐 Auth Token Debug');
+    console.log('Local Storage:', local ? '✅ Found' : '❌ Empty');
+    console.log('Session Storage:', session ? '✅ Found' : '❌ Empty');
+    console.log('Env Var (VITE_AUTH_TOKEN):', env ? '✅ Found' : '❌ Empty/Undefined');
+    console.groupEnd();
+
+    // 1. Try localStorage/sessionStorage first (Active session)
+    const storageToken = local || session;
+    if (storageToken) {
+        return storageToken;
+    }
+
+    // 2. Fallback to environment variable (Dev/Testing)
+    if (env) {
+        console.log('✅ Using environment token');
+        return env;
+    }
+
+    console.error('🚨 CRITICAL: No auth token found in Storage OR Environment!');
+    return null;
 };
 
 // Common headers for all requests
 const getHeaders = () => {
     const token = getAuthToken();
-    return {
+    const headers = {
         "Content-Type": "application/json",
         ...(token && { "Authorization": `Bearer ${token}` })
     };
+    console.log('📤 Request headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'None' });
+    return headers;
 };
 
-// Error handler
-const handleResponse = async (response) => {
+// Error handler with improved debugging
+const handleResponse = async (response, requestUrl = '') => {
     if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -31,6 +52,15 @@ const handleResponse = async (response) => {
             errorMessage = errorJson.message || errorMessage;
         } catch {
             errorMessage = errorText || errorMessage;
+        }
+
+        // Add connection-specific error messages
+        if (response.status === 0 || !response.status) {
+            errorMessage = `❌ Cannot connect to backend!\n\nPlease check:\n1. Backend is running\n2. Backend URL is correct in .env file\n3. Network connection\n\nRequested: ${requestUrl}`;
+        } else if (response.status === 404) {
+            errorMessage = `❌ API endpoint not found (404)\n\nEndpoint: ${requestUrl}\n\nMake sure your friend's backend has the correct endpoint.`;
+        } else if (response.status === 401 || response.status === 403) {
+            errorMessage = `❌ Authentication failed (${response.status})\n\nYou may need to add an auth token in the .env file.\n\n${errorMessage}`;
         }
 
         throw new Error(errorMessage);
@@ -124,9 +154,13 @@ export const VehicleService = {
     // Delete vehicle
     deleteVehicle: async (vehicleNumber) => {
         try {
+            const headers = getHeaders();
+            console.log('🗑️ DELETE Request:', `${API_BASE_URL}/vehicles/${vehicleNumber}`);
+            console.log('🔑 Headers being sent:', headers);
+
             const response = await fetch(`${API_BASE_URL}/vehicles/${vehicleNumber}`, {
                 method: "DELETE",
-                headers: getHeaders()
+                headers: headers
             });
             return await handleResponse(response);
         } catch (error) {
