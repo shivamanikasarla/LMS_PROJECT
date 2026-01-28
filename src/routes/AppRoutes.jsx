@@ -19,11 +19,15 @@ const FeeManagement = lazy(() => import('../pages/FeeManagement/fee'));
 const CreateFee = lazy(() => import('../pages/FeeManagement/CreateFee'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 const Transport = lazy(() => import('../pages/Transport/Transport'));
+const Login = lazy(() => import('../pages/Auth/Login'));
 
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
+        {/* Public Routes (No Sidebar) */}
+        <Route path="/login" element={<Login />} />
+
         {/* Main Application Routes wrapped in Dashboard Layout */}
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<Home />} />

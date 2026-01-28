@@ -39,42 +39,74 @@ const LiveTracking = () => {
         setVehicles(initVehicles);
     }, []);
 
-    // --- Simulate Movement ---
+    // --- WebSocket Live Tracking ---
     useEffect(() => {
-        const interval = setInterval(() => {
-            setVehicles(prev => prev.map(v => {
-                // Random walk
-                let newX = v.x + (Math.random() - 0.5) * 5;
-                let newY = v.y + (Math.random() - 0.5) * 5;
+        const socket = new WebSocket("ws://192.168.1.16:9191/ws/live-tracking");
 
-                // Boundary checks
-                newX = Math.max(5, Math.min(95, newX));
-                newY = Math.max(5, Math.min(95, newY));
+        socket.onopen = () => {
+            console.log("✅ WebSocket connected");
+        };
 
-                const isStopped = Math.random() > 0.8;
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
 
-                return {
-                    ...v,
-                    x: newX,
-                    y: newY,
-                    speed: isStopped ? 0 : Math.floor(Math.random() * 20 + 30),
-                    status: isStopped ? 'Stopped' : 'Moving',
-                    lastUpdate: 'Just now'
-                };
-            }));
-        }, 3000);
+                // Extract vehicle ID safely (handle DTO flat format or Entity nested format)
+                const incomingVehicleId = data.vehicleId || data.vehicle?.id;
 
-        return () => clearInterval(interval);
+                // Map Backend Enum (ACTIVE, STOPPED, etc.) to Frontend UI Status
+                let mappedStatus = data.status;
+                if (data.status === 'ACTIVE') mappedStatus = 'Moving';
+                if (data.status === 'IDLE') mappedStatus = 'Stopped';
+                if (data.status === 'OFFLINE') mappedStatus = 'Offline';
+                if (data.status === 'STOPPED') mappedStatus = 'Stopped';
+
+                // Map Latitude/Longitude to X/Y for the demo grid (Assuming usage of X/Y or raw lat/long as % for demo)
+                // If backend sends specific 'x' and 'y' for the map, prefer those. 
+                // Otherwise fall back to lat/long (which might need scaling in a real app, but passing as-is for now).
+                const newX = data.x !== undefined ? data.x : (data.latitude || 0);
+                const newY = data.y !== undefined ? data.y : (data.longitude || 0);
+
+                setVehicles(prev =>
+                    prev.map(v =>
+                        Number(v.id) === Number(incomingVehicleId)
+                            ? {
+                                ...v,
+                                x: newX,
+                                y: newY,
+                                speed: data.speed,
+                                status: mappedStatus,
+                                lastUpdate: 'Just now'
+                            }
+                            : v
+                    )
+                );
+            } catch (err) {
+                console.warn("⚠️ Ignored non-JSON WebSocket message:", event.data);
+            }
+        };
+
+        socket.onerror = (err) => {
+            console.error("❌ WebSocket error", err);
+        };
+
+        socket.onclose = () => {
+            console.log(" WebSocket disconnected");
+        };
+
+        return () => {
+            socket.close();
+        };
     }, []);
 
     const getStatusColor = (status) => {
-        switch (status) {
-            case 'Moving': return '#1bce72ff';
-            case 'Stopped': return '#f59e0b';
-            case 'Offline': return '#94a3b8';
-            case 'Alert': return '#ef4444';
-            default: return '#10b981';
-        }
+        // Handle both Frontend 'Moving' and Backend 'ACTIVE' formats
+        const s = status?.toUpperCase();
+        if (s === 'MOVING' || s === 'ACTIVE') return '#1bce72ff';
+        if (s === 'STOPPED' || s === 'IDLE') return '#f59e0b';
+        if (s === 'OFFLINE') return '#94a3b8';
+        if (s === 'ALERT') return '#ef4444';
+        return '#10b981';
     };
 
     return (

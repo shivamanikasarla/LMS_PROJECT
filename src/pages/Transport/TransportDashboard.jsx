@@ -12,7 +12,7 @@ const TransportDashboard = () => {
 
     // Color helper
     const colors = {
-        text: isDark ? '#f1f5f9' : '#1e293b',
+        text: isDark ? '#1970c6ff' : '#1e293b',
         textSecondary: isDark ? '#e2e8f0' : '#334155',
         textMuted: isDark ? '#94a3b8' : '#64748b',
         cardBg: isDark ? '#1e293b' : '#ffffff',
@@ -158,7 +158,7 @@ const TransportDashboard = () => {
                                         animate={{ height: `${pct}%` }}
                                         style={{
                                             width: '100%', maxWidth: '40px',
-                                            background: pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#3b82f6',
+                                            background: pct > 90 ? '#f30808ff' : pct > 70 ? '#f59e0b' : '#3b82f6',
                                             borderRadius: '8px 8px 0 0',
                                             minHeight: '4px'
                                         }}

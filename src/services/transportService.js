@@ -8,12 +8,6 @@ const getAuthToken = () => {
     const session = sessionStorage.getItem('authToken');
     const env = import.meta.env.VITE_AUTH_TOKEN;
 
-    console.groupCollapsed('🔐 Auth Token Debug');
-    console.log('Local Storage:', local ? '✅ Found' : '❌ Empty');
-    console.log('Session Storage:', session ? '✅ Found' : '❌ Empty');
-    console.log('Env Var (VITE_AUTH_TOKEN):', env ? '✅ Found' : '❌ Empty/Undefined');
-    console.groupEnd();
-
     // 1. Try localStorage/sessionStorage first (Active session)
     const storageToken = local || session;
     if (storageToken) {
@@ -37,7 +31,6 @@ const getHeaders = () => {
         "Content-Type": "application/json",
         ...(token && { "Authorization": `Bearer ${token}` })
     };
-    console.log('📤 Request headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'None' });
     return headers;
 };
 
@@ -56,7 +49,7 @@ const handleResponse = async (response, requestUrl = '') => {
 
         // Add connection-specific error messages
         if (response.status === 0 || !response.status) {
-            errorMessage = `❌ Cannot connect to backend!\n\nPlease check:\n1. Backend is running\n2. Backend URL is correct in .env file\n3. Network connection\n\nRequested: ${requestUrl}`;
+            errorMessage = `❌ Cannot connect to backend!\n\nPlease check:\n1. Backend is running at http://192.168.1.16:9191\n2. Network connection\n\nRequested: ${requestUrl}`;
         } else if (response.status === 404) {
             errorMessage = `❌ API endpoint not found (404)\n\nEndpoint: ${requestUrl}\n\nMake sure your friend's backend has the correct endpoint.`;
         } else if (response.status === 401 || response.status === 403) {
@@ -155,8 +148,7 @@ export const VehicleService = {
     deleteVehicle: async (vehicleNumber) => {
         try {
             const headers = getHeaders();
-            console.log('🗑️ DELETE Request:', `${API_BASE_URL}/vehicles/${vehicleNumber}`);
-            console.log('🔑 Headers being sent:', headers);
+
 
             const response = await fetch(`${API_BASE_URL}/vehicles/${vehicleNumber}`, {
                 method: "DELETE",
@@ -517,7 +509,36 @@ export const GPSService = {
  * ===================================================== */
 
 export const AttendanceService = {
-    // Mark attendance by QR code
+    // Get attendance records
+    getAttendance: async (date, routeId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/attendance?date=${date}&routeId=${routeId}`, {
+                method: "GET",
+                headers: getHeaders()
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error("Error fetching attendance:", error);
+            throw error;
+        }
+    },
+
+    // Mark attendance (Manual or QR)
+    markAttendance: async (attendanceData) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/attendance`, {
+                method: "POST", // Using POST for both create and update as per common Spring Boot patterns
+                headers: getHeaders(),
+                body: JSON.stringify(attendanceData)
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error("Error marking attendance:", error);
+            throw error;
+        }
+    },
+
+    // Mark attendance by QR code (Legacy/Specific)
     markAttendanceByQR: async (attendanceData) => {
         try {
             const response = await fetch(`${API_BASE_URL}/attendance/qr/mark`, {
@@ -559,6 +580,50 @@ export const AttendanceService = {
 };
 
 /* =====================================================
+                     STUDENT SERVICES
+ * ===================================================== */
+
+export const StudentService = {
+    // Get all students
+    getAllStudents: async () => {
+        try {
+            // Using /getstudents as per AdminController to fetch only students
+            // Note: This endpoint is on the Admin backend (port 8081).
+            // We reuse the /users proxy since it points to the same root (192.168.1.22:8081).
+            // However, since we defined '/users' specifically as the proxy key, 
+            // we might need to add a new proxy for '/admin' to be safe, 
+            // OR we can just fetch via the '/users' proxy if the path rewrites allow it.
+            // But looking at vite config, it just proxies '/users'.
+            // To fetch '/admin/getstudents', we should ideally add a proxy for '/admin'.
+            // FOR NOW: Let's assume we update fetch call, but we MUST update vite config first.
+            const response = await fetch("/admin/getstudents", {
+                method: "GET",
+                headers: getHeaders()
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error("Error fetching students:", error);
+            throw error;
+        }
+    },
+
+    // Update student
+    updateStudent: async (studentId, studentData) => {
+        try {
+            const response = await fetch(`/users/${studentId}`, {
+                method: "PUT",
+                headers: getHeaders(),
+                body: JSON.stringify(studentData)
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error(`Error updating student ${studentId}:`, error);
+            throw error;
+        }
+    }
+};
+
+/* =====================================================
                    UTILITY FUNCTIONS
  * ===================================================== */
 
@@ -586,10 +651,49 @@ export const TransportService = {
     Conductor: ConductorService,
     GPS: GPSService,
     Attendance: AttendanceService,
+    Student: StudentService,
     Auth: {
         setToken: setAuthToken,
         removeToken: removeAuthToken,
-        isAuthenticated
+        isAuthenticated,
+        // Login function
+        login: async (email, password) => {
+            try {
+                const response = await fetch("/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Login failed");
+                }
+
+                // Handle different response types (JSON vs Plain Text Token)
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const data = await response.json();
+                    if (data.token) {
+                        setAuthToken(data.token);
+                        return data.user;
+                    } else if (data.accessToken) {
+                        setAuthToken(data.accessToken);
+                        return data.user;
+                    }
+                    return data;
+                } else {
+                    // Assume the response body IS the token (plain text string)
+                    const textToken = await response.text();
+                    if (textToken) {
+                        setAuthToken(textToken);
+                        return { email }; // Return dummy user object since backend only sent text
+                    }
+                }
+            } catch (error) {
+                console.error("Login Error:", error);
+                throw error;
+            }
+        }
     }
 };
 

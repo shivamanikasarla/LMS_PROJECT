@@ -58,6 +58,21 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             <SidebarItem to="/myapp" icon="phone" label="My App" />
             <SidebarItem to="/websites" icon="globe" label="Manage Website" />
             <SidebarItem to="/settings" icon="gear" label="Settings" />
+
+            {/* Logic to show Login or Logout */}
+            <div onClick={() => {
+              if (localStorage.getItem('authToken')) {
+                // Logout Logic
+                localStorage.removeItem('authToken');
+                window.location.href = '/login';
+              }
+            }}>
+              <SidebarItem
+                to={localStorage.getItem('authToken') ? "#" : "/login"}
+                icon={localStorage.getItem('authToken') ? "box-arrow-right" : "box-arrow-in-right"}
+                label={localStorage.getItem('authToken') ? "Log Out" : "Log In"}
+              />
+            </div>
           </div>
         </nav>
 

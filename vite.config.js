@@ -11,7 +11,8 @@ export default defineConfig({
       // Proxy all /transport API requests to Spring Boot backend
       '/transport': {
         // Use environment variable or default to friend's backend
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:9191',
+        target: process.env.VITE_BACKEND_URL || 'http://192.168.1.16:9191',
+
         changeOrigin: true,
         secure: false,
         // Bypass proxy for browser page requests (HTML)
@@ -19,30 +20,25 @@ export default defineConfig({
           if (req.headers.accept && req.headers.accept.includes('text/html')) {
             return req.url;
           }
-        },
-        // Explicitly preserve headers
-        headers: {
-          'Connection': 'keep-alive'
-        },
-        // Add logging for debugging
-        configure: (proxy, options) => {
-          proxy.on('error', (err, req, res) => {
-            console.log('❌ Proxy error:', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log('🔄 Proxying:', req.method, req.url, '→', options.target);
-            // Log if Authorization header is present
-            const authHeader = req.headers['authorization'];
-            if (authHeader) {
-              console.log('✅ Auth header present:', authHeader.substring(0, 20) + '...');
-            } else {
-              console.log('⚠️  No Authorization header');
-            }
-          });
-          proxy.on('proxyRes', (proxyRes, req, res) => {
-            console.log('📥 Response:', req.method, req.url, '→', proxyRes.statusCode);
-          });
         }
+      },
+      // Proxy for Users Service
+      '/users': {
+        target: 'http://192.168.1.22:8081',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Proxy for Admin Service
+      '/admin': {
+        target: 'http://192.168.1.22:8081',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Proxy for Auth Service
+      '/auth': {
+        target: 'http://192.168.1.22:8081',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }
