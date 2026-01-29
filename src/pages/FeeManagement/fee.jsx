@@ -12,19 +12,12 @@ import FeePayments from './FeePayments';
 import FeeRefunds from './FeeRefunds';
 import FeeSettings from './FeeSettings';
 import FeeBatches from './FeeBatches';
+import FeeInstallments from './FeeInstallments';
 
 import { FaRupeeSign } from 'react-icons/fa';
 
 // --- FeeDashboard Component ---
 const FeeDashboard = () => {
-    const kpiData = [
-        { title: "Total Collection", value: "₹24,50,000", icon: <FaRupeeSign />, color: "linear-gradient(135deg, #10b981 0%, #059669 100%)", subtitle: "This Year" },
-        { title: "Pending Amount", value: "₹4,20,500", icon: <FiAlertCircle />, color: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", subtitle: "125 Students" },
-        { title: "Overdue Amount", value: "₹1,15,000", icon: <FiActivity />, color: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", subtitle: "Action Required" },
-        { title: "Monthly Revenue", value: "₹3,40,000", icon: <FiTrendingUp />, color: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", subtitle: "Jan 2026" },
-    ];
-
-
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeActionId, setActiveActionId] = useState(null);
@@ -36,6 +29,51 @@ const FeeDashboard = () => {
     const [batchFilter, setBatchFilter] = useState('All Batches');
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableBatches, setAvailableBatches] = useState([]);
+
+    // Calcluate KPIs based on filters
+    const kpiData = React.useMemo(() => {
+        let totalCollection = 0;
+        let totalPending = 0;
+        let totalOverdue = 0;
+        let monthlyRevenue = 0;
+
+        const filteredBatches = availableBatches.filter(b => {
+            const matchCourse = courseFilter === 'All Courses' || b.course === courseFilter;
+            const matchBatch = batchFilter === 'All Batches' || b.name === batchFilter;
+            return matchCourse && matchBatch;
+        });
+
+        filteredBatches.forEach(batch => {
+            if (batch.studentList) {
+                batch.studentList.forEach(student => {
+                    const paid = Number(student.paidAmount || 0);
+                    const total = Number(student.totalFee || 0);
+                    const pending = Math.max(0, total - paid);
+
+                    totalCollection += paid;
+                    totalPending += pending;
+
+                    // Simple overdue check (legacy or status based)
+                    if (student.status === 'OVERDUE' || (pending > 0 && new Date() > new Date(batch.feeDetails?.dueDate || '2025-12-31'))) {
+                        totalOverdue += pending;
+                    }
+
+                    // Mock Monthly Revenue (e.g. 15% of total collection for demo purposes as transaction dates aren't persistent)
+                    // In a real app, we would sum transactions where date is in current month.
+                    monthlyRevenue += (paid * 0.18);
+                });
+            }
+        });
+
+        const formatCurrency = (val) => "₹" + val.toLocaleString('en-IN');
+
+        return [
+            { title: "Total Collection", value: formatCurrency(totalCollection), icon: <FaRupeeSign />, color: "linear-gradient(135deg, #10b981 0%, #059669 100%)", subtitle: "This Year" },
+            { title: "Pending Amount", value: formatCurrency(totalPending), icon: <FiAlertCircle />, color: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", subtitle: `${filteredBatches.reduce((acc, b) => acc + (b.studentList?.length || 0), 0)} Students` },
+            { title: "Overdue Amount", value: formatCurrency(totalOverdue), icon: <FiActivity />, color: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", subtitle: "Action Required" },
+            { title: "Monthly Revenue", value: formatCurrency(monthlyRevenue), icon: <FiTrendingUp />, color: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", subtitle: "Jan 2026" },
+        ];
+    }, [availableBatches, courseFilter, batchFilter]);
 
     React.useEffect(() => {
         const handleClickOutside = () => setActiveActionId(null);
@@ -226,7 +264,7 @@ const FeeDashboard = () => {
                                 </div>
 
                                 {/* Legend */}
-                                <div style={{ width: '100%', marginTop: 24, paddingRight: 8, maxHeight: 100, overflowY: 'auto' }}>
+                                <div className="no-scrollbar" style={{ width: '100%', marginTop: 24, maxHeight: 100, overflowY: 'auto' }}>
                                     {revenueData.map((item, index) => (
                                         <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, alignItems: 'center' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -399,6 +437,7 @@ const FeeManagement = () => {
     const tabs = [
         { id: 'dashboard', label: 'Overview', icon: <FiGrid /> },
         { id: 'batches', label: 'Batches', icon: <FiLayers /> },
+        { id: 'installments', label: 'Installments', icon: <FiList /> },
         { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
         { id: 'refunds', label: 'Refunds', icon: <FiRefreshCcw /> },
         { id: 'settings', label: 'Settings', icon: <FiSettings /> },
@@ -442,6 +481,7 @@ const FeeManagement = () => {
                 >
                     {activeTab === 'dashboard' && <FeeDashboard />}
                     {activeTab === 'batches' && <FeeBatches />}
+                    {activeTab === 'installments' && <FeeInstallments />}
                     {activeTab === 'payments' && <FeePayments setActiveTab={setActiveTab} />}
                     {activeTab === 'refunds' && <FeeRefunds />}
                     {activeTab === 'settings' && <FeeSettings />}

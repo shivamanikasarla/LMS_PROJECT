@@ -49,7 +49,7 @@ const BasicDetails = ({ data, onChange }) => (
             <div className="form-group">
                 <label className="form-label">Amount (₹) *</label>
                 <div style={{ position: 'relative' }}>
-                    <FiDollarSign style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                    <span style={{ position: 'absolute', left: 14, top: 13, color: '#64748b', fontSize: 16, fontWeight: 600 }}>₹</span>
                     <input
                         type="number"
                         name="amount"
@@ -117,27 +117,48 @@ const BasicDetails = ({ data, onChange }) => (
     </motion.div>
 );
 
-const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searchableStudents, handleStudentSearchAdd, removeStudent, availableBatches }) => {
+const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searchableStudents, handleStudentSearchAdd, removeStudent, availableBatches, availableCourses }) => {
     return (
         <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
             <SectionHeader icon={FiUsers} title="Assign Fee To" description="Select specific students or batches for this fee" />
 
-            {/* Batch Filter */}
-            <div className="form-group" style={{ marginBottom: 24 }}>
-                <label className="form-label">Filter by Batch (Optional)</label>
-                <div style={{ position: 'relative' }}>
-                    <FiFilter style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
-                    <select
-                        className="form-select"
-                        style={{ paddingLeft: 38 }}
-                        value={data.batch}
-                        onChange={(e) => setData({ ...data, batch: e.target.value })}
-                    >
-                        <option value="">All Batches</option>
-                        {availableBatches.map(b => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                    </select>
+            {/* Course & Batch Filters */}
+            <div className="form-grid" style={{ marginBottom: 24, gridTemplateColumns: '1fr 1fr' }}>
+                <div className="form-group">
+                    <label className="form-label">Filter by Course</label>
+                    <div style={{ position: 'relative' }}>
+                        <FiLayers style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                        <select
+                            className="form-select"
+                            style={{ paddingLeft: 38 }}
+                            value={data.course}
+                            onChange={(e) => setData({ ...data, course: e.target.value, batch: '' })}
+                        >
+                            <option value="">All Courses</option>
+                            {availableCourses.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Filter by Batch</label>
+                    <div style={{ position: 'relative' }}>
+                        <FiFilter style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                        <select
+                            className="form-select"
+                            style={{ paddingLeft: 38 }}
+                            value={data.batch}
+                            onChange={(e) => setData({ ...data, batch: e.target.value })}
+                            disabled={!data.course}
+                        >
+                            <option value="">{data.course ? 'All Batches' : 'Select Course First'}</option>
+                            {availableBatches.filter(b => !data.course || b.course === data.course).map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -218,67 +239,21 @@ const PaymentConfiguration = ({ data, setData }) => {
             <SectionHeader icon={FiCreditCard} title="Payment Schedule & Rules" description="Configure when and how the fee should be paid" />
 
             <div className="form-group" style={{ marginBottom: 24 }}>
-                <label className="form-label">Payment Schedule Structure</label>
-                <select
-                    className="form-select"
-                    value={data.schedule}
-                    onChange={(e) => setData({ ...data, schedule: e.target.value })}
-                >
-                    <option value="OneTime">One-Time Payment</option>
-                    <option value="Monthly">Monthly</option>
-                    <option value="Quarterly">Quarterly</option>
-                    <option value="4Months">Every 4 Months</option>
-                    <option value="HalfYearly">Half Yearly (6 Months)</option>
-                    <option value="Yearly">Yearly</option>
-                    <option value="Installments">Custom Installments</option>
-                </select>
+                <label className="form-label">Due Date (Final Deadline)</label>
+                <div style={{ position: 'relative' }}>
+                    <FiCalendar style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                    <input
+                        type="date"
+                        className="form-input"
+                        style={{ paddingLeft: 38 }}
+                        value={data.dueDate}
+                        onChange={(e) => setData({ ...data, dueDate: e.target.value })}
+                    />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+                    * Installment plans can be configured in the Installments module after creating the fee.
+                </div>
             </div>
-
-            {data.schedule === 'Installments' ? (
-                <div className="timeline-container" style={{ paddingLeft: 24, borderLeft: '2px solid #e2e8f0', marginLeft: 12 }}>
-                    {data.installments.map((inst, index) => (
-                        <div className="timeline-item" key={inst.id} style={{ marginBottom: 24, position: 'relative' }}>
-                            <div className="timeline-dot" style={{ position: 'absolute', left: -31, top: 12, width: 14, height: 14, borderRadius: '50%', background: 'var(--primary-gradient)', border: '2px solid white', boxShadow: '0 0 0 1px #e2e8f0' }}></div>
-                            <div className="glass-card" style={{ padding: 16, border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.4)' }}>
-                                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 2, minWidth: 200 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Installment Name</label>
-                                        <input type="text" className="form-input" value={inst.name} onChange={e => updateInstallment(inst.id, 'name', e.target.value)} />
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: 100 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>% of Total</label>
-                                        <input type="number" className="form-input" value={inst.percent} onChange={e => updateInstallment(inst.id, 'percent', e.target.value)} />
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: 140 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Due Date</label>
-                                        <input type="date" className="form-input" value={inst.due} onChange={e => updateInstallment(inst.id, 'due', e.target.value)} />
-                                    </div>
-                                    {index > 0 && (
-                                        <button className="btn-icon" style={{ color: '#ef4444', height: 44, width: 44, background: '#fef2f2', border: '1px solid #fee2e2' }} onClick={() => removeInstallment(inst.id)}><FiX /></button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    <button className="btn-primary" onClick={addInstallment} style={{ width: 'auto', padding: '8px 16px', background: 'white', color: '#6366f1', border: '1px solid #e0e7ff', boxShadow: 'none' }}>
-                        <FiPlus /> Add Another Installment
-                    </button>
-                </div>
-            ) : (
-                <div className="form-group" style={{ marginBottom: 24 }}>
-                    <label className="form-label">Due Date</label>
-                    <div style={{ position: 'relative' }}>
-                        <FiCalendar style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
-                        <input
-                            type="date"
-                            className="form-input"
-                            style={{ paddingLeft: 38 }}
-                            value={data.dueDate}
-                            onChange={(e) => setData({ ...data, dueDate: e.target.value })}
-                        />
-                    </div>
-                </div>
-            )}
 
             <div className="section-divider"></div>
 
@@ -295,27 +270,12 @@ const PaymentConfiguration = ({ data, setData }) => {
                 </div>
                 {data.lateFeeEnabled && (
                     <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-                        <div className="form-group">
-                            <label className="form-label">Calculation Type</label>
-                            <div style={{ display: 'flex', gap: 12 }}>
-                                {['amount', 'percentage'].map(type => (
-                                    <button
-                                        key={type}
-                                        className={`nav-tab ${data.lateFeeType === type ? 'active' : ''}`}
-                                        onClick={() => setData({ ...data, lateFeeType: type })}
-                                        style={{ margin: 0, border: '1px solid var(--glass-border)', background: data.lateFeeType === type ? 'var(--primary-gradient)' : 'white' }}
-                                    >
-                                        {type === 'amount' ? 'Fixed Amount' : 'Percentage %'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
                         <div className="form-group" style={{ marginTop: 16 }}>
-                            <label className="form-label">Value</label>
+                            <label className="form-label">Late Fee Amount (₹)</label>
                             <input
                                 type="number"
                                 className="form-input"
-                                placeholder="Enter value"
+                                placeholder="Enter amount (e.g. 500)"
                                 value={data.lateFeeValue}
                                 onChange={(e) => setData({ ...data, lateFeeValue: e.target.value })}
                             />
@@ -385,24 +345,7 @@ const NotificationSettings = ({ data, setData, toggleNested }) => (
     <motion.div className="glass-card form-section" style={{ marginBottom: 100 }} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
         <SectionHeader icon={FiBell} title="Notifications & Automation" description="Configure automated alerts for this fee" />
         <div className="form-grid">
-            <div className="form-group">
-                <label className="form-label">Recipients</label>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    {['Student', 'Parent', 'Mentor'].map(role => {
-                        const key = `notify${role}`;
-                        return (
-                            <label key={role} className={`nav-tab ${data[key] ? 'active' : ''}`} style={{
-                                borderRadius: 12, padding: '10px 16px', background: data[key] ? '#eff6ff' : 'white',
-                                border: data[key] ? '1px solid #bfdbfe' : '1px solid #e2e8f0', color: data[key] ? '#2563eb' : 'var(--text-secondary)',
-                                margin: 0
-                            }}>
-                                <input type="checkbox" checked={data[key]} onChange={() => setData({ ...data, [key]: !data[key] })} style={{ display: 'none' }} />
-                                {role}
-                            </label>
-                        )
-                    })}
-                </div>
-            </div>
+
             <div className="form-group">
                 <label className="form-label">Triggers</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -448,7 +391,7 @@ const DiscountSettings = ({ data, setData }) => (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
                     <div className="form-grid" style={{ paddingTop: 12, borderTop: '1px solid var(--glass-border)' }}>
                         <div className="form-group">
-                            <label className="form-label">Concession Category</label>
+                            <label className="form-label">Discount Category</label>
                             <div style={{ display: 'flex', gap: 12 }}>
                                 {['Scholarship', 'Discount'].map(cat => (
                                     <button
@@ -567,12 +510,15 @@ const CreateFee = () => {
 
     const [studentSearch, setStudentSearch] = useState('');
     const [availableBatches, setAvailableBatches] = useState([]);
+    const [availableCourses, setAvailableCourses] = useState([]);
     const [searchableStudents, setSearchableStudents] = useState([]);
 
     // 1. Load Data on Mount
     useEffect(() => {
         const storedBatches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
         setAvailableBatches(storedBatches);
+        const courses = [...new Set(storedBatches.map(b => b.course).filter(Boolean))];
+        setAvailableCourses(courses);
 
         // Flatten all students initially
         const allStudents = storedBatches.flatMap(b => b.studentList || []);
@@ -588,12 +534,17 @@ const CreateFee = () => {
             } else {
                 setSearchableStudents([]);
             }
+        } else if (assignment.course) {
+            // Filter by Course ONLY (if no batch selected)
+            const courseBatches = availableBatches.filter(b => b.course === assignment.course);
+            const courseStudents = courseBatches.flatMap(b => b.studentList || []);
+            setSearchableStudents(courseStudents);
         } else {
             // Show all students if no batch selected
             const allStudents = availableBatches.flatMap(b => b.studentList || []);
             setSearchableStudents(allStudents);
         }
-    }, [assignment.batch, availableBatches]);
+    }, [assignment.batch, assignment.course, availableBatches]);
 
     const handleStudentSearchAdd = (student) => {
         if (!assignment.selectedStudents.find(s => s.id === student.id)) {
@@ -782,6 +733,7 @@ const CreateFee = () => {
                     setStudentSearch={setStudentSearch}
                     searchableStudents={searchableStudents}
                     availableBatches={availableBatches}
+                    availableCourses={availableCourses}
                     handleStudentSearchAdd={handleStudentSearchAdd}
                     removeStudent={removeStudent}
                 />

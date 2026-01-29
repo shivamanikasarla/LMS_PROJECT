@@ -50,22 +50,7 @@ const NotificationCard = ({ notifType, data, onToggle, onConfigChange, onTest })
 
                     <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
 
-                        {/* Recipients */}
-                        <div>
-                            <label className="form-label" style={{ marginBottom: 12, display: 'block' }}>Recipients</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {Object.keys(data.recipients || {}).map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={data.recipients[role]}
-                                            onChange={() => onToggle(notifType, 'recipients', role)}
-                                        />
-                                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+
 
                         {/* Channels */}
                         <div>
@@ -74,26 +59,10 @@ const NotificationCard = ({ notifType, data, onToggle, onConfigChange, onTest })
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
                                     <input
                                         type="checkbox"
-                                        checked={data.channels.inApp}
-                                        onChange={() => onToggle(notifType, 'channels', 'inApp')}
-                                    />
-                                    <FiBell size={14} /> In-App
-                                </label>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
                                         checked={data.channels.email}
                                         onChange={() => onToggle(notifType, 'channels', 'email')}
                                     />
                                     <FiMail size={14} /> Email
-                                </label>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={data.channels.sms}
-                                        onChange={() => onToggle(notifType, 'channels', 'sms')}
-                                    />
-                                    <FiSmartphone size={14} /> SMS
                                 </label>
                             </div>
                         </div>
