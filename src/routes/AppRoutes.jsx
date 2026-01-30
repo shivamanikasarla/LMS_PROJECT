@@ -8,27 +8,30 @@ import Loading from '../components/common/Loading';
 const Home = lazy(() => import('../pages/Home/Home'));
 const Batches = lazy(() => import('../pages/Batches/Batches'));
 const Courses = lazy(() => import('../pages/Courses/Courses'));
-const Webinar = lazy(() => import('../pages/Webinar/Webinar'));
 const Exams = lazy(() => import('../pages/exam/Exams'));
 const Marketing = lazy(() => import('../pages/Marketing/Marketing'));
 const MyApp = lazy(() => import('../pages/MyApp/MyApp'));
-const Websites = lazy(() => import('../pages/Websites/Websites'));
 const Certificates = lazy(() => import('../pages/Certificates/CertificateModule'));
 const Attendance = lazy(() => import('../pages/Attendance/Attendance'));
 const Affiliates = lazy(() => import('../pages/Affiliates/Affiliates'));
 const Users = lazy(() => import('../pages/Users/Users'));
-const Settings = lazy(() => import('../pages/Settings/Settings'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 const BatchBuilder = lazy(() => import('../pages/Batches/BatchBuilder'));
 const CourseBuilder = lazy(() => import('../pages/Courses/CourseBuilder'));
 const CourseOverview = lazy(() => import('../pages/Courses/CourseOverview'));
 const CreateClass = lazy(() => import('../pages/Batches/CreateClass'));
-const FeeManagement = lazy(() => import('../pages/FeeManagement/fee'));
-const CreateFee = lazy(() => import('../pages/FeeManagement/CreateFee'));
 const LibraryApp = lazy(() => import('../pages/Library/App'));
 const AffiliateRegister = lazy(() => import('../pages/Affiliates/AffiliateRegister'));
 const AffiliatePortal = lazy(() => import('../pages/Affiliates/AffiliatePortal'));
 const LoginPage = lazy(() => import('../pages/Login/LoginPage'));
+
+// New Modules
+const Fee = lazy(() => import('../pages/Fee/Fee'));
+const CreateFee = lazy(() => import('../pages/FeeManagement/CreateFee'));
+const Webinar = lazy(() => import('../pages/Webinar/Webinar'));
+const Settings = lazy(() => import('../pages/Settings/Settings'));
+const Website = lazy(() => import('../pages/Website/Website'));
+const Transport = lazy(() => import('../pages/Transport/Transport'));
 
 const AppRoutes = () => {
   return (
@@ -72,13 +75,8 @@ const AppRoutes = () => {
           <Route path="/batches/builder/:id" element={<BatchBuilder />} />
           <Route path="/batches/:id/create-class" element={<CreateClass />} />
 
-          <Route path="/webinar/*" element={<Webinar />} />
           <Route path="/attendance/*" element={<Attendance />} />
           <Route path="/certificates" element={<Certificates />} />
-
-          {/* ===== FINANCE ===== */}
-          <Route path="/fee" element={<FeeManagement />} />
-          <Route path="/fee/create" element={<CreateFee />} />
 
           {/* ===== LIBRARY ===== */}
           <Route path="/library/*" element={<LibraryApp />} />
@@ -91,10 +89,15 @@ const AppRoutes = () => {
 
           {/* ===== OTHER MODULES ===== */}
           <Route path="/marketing" element={<Marketing />} />
-
           <Route path="/myapp" element={<MyApp />} />
-          <Route path="/websites" element={<Websites />} />
+
+          {/* ===== NEW MODULES ===== */}
+          <Route path="/fee/create" element={<CreateFee />} />
+          <Route path="/fee/*" element={<Fee />} />
+          <Route path="/webinar" element={<Webinar />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/website" element={<Website />} />
+          <Route path="/transport" element={<Transport />} />
 
           {/* ===== 404 ===== */}
           <Route path="*" element={<NotFound />} />

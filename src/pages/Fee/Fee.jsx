@@ -13,6 +13,7 @@ import FeeRefunds from './FeeRefunds';
 import FeeSettings from './FeeSettings';
 import FeeBatches from './FeeBatches';
 import FeeInstallments from './FeeInstallments';
+import FeeAuditLogs from './FeeAuditLogs';
 
 import { FaRupeeSign } from 'react-icons/fa';
 
@@ -592,7 +593,7 @@ const FeeDashboard = () => {
 
 // --- Main Layout ---
 
-const FeeManagement = () => {
+const Fee = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'dashboard');
@@ -609,6 +610,7 @@ const FeeManagement = () => {
         { id: 'installments', label: 'Installments', icon: <FiList /> },
         { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
         { id: 'refunds', label: 'Refunds', icon: <FiRefreshCcw /> },
+        { id: 'audit', label: 'Audit Logs', icon: <FiActivity /> },
         { id: 'settings', label: 'Settings', icon: <FiSettings /> },
     ];
 
@@ -653,6 +655,7 @@ const FeeManagement = () => {
                     {activeTab === 'installments' && <FeeInstallments />}
                     {activeTab === 'payments' && <FeePayments setActiveTab={setActiveTab} />}
                     {activeTab === 'refunds' && <FeeRefunds />}
+                    {activeTab === 'audit' && <FeeAuditLogs />}
                     {activeTab === 'settings' && <FeeSettings />}
 
 
@@ -662,4 +665,4 @@ const FeeManagement = () => {
     );
 };
 
-export default FeeManagement;
+export default Fee;

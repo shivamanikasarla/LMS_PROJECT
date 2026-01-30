@@ -1,0 +1,347 @@
+u
+/* Transport Module Dark Mode Styles */
+
+/* Base Transport Module Styling */
+.transport-module {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Pulse animation for status dot */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
+/* ============================================ */
+/* DARK MODE STYLES */
+/* ============================================ */
+
+.transport-module.dark-mode {
+    background: #0f172a;
+    color: #f1f5f9;
+}
+
+/* ALL TEXT IN DARK MODE - Force light colors */
+.transport-module.dark-mode,
+.transport-module.dark-mode * {
+    --text-primary: #f1f5f9;
+    --text-secondary: #e2e8f0;
+    --text-muted: #94a3b8;
+}
+
+/* Glass Card Dark Mode */
+.transport-module.dark-mode .glass-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    color: #f1f5f9 !important;
+}
+
+.transport-module.dark-mode .glass-card:hover {
+    background: #334155 !important;
+}
+
+/* Table Styles Dark Mode */
+.transport-module.dark-mode .table-container {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+
+.transport-module.dark-mode .premium-table thead tr {
+    background: #0f172a !important;
+    color: #94a3b8 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+
+.transport-module.dark-mode .premium-table tbody tr {
+    border-bottom: 1px solid #334155 !important;
+}
+
+.transport-module.dark-mode .premium-table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.transport-module.dark-mode .premium-table td,
+.transport-module.dark-mode .premium-table th {
+    color: #e2e8f0 !important;
+}
+
+/* Form Inputs Dark Mode */
+.transport-module.dark-mode input,
+.transport-module.dark-mode select,
+.transport-module.dark-mode textarea {
+    background: #0f172a !important;
+    border-color: #475569 !important;
+    color: #f1f5f9 !important;
+}
+
+.transport-module.dark-mode input::placeholder,
+.transport-module.dark-mode textarea::placeholder {
+    color: #64748b !important;
+}
+
+.transport-module.dark-mode input:focus,
+.transport-module.dark-mode select:focus,
+.transport-module.dark-mode textarea:focus {
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2) !important;
+}
+
+.transport-module.dark-mode .form-select {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+/* ============================================ */
+/* FIX ALL TEXT COLORS - CRITICAL */
+/* ============================================ */
+
+/* Headings and Titles */
+.transport-module.dark-mode h1,
+.transport-module.dark-mode h2,
+.transport-module.dark-mode h3,
+.transport-module.dark-mode h4,
+.transport-module.dark-mode h5,
+.transport-module.dark-mode h6 {
+    color: #f1f5f9 !important;
+}
+
+/* All paragraph and span text */
+.transport-module.dark-mode p,
+.transport-module.dark-mode span,
+.transport-module.dark-mode div {
+    color: inherit;
+}
+
+/* Numbers and important data - Make them WHITE */
+.transport-module.dark-mode [style*="font-weight: bold"],
+.transport-module.dark-mode [style*="font-weight:'bold'"],
+.transport-module.dark-mode [style*="fontWeight: 'bold'"],
+.transport-module.dark-mode [style*="fontWeight:'bold'"],
+.transport-module.dark-mode [style*="fontWeight: bold"],
+.transport-module.dark-mode [style*="fontWeight:bold"],
+.transport-module.dark-mode [style*="font-weight: 700"],
+.transport-module.dark-mode [style*="fontWeight: 700"],
+.transport-module.dark-mode [style*="font-weight: 600"],
+.transport-module.dark-mode [style*="fontWeight: 600"],
+.transport-module.dark-mode [style*="fontWeight: '600'"],
+.transport-module.dark-mode [style*="fontWeight: '700'"] {
+    color: #f1f5f9 !important;
+}
+
+/* Specific dark text colors to override */
+.transport-module.dark-mode [style*="color: #1e293b"],
+.transport-module.dark-mode [style*="color:'#1e293b'"],
+.transport-module.dark-mode [style*="color: rgb(30, 41, 59)"] {
+    color: #f1f5f9 !important;
+}
+
+.transport-module.dark-mode [style*="color: #334155"],
+.transport-module.dark-mode [style*="color:'#334155'"],
+.transport-module.dark-mode [style*="color: rgb(51, 65, 85)"] {
+    color: #e2e8f0 !important;
+}
+
+.transport-module.dark-mode [style*="color: #475569"],
+.transport-module.dark-mode [style*="color:'#475569'"],
+.transport-module.dark-mode [style*="color: rgb(71, 85, 105)"] {
+    color: #cbd5e1 !important;
+}
+
+.transport-module.dark-mode [style*="color: #64748b"],
+.transport-module.dark-mode [style*="color:'#64748b'"],
+.transport-module.dark-mode [style*="color: rgb(100, 116, 139)"] {
+    color: #94a3b8 !important;
+}
+
+/* KPI Card Numbers - Force white */
+.transport-module.dark-mode .glass-card [style*="fontSize: '24px'"],
+.transport-module.dark-mode .glass-card [style*="fontSize: 24"],
+.transport-module.dark-mode .glass-card [style*="fontSize:'24px'"],
+.transport-module.dark-mode .glass-card [style*="font-size: 24px"],
+.transport-module.dark-mode .glass-card [style*="fontSize: '20px'"],
+.transport-module.dark-mode .glass-card [style*="fontSize: 20"],
+.transport-module.dark-mode .glass-card [style*="fontSize: '18px'"],
+.transport-module.dark-mode .glass-card [style*="fontSize: 18"] {
+    color: #f1f5f9 !important;
+}
+
+/* Background Colors Dark Mode */
+.transport-module.dark-mode [style*="background: #f8fafc"],
+.transport-module.dark-mode [style*="background:'#f8fafc'"],
+.transport-module.dark-mode [style*="background: rgb(248, 250, 252)"] {
+    background: #1e293b !important;
+}
+
+.transport-module.dark-mode [style*="background: #f1f5f9"],
+.transport-module.dark-mode [style*="background:'#f1f5f9'"],
+.transport-module.dark-mode [style*="background: rgb(241, 245, 249)"] {
+    background: #334155 !important;
+}
+
+.transport-module.dark-mode [style*="background: white"],
+.transport-module.dark-mode [style*="background:'white'"],
+.transport-module.dark-mode [style*="background: #fff"],
+.transport-module.dark-mode [style*="background: #ffffff"] {
+    background: #1e293b !important;
+}
+
+/* Border Colors Dark Mode */
+.transport-module.dark-mode [style*="border: 1px solid #e2e8f0"],
+.transport-module.dark-mode [style*="border:'1px solid #e2e8f0'"],
+.transport-module.dark-mode [style*="border-color: #e2e8f0"],
+.transport-module.dark-mode [style*="borderColor: '#e2e8f0'"],
+.transport-module.dark-mode [style*="border-bottom: 1px solid #e2e8f0"] {
+    border-color: #334155 !important;
+}
+
+.transport-module.dark-mode [style*="border-bottom: 1px solid #f1f5f9"] {
+    border-color: #334155 !important;
+}
+
+/* Status Badges - Keep their colors but adjust background opacity */
+.transport-module.dark-mode [style*="background: #ecfdf5"] {
+    background: rgba(16, 185, 129, 0.15) !important;
+}
+
+.transport-module.dark-mode [style*="background: #fff7ed"] {
+    background: rgba(245, 158, 11, 0.15) !important;
+}
+
+.transport-module.dark-mode [style*="background: #fef2f2"] {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.transport-module.dark-mode [style*="background: #eff6ff"],
+.transport-module.dark-mode [style*="background: #e0e7ff"] {
+    background: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Button Styles Dark Mode */
+.transport-module.dark-mode button[style*="background: #f1f5f9"],
+.transport-module.dark-mode button[style*="background:'#f1f5f9'"] {
+    background: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.transport-module.dark-mode button[style*="background: white"],
+.transport-module.dark-mode button[style*="background:'white'"] {
+    background: #1e293b !important;
+    border-color: #475569 !important;
+    color: #e2e8f0 !important;
+}
+
+/* Labels Dark Mode */
+.transport-module.dark-mode label {
+    color: #94a3b8 !important;
+}
+
+/* Dropdown/Select options */
+.transport-module.dark-mode option {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+}
+
+/* Route Card Gradient Fix for Dark Mode */
+.transport-module.dark-mode [style*="background: linear-gradient(135deg, #f0f9ff"] {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%) !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Modal Dark Mode */
+.transport-module.dark-mode [style*="background: rgba(0,0,0,0.5)"] {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Scrollbar Dark Mode */
+.transport-module.dark-mode ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.transport-module.dark-mode ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.transport-module.dark-mode ::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+.transport-module.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* ============================================ */
+/* SPECIFIC COMPONENT FIXES */
+/* ============================================ */
+
+/* KPI/Stats Cards - Override all child text */
+.transport-module.dark-mode .glass-card div,
+.transport-module.dark-mode .glass-card span,
+.transport-module.dark-mode .glass-card p {
+    color: inherit;
+}
+
+/* Chart Labels */
+.transport-module.dark-mode .recharts-text,
+.transport-module.dark-mode .recharts-cartesian-axis-tick-value {
+    fill: #94a3b8 !important;
+}
+
+/* Strong / Bold text */
+.transport-module.dark-mode strong,
+.transport-module.dark-mode b {
+    color: #f1f5f9 !important;
+}
+
+/* Table Cell Direct Children */
+.transport-module.dark-mode td>div,
+.transport-module.dark-mode td>span {
+    color: #e2e8f0;
+}
+
+.transport-module.dark-mode td div[style*="fontWeight"] {
+    color: #f1f5f9 !important;
+}
+
+/* Fix for inline styled elements - broad selectors */
+.transport-module.dark-mode [style*="fontSize"][style*="fontWeight"] {
+    color: #f1f5f9 !important;
+}
+
+/* ============================================ */
+/* LIGHT MODE EXPLICIT STYLES (Default) */
+/* ============================================ */
+
+.transport-module.light-mode {
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+.transport-module.light-mode .glass-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure smooth transitions */
+.transport-module * {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* Disable transitions for certain elements to prevent flashing */
+.transport-module button,
+.transport-module input,
+.transport-module select {
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}

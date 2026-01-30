@@ -11,6 +11,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
   const [groups, setGroups] = useState({
     academics: true,
     users: true,
+    transport: false,
     finance: false,
     marketing: false,
     affiliates: false,
@@ -91,7 +92,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             {/* MARKETING GROUP */}
             <MenuGroup title="Marketing" icon="FiMegaphone" isOpen={isOpen} expanded={groups.marketing} onToggle={() => toggleGroup('marketing')}>
               <SidebarItem to="/marketing" icon="FiBarChart2" label="Marketing Hub" isOpen={isOpen} isSub />
-              <SidebarItem to="/websites" icon="FiGlobe" label="Website Builder" isOpen={isOpen} isSub />
+              <SidebarItem to="/website" icon="FiGlobe" label="Website Builder" isOpen={isOpen} isSub />
               <SidebarItem to="/myapp" icon="FiSmartphone" label="Mobile App" isOpen={isOpen} isSub />
             </MenuGroup>
 
@@ -104,6 +105,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             {/* FINANCE GROUP */}
             <MenuGroup title="Finance" icon="FiDollarSign" isOpen={isOpen} expanded={groups.finance} onToggle={() => toggleGroup('finance')}>
               <SidebarItem to="/fee" icon="FiCreditCard" label="Fee Management" isOpen={isOpen} isSub />
+              <SidebarItem to="/transport" icon="FiTruck" label="Transport" isOpen={isOpen} isSub />
               <SidebarItem to="/invoices" icon="FiFileText" label="Invoices" isOpen={isOpen} isSub />
             </MenuGroup>
 

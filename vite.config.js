@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/api/fee': {
+        target: 'http://192.168.1.12:8080', // Fee Management Backend (Settings)
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'http://192.168.1.20:5151', // Gateway / Other Modules
         changeOrigin: true,

@@ -1,11 +1,453 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
     FiArrowLeft, FiSave, FiLayers, FiUsers, FiCreditCard,
-    FiCalendar, FiDollarSign, FiBell, FiSettings, FiSearch, FiX, FiPlus
+    FiCalendar, FiDollarSign, FiBell, FiSettings, FiSearch, FiX, FiPlus, FiCheckCircle, FiInfo, FiFilter
 } from 'react-icons/fi';
 import './FeeManagement.css';
+
+// --- Sub-Components ---
+
+const SectionHeader = ({ icon: Icon, title, description }) => (
+    <div className="section-title" style={{ marginBottom: 24 }}>
+        <div className="stat-icon" style={{ width: 40, height: 40, fontSize: 18, borderRadius: 12 }}>
+            <Icon />
+        </div>
+        <div>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{title}</h3>
+            {description && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{description}</p>}
+        </div>
+    </div>
+);
+
+const BasicDetails = ({ data, onChange }) => (
+    <motion.div className="glass-card form-section" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
+        <SectionHeader icon={FiLayers} title="Basic Details" description="Set the core information for this fee structure" />
+        <div className="form-grid">
+            <div className="form-group">
+                <label className="form-label">Fee Name *</label>
+                <input
+                    type="text"
+                    name="name"
+                    className="form-input"
+                    placeholder="e.g. Annual Tuition Fee 2026"
+                    value={data.name}
+                    onChange={onChange}
+                />
+            </div>
+            <div className="form-group">
+                <label className="form-label">Fee Type *</label>
+                <select name="type" className="form-select" value={data.type} onChange={onChange}>
+                    <option value="Tuition Fee">Tuition Fee</option>
+                    <option value="Admission Fee">Admission Fee</option>
+                    <option value="Exam Fee">Exam Fee</option>
+                    <option value="Library Fee">Library Fee</option>
+                    <option value="Custom Fee">Custom Fee</option>
+                </select>
+            </div>
+            <div className="form-group">
+                <label className="form-label">Amount (₹) *</label>
+                <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 14, top: 13, color: '#64748b', fontSize: 16, fontWeight: 600 }}>₹</span>
+                    <input
+                        type="number"
+                        name="amount"
+                        className="form-input"
+                        style={{ paddingLeft: 38 }}
+                        placeholder="0.00"
+                        value={data.amount}
+                        onChange={onChange}
+                    />
+                </div>
+            </div>
+        </div>
+
+        <div className="form-group" style={{ marginTop: 24, padding: 16, background: 'rgba(255,255,255,0.4)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: data.taxEnabled ? 16 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ padding: 8, background: '#e0f2fe', borderRadius: 8, color: '#0284c7' }}><FiInfo size={16} /></div>
+                    <div>
+                        <label className="form-label" style={{ marginBottom: 2, cursor: 'pointer' }}>Include Tax (GST/VAT)</label>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Apply percentage tax on top of the base amount</div>
+                    </div>
+                </div>
+                <div
+                    className={`toggle-switch ${data.taxEnabled ? 'active' : ''}`}
+                    onClick={() => onChange({ target: { name: 'taxEnabled', value: !data.taxEnabled } })}
+                >
+                    <div className="toggle-track"><div className="toggle-thumb"></div></div>
+                </div>
+            </div>
+
+            <AnimatePresence>
+                {data.taxEnabled && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--glass-border)', paddingTop: 16 }}>
+                            <input
+                                type="number"
+                                name="taxPercentage"
+                                className="form-input"
+                                style={{ width: 120 }}
+                                value={data.taxPercentage}
+                                onChange={onChange}
+                            />
+                            <span style={{ fontSize: 14, color: '#64748b', fontWeight: 600 }}>% Tax Percentage</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+
+        <div className="form-group" style={{ marginTop: 24 }}>
+            <label className="form-label">Description (Optional)</label>
+            <textarea
+                name="description"
+                className="form-textarea"
+                placeholder="Add generic notes about this fee..."
+                value={data.description}
+                onChange={onChange}
+            ></textarea>
+        </div>
+    </motion.div>
+);
+
+const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searchableStudents, handleStudentSearchAdd, removeStudent, availableBatches, availableCourses }) => {
+    return (
+        <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+            <SectionHeader icon={FiUsers} title="Assign Fee To" description="Select specific students or batches for this fee" />
+
+            {/* Course & Batch Filters */}
+            <div className="form-grid" style={{ marginBottom: 24, gridTemplateColumns: '1fr 1fr' }}>
+                <div className="form-group">
+                    <label className="form-label">Filter by Course</label>
+                    <div style={{ position: 'relative' }}>
+                        <FiLayers style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                        <select
+                            className="form-select"
+                            style={{ paddingLeft: 38 }}
+                            value={data.course}
+                            onChange={(e) => setData({ ...data, course: e.target.value, batch: '' })}
+                        >
+                            <option value="">All Courses</option>
+                            {availableCourses.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Filter by Batch</label>
+                    <div style={{ position: 'relative' }}>
+                        <FiFilter style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                        <select
+                            className="form-select"
+                            style={{ paddingLeft: 38 }}
+                            value={data.batch}
+                            onChange={(e) => setData({ ...data, batch: e.target.value })}
+                            disabled={!data.course}
+                        >
+                            <option value="">{data.course ? 'All Batches' : 'Select Course First'}</option>
+                            {availableBatches.filter(b => !data.course || b.course === data.course).map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Search & Add Students {data.batch ? '(from selected batch)' : ''}</label>
+                <div style={{ position: 'relative', marginBottom: 16 }}>
+                    <FiSearch style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                    <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search by name or ID..."
+                        style={{ paddingLeft: 38 }}
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                    />
+                    {studentSearch && (
+                        <div style={{
+                            position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+                            background: 'white', borderRadius: 12, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                            zIndex: 10, padding: 8, border: '1px solid #e2e8f0'
+                        }}>
+                            {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).map(student => (
+                                <div
+                                    key={student.id}
+                                    onClick={() => { handleStudentSearchAdd(student); setStudentSearch(''); }}
+                                    style={{ padding: '10px 14px', cursor: 'pointer', borderRadius: 8, transition: 'background 0.2s' }}
+                                    onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{student.name}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ID: #{student.id}</div>
+                                </div>
+                            ))}
+                            {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).length === 0 && (
+                                <div style={{ padding: 12, textAlign: 'center', color: '#94a3b8' }}>No students found</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {data.selectedStudents.map(student => (
+                        <div key={student.id} className="status-badge" style={{ background: '#e0e7ff', color: '#4338ca', padding: '8px 14px', border: '1px solid #c7d2fe' }}>
+                            {student.name}
+                            <FiX style={{ marginLeft: 8, cursor: 'pointer', opacity: 0.7 }} onClick={() => removeStudent(student.id)} />
+                        </div>
+                    ))}
+                    {data.selectedStudents.length === 0 && <div style={{ padding: 20, width: '100%', textAlign: 'center', border: '2px dashed var(--glass-border)', borderRadius: 12, color: 'var(--text-secondary)' }}>No students selected. Search above to add.</div>}
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+const PaymentConfiguration = ({ data, setData }) => {
+    const updateInstallment = (id, field, value) => {
+        setData(prev => ({
+            ...prev,
+            installments: prev.installments.map(inst => inst.id === id ? { ...inst, [field]: value } : inst)
+        }));
+    };
+
+    const addInstallment = () => {
+        setData(prev => ({
+            ...prev,
+            installments: [...prev.installments, { id: Date.now(), name: `Installment ${prev.installments.length + 1}`, percent: 0, due: '' }]
+        }));
+    };
+
+    const removeInstallment = (id) => {
+        setData(prev => ({
+            ...prev,
+            installments: prev.installments.filter(inst => inst.id !== id)
+        }));
+    };
+
+    return (
+        <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
+            <SectionHeader icon={FiCreditCard} title="Payment Schedule & Rules" description="Configure when and how the fee should be paid" />
+
+            <div className="form-group" style={{ marginBottom: 24 }}>
+                <label className="form-label">Due Date (Final Deadline)</label>
+                <div style={{ position: 'relative' }}>
+                    <FiCalendar style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                    <input
+                        type="date"
+                        className="form-input"
+                        style={{ paddingLeft: 38 }}
+                        value={data.dueDate}
+                        onChange={(e) => setData({ ...data, dueDate: e.target.value })}
+                    />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+                    * Installment plans can be configured in the Installments module after creating the fee.
+                </div>
+            </div>
+
+            <div className="section-divider"></div>
+
+            <div className="form-grid">
+                <div className="form-group">
+                    <label className="form-label" style={{ marginBottom: 12 }}>Late Fee Rules</label>
+                    <div
+                        className={`toggle-switch ${data.lateFeeEnabled ? 'active' : ''}`}
+                        onClick={() => setData({ ...data, lateFeeEnabled: !data.lateFeeEnabled })}
+                    >
+                        <div className="toggle-track"><div className="toggle-thumb"></div></div>
+                        <span className="toggle-label">Enable Late Fee</span>
+                    </div>
+                </div>
+                {data.lateFeeEnabled && (
+                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                        <div className="form-group" style={{ marginTop: 16 }}>
+                            <label className="form-label">Late Fee Amount (₹)</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                placeholder="Enter amount (e.g. 500)"
+                                value={data.lateFeeValue}
+                                onChange={(e) => setData({ ...data, lateFeeValue: e.target.value })}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </div>
+        </motion.div>
+    );
+};
+
+const PaymentMethods = ({ data, setData, toggleNested }) => (
+    <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
+        <SectionHeader icon={FiSettings} title="Payment Methods" description="Select allowed payment modes for this fee" />
+        <div className="form-grid">
+            <div className="form-group">
+                <label className="form-label" style={{ marginBottom: 10 }}>Online Modes</label>
+                <div className="glass-card" style={{ padding: 16, background: 'rgba(255,255,255,0.4)', borderRadius: 12 }}>
+                    {Object.keys(data.online).map(mode => (
+                        <label key={mode} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
+                            <div className={`checkbox-custom ${data.online[mode] ? 'checked' : ''}`} style={{
+                                width: 20, height: 20, borderRadius: 6, border: data.online[mode] ? 'none' : '2px solid #cbd5e1',
+                                background: data.online[mode] ? 'var(--primary-gradient)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {data.online[mode] && <FiCheckCircle color="white" size={12} />}
+                            </div>
+                            <input type="checkbox" checked={data.online[mode]} onChange={() => toggleNested(setData, 'online', mode)} style={{ display: 'none' }} />
+                            <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{mode}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+            <div className="form-group">
+                <label className="form-label" style={{ marginBottom: 10 }}>Manual Modes</label>
+                <div className="glass-card" style={{ padding: 16, background: 'rgba(255,255,255,0.4)', borderRadius: 12 }}>
+                    {Object.keys(data.manual).map(mode => (
+                        <label key={mode} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}>
+                            <div className={`checkbox-custom ${data.manual[mode] ? 'checked' : ''}`} style={{
+                                width: 20, height: 20, borderRadius: 6, border: data.manual[mode] ? 'none' : '2px solid #cbd5e1',
+                                background: data.manual[mode] ? 'var(--primary-gradient)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {data.manual[mode] && <FiCheckCircle color="white" size={12} />}
+                            </div>
+                            <input type="checkbox" checked={data.manual[mode]} onChange={() => toggleNested(setData, 'manual', mode)} style={{ display: 'none' }} />
+                            <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{mode.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+        </div>
+        <div style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Allow Admin Manual Record</span>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Admins can mark fees as paid manually</p>
+            </div>
+            <div
+                className={`toggle-switch ${data.allowManualRecording ? 'active' : ''}`}
+                onClick={() => setData({ ...data, allowManualRecording: !data.allowManualRecording })}
+            >
+                <div className="toggle-track"><div className="toggle-thumb"></div></div>
+            </div>
+        </div>
+    </motion.div>
+);
+
+const NotificationSettings = ({ data, setData, toggleNested }) => (
+    <motion.div className="glass-card form-section" style={{ marginBottom: 100 }} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
+        <SectionHeader icon={FiBell} title="Notifications & Automation" description="Configure automated alerts for this fee" />
+        <div className="form-grid">
+
+            <div className="form-group">
+                <label className="form-label">Triggers</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {Object.keys(data.triggers).map(trigger => (
+                        <div key={trigger} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'white', border: '1px solid #f1f5f9', borderRadius: 10 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500 }}>{trigger.replace('on', 'On ')}</span>
+                            <div
+                                className={`toggle-switch ${data.triggers[trigger] ? 'active' : ''}`}
+                                onClick={() => toggleNested(setData, 'triggers', trigger)}
+                                style={{ transform: 'scale(0.8)' }}
+                            >
+                                <div className="toggle-track"><div className="toggle-thumb"></div></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </motion.div>
+);
+
+const DiscountSettings = ({ data, setData }) => (
+    <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+        <SectionHeader icon={FiDollarSign} title="Fee Concession" description="Apply a scholarship or discount to the base fee" />
+
+        <div className="form-group" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                    <label className="form-label" style={{ marginBottom: 2, cursor: 'pointer' }}>Enable Concession</label>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Reduce fees via Scholarship or Discount</div>
+                </div>
+                <div
+                    className={`toggle-switch ${data.enabled ? 'active' : ''}`}
+                    onClick={() => setData({ ...data, enabled: !data.enabled })}
+                >
+                    <div className="toggle-track"><div className="toggle-thumb"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <AnimatePresence>
+            {data.enabled && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
+                    <div className="form-grid" style={{ paddingTop: 12, borderTop: '1px solid var(--glass-border)' }}>
+                        <div className="form-group">
+                            <label className="form-label">Discount Category</label>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                {['Scholarship', 'Discount'].map(cat => (
+                                    <button
+                                        key={cat}
+                                        className={`nav-tab ${data.category === cat ? 'active' : ''}`}
+                                        onClick={() => setData({ ...data, category: cat })}
+                                        style={{
+                                            margin: 0,
+                                            border: '1px solid var(--glass-border)',
+                                            background: data.category === cat ? 'var(--primary-gradient)' : 'white',
+                                            color: data.category === cat ? 'white' : 'var(--text-secondary)',
+                                            width: '100%',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form-grid" style={{ marginTop: 16 }}>
+                        <div className="form-group">
+                            <label className="form-label">Calculation Type</label>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                {['flat', 'percentage'].map(type => (
+                                    <button
+                                        key={type}
+                                        className={`nav-tab ${data.type === type ? 'active' : ''}`}
+                                        onClick={() => setData({ ...data, type: type })}
+                                        style={{ margin: 0, border: '1px solid var(--glass-border)', background: data.type === type ? '#f1f5f9' : 'white', color: data.type === type ? '#0f172a' : 'var(--text-secondary)', width: '100%', justifyContent: 'center' }}
+                                    >
+                                        {type === 'flat' ? 'Flat Amount (₹)' : 'Percentage (%)'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Value</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                placeholder={data.type === 'flat' ? "Amount (e.g. 5000)" : "Percentage (e.g. 10)"}
+                                value={data.value}
+                                onChange={(e) => setData({ ...data, value: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    </motion.div>
+);
+
+// --- Main Component ---
 
 const CreateFee = () => {
     const navigate = useNavigate();
@@ -20,11 +462,19 @@ const CreateFee = () => {
         taxPercentage: 18
     });
 
+    const [discount, setDiscount] = useState({
+        enabled: false,
+        category: 'Scholarship',
+        type: 'flat',
+        value: '',
+        reason: ''
+    });
+
     const [assignment, setAssignment] = useState({
         course: '',
-        batch: '',
+        batch: '', // This will now hold selected batch ID
         category: 'Normal',
-        targetType: 'group', // 'group' or 'individual'
+        targetType: 'group',
         selectedStudents: []
     });
 
@@ -34,14 +484,15 @@ const CreateFee = () => {
             { id: 1, name: 'Installment 1', percent: 100, due: '' }
         ],
         lateFeeEnabled: false,
-        lateFeeType: 'amount', // 'amount' or 'percentage'
+        lateFeeType: 'amount',
         lateFeeValue: '',
+        dueDate: '',
         autoApplyDiscounts: false
     });
 
     const [paymentMethods, setPaymentMethods] = useState({
         online: { upi: true, card: true, netbanking: true },
-        manual: { cash: true, bankTransfer: true },
+        manual: { cash: true, bankTransfer: true, cheque: true },
         allowManualRecording: true
     });
 
@@ -57,14 +508,43 @@ const CreateFee = () => {
         }
     });
 
-    // Mock student search
     const [studentSearch, setStudentSearch] = useState('');
-    const mockStudents = [
-        { id: 1, name: 'Alice Johnson' },
-        { id: 2, name: 'Bob Smith' },
-        { id: 3, name: 'Charlie Brown' },
-        { id: 4, name: 'David Lee' },
-    ];
+    const [availableBatches, setAvailableBatches] = useState([]);
+    const [availableCourses, setAvailableCourses] = useState([]);
+    const [searchableStudents, setSearchableStudents] = useState([]);
+
+    // 1. Load Data on Mount
+    useEffect(() => {
+        const storedBatches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
+        setAvailableBatches(storedBatches);
+        const courses = [...new Set(storedBatches.map(b => b.course).filter(Boolean))];
+        setAvailableCourses(courses);
+
+        // Flatten all students initially
+        const allStudents = storedBatches.flatMap(b => b.studentList || []);
+        setSearchableStudents(allStudents);
+    }, []);
+
+    // 2. Filter Students when Batch Selected
+    useEffect(() => {
+        if (assignment.batch) {
+            const selectedBatch = availableBatches.find(b => String(b.id) === String(assignment.batch));
+            if (selectedBatch && selectedBatch.studentList) {
+                setSearchableStudents(selectedBatch.studentList);
+            } else {
+                setSearchableStudents([]);
+            }
+        } else if (assignment.course) {
+            // Filter by Course ONLY (if no batch selected)
+            const courseBatches = availableBatches.filter(b => b.course === assignment.course);
+            const courseStudents = courseBatches.flatMap(b => b.studentList || []);
+            setSearchableStudents(courseStudents);
+        } else {
+            // Show all students if no batch selected
+            const allStudents = availableBatches.flatMap(b => b.studentList || []);
+            setSearchableStudents(allStudents);
+        }
+    }, [assignment.batch, assignment.course, availableBatches]);
 
     const handleStudentSearchAdd = (student) => {
         if (!assignment.selectedStudents.find(s => s.id === student.id)) {
@@ -77,30 +557,8 @@ const CreateFee = () => {
     };
 
     const handleBasicChange = (e) => setBasicDetails({ ...basicDetails, [e.target.name]: e.target.value });
-    const handleAssignChange = (e) => setAssignment({ ...assignment, [e.target.name]: e.target.value });
 
-    const addInstallment = () => {
-        setPaymentConfig(prev => ({
-            ...prev,
-            installments: [...prev.installments, { id: Date.now(), name: `Installment ${prev.installments.length + 1}`, percent: 0, due: '' }]
-        }));
-    };
-
-    const updateInstallment = (id, field, value) => {
-        setPaymentConfig(prev => ({
-            ...prev,
-            installments: prev.installments.map(inst => inst.id === id ? { ...inst, [field]: value } : inst)
-        }));
-    };
-
-    const removeInstallment = (id) => {
-        setPaymentConfig(prev => ({
-            ...prev,
-            installments: prev.installments.filter(inst => inst.id !== id)
-        }));
-    };
-
-    // Toggle helper for nested objects
+    // Toggle helper
     const toggleNested = (stateSetter, parentKey, childKey) => {
         stateSetter(prev => ({
             ...prev,
@@ -113,10 +571,120 @@ const CreateFee = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log({ basicDetails, assignment, paymentConfig, paymentMethods, notifications });
-        // Add API call here
-        alert('Fee Structure Created Successfully (Demo)');
-        navigate('/fee');
+
+        if (assignment.selectedStudents.length === 0) {
+            alert('Please select at least one student.');
+            return;
+        }
+
+        const feeAmount = Number(basicDetails.amount);
+        let finalAmount = feeAmount;
+
+        // Apply Discount Logic
+        if (discount.enabled && discount.value) {
+            const discVal = Number(discount.value);
+            if (discount.type === 'flat') {
+                finalAmount = Math.max(0, feeAmount - discVal);
+            } else {
+                finalAmount = Math.max(0, feeAmount - (feeAmount * discVal / 100));
+            }
+        }
+
+        const feeName = basicDetails.name;
+
+        // 1. Load Centralized Data
+        const allBatches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
+        let updatedBatches = [...allBatches];
+        let updatedCount = 0;
+        let studentsNotFound = [];
+
+        // 2. Iterate selected students
+        assignment.selectedStudents.forEach(selected => {
+            let found = false;
+
+            // Find valid batch containing this student
+            // Prioritize the selected batch if any, otherwise search all
+
+            // NOTE: We update the source batch in lms_fee_data directly.
+
+            const batchIndex = updatedBatches.findIndex(b => b.studentList && b.studentList.some(s => s.id === selected.id));
+
+            if (batchIndex !== -1) {
+                const batch = updatedBatches[batchIndex];
+                const studentIndex = batch.studentList.findIndex(s => s.id === selected.id);
+
+                if (studentIndex !== -1) {
+                    // Update Student Record
+                    const student = batch.studentList[studentIndex];
+                    student.totalFee = (student.totalFee || 0) + finalAmount;
+
+                    found = true;
+                    updatedCount++;
+                }
+            }
+
+            if (!found) {
+                studentsNotFound.push(selected);
+            }
+        });
+
+        // 3. Handle Students NOT in any batch (Legacy fallback)
+        if (studentsNotFound.length > 0) {
+            const batchName = 'Individual Fees: ' + feeName;
+
+            const existingCustomIndex = updatedBatches.findIndex(b => b.name === batchName && String(b.id).startsWith('custom-'));
+
+            if (existingCustomIndex !== -1) {
+                const batch = updatedBatches[existingCustomIndex];
+                const newStudents = studentsNotFound.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    roll: 'IND-' + s.id,
+                    totalFee: finalAmount,
+                    paidAmount: 0,
+                    status: 'PENDING'
+                }));
+                batch.studentList = [...batch.studentList, ...newStudents];
+                batch.students = batch.studentList.length;
+            } else {
+                // Create New
+                const newBatchId = 'custom-' + Date.now();
+                updatedBatches.unshift({
+                    id: newBatchId,
+                    name: batchName,
+                    course: 'Custom Assignment',
+                    year: new Date().getFullYear(),
+                    students: studentsNotFound.length,
+                    collected: 0,
+                    studentList: studentsNotFound.map(s => ({
+                        id: s.id,
+                        name: s.name,
+                        roll: 'IND-' + s.id,
+                        totalFee: finalAmount,
+                        paidAmount: 0,
+                        status: 'PENDING'
+                    })),
+                    // Legacy container
+                    feeDetails: {
+                        structure: [{ name: basicDetails.type, amount: finalAmount }],
+                        totalFee: finalAmount * studentsNotFound.length,
+                        paidAmount: 0,
+                        pendingAmount: finalAmount * studentsNotFound.length,
+                        dueDate: paymentConfig.dueDate || '2026-12-31'
+                    }
+                });
+            }
+        }
+
+        // 4. Save
+        localStorage.setItem('lms_fee_data', JSON.stringify(updatedBatches));
+
+        let message = '';
+        if (updatedCount > 0) message += `Updated fee for ${updatedCount} existing student(s). `;
+        if (studentsNotFound.length > 0) message += `Created/Merged ${studentsNotFound.length} student(s) into individual batch.`;
+
+        alert(message);
+        navigate('/fee', { state: { defaultTab: 'batches' } });
     };
 
     return (
@@ -142,8 +710,8 @@ const CreateFee = () => {
                 <div style={{ display: 'flex', gap: '16px' }}>
                     <button onClick={() => navigate('/fee')} style={{
                         background: 'transparent', border: '1px solid #cbd5e1',
-                        padding: '10px 24px', borderRadius: '10px', fontWeight: 600, color: '#64748b', cursor: 'pointer'
-                    }}>
+                        padding: '10px 24px', borderRadius: '10px', fontWeight: 600, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s'
+                    }} onMouseEnter={(e) => e.target.style.background = '#f1f5f9'} onMouseLeave={(e) => e.target.style.background = 'transparent'}>
                         Cancel
                     </button>
                     <button onClick={handleSubmit} className="btn-primary">
@@ -154,387 +722,27 @@ const CreateFee = () => {
 
             {/* Main Form Content */}
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                <BasicDetails data={basicDetails} onChange={handleBasicChange} />
 
-                {/* Section 1: Basic Details */}
-                <motion.div
-                    className="glass-card form-section"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                >
-                    <div className="section-title">
-                        <div className="stat-icon" style={{ width: 32, height: 32, fontSize: 16 }}><FiLayers /></div>
-                        Basic Details
-                    </div>
+                <DiscountSettings data={discount} setData={setDiscount} />
 
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label className="form-label">Fee Name *</label>
-                            <input
-                                type="text"
-                                name="name"
-                                className="form-input"
-                                placeholder="e.g. Annual Tuition Fee 2026"
-                                value={basicDetails.name}
-                                onChange={handleBasicChange}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Fee Type *</label>
-                            <select name="type" className="form-select" value={basicDetails.type} onChange={handleBasicChange}>
-                                <option value="Tuition Fee">Tuition Fee</option>
-                                <option value="Admission Fee">Admission Fee</option>
-                                <option value="Exam Fee">Exam Fee</option>
-                                <option value="Library Fee">Library Fee</option>
-                                <option value="Custom Fee">Custom Fee</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Amount (₹) *</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiDollarSign style={{ position: 'absolute', left: 12, top: 14, color: '#64748b' }} />
-                                <input
-                                    type="number"
-                                    name="amount"
-                                    className="form-input"
-                                    style={{ paddingLeft: 36 }}
-                                    placeholder="0.00"
-                                    value={basicDetails.amount}
-                                    onChange={handleBasicChange}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                <FeeAssignment
+                    data={assignment}
+                    setData={setAssignment}
+                    studentSearch={studentSearch}
+                    setStudentSearch={setStudentSearch}
+                    searchableStudents={searchableStudents}
+                    availableBatches={availableBatches}
+                    availableCourses={availableCourses}
+                    handleStudentSearchAdd={handleStudentSearchAdd}
+                    removeStudent={removeStudent}
+                />
 
-                    {/* Tax Settings */}
-                    <div className="form-group" style={{ marginTop: 24 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <label className="form-label" style={{ marginBottom: 0 }}>Include Tax (GST/VAT)</label>
-                            <div
-                                className={`toggle-switch ${basicDetails.taxEnabled ? 'active' : ''}`}
-                                onClick={() => setBasicDetails({ ...basicDetails, taxEnabled: !basicDetails.taxEnabled })}
-                            >
-                                <div className="toggle-track"><div className="toggle-thumb"></div></div>
-                            </div>
-                        </div>
-                        {basicDetails.taxEnabled && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    style={{ width: 100 }}
-                                    value={basicDetails.taxPercentage}
-                                    onChange={(e) => setBasicDetails({ ...basicDetails, taxPercentage: e.target.value })}
-                                />
-                                <span style={{ fontSize: 14, color: '#64748b' }}>% Tax Percentage</span>
-                            </div>
-                        )}
-                    </div>
+                <PaymentConfiguration data={paymentConfig} setData={setPaymentConfig} />
 
-                    <div className="form-group" style={{ marginTop: 24 }}>
-                        <label className="form-label">Description (Optional)</label>
-                        <textarea
-                            name="description"
-                            className="form-textarea"
-                            placeholder="Add generic notes about this fee..."
-                            value={basicDetails.description}
-                            onChange={handleBasicChange}
-                        ></textarea>
-                    </div>
-                </motion.div>
+                <PaymentMethods data={paymentMethods} setData={setPaymentMethods} toggleNested={toggleNested} />
 
-                {/* Section 2: Assign Fee To */}
-                <motion.div
-                    className="glass-card form-section"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                >
-                    <div className="section-title">
-                        <div className="stat-icon" style={{ width: 32, height: 32, fontSize: 16 }}><FiUsers /></div>
-                        Assign Fee To
-                    </div>
-
-                    <div style={{ marginBottom: 20, display: 'flex', gap: 12 }}>
-                        <button
-                            className={`nav-tab ${assignment.targetType === 'group' ? 'active' : ''}`}
-                            onClick={() => setAssignment({ ...assignment, targetType: 'group' })}
-                        >
-                            Batch / Group
-                        </button>
-                        <button
-                            className={`nav-tab ${assignment.targetType === 'individual' ? 'active' : ''}`}
-                            onClick={() => setAssignment({ ...assignment, targetType: 'individual' })}
-                        >
-                            Specific Students
-                        </button>
-                    </div>
-
-                    {assignment.targetType === 'group' ? (
-                        <div className="form-grid">
-                            <div className="form-group">
-                                <label className="form-label">Select Course</label>
-                                <select name="course" className="form-select" value={assignment.course} onChange={handleAssignChange}>
-                                    <option value="">Select Course...</option>
-                                    <option value="Full Stack Dev">Full Stack Web Development</option>
-                                    <option value="Data Science">Data Science Bootcamp</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Select Batch</label>
-                                <select name="batch" className="form-select" value={assignment.batch} onChange={handleAssignChange} disabled={!assignment.course}>
-                                    <option value="">All Batches</option>
-                                    <option value="Jan 2026">Jan 2026 Batch</option>
-                                    <option value="Feb 2026">Feb 2026 Batch</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Student Category</label>
-                                <select name="category" className="form-select" value={assignment.category} onChange={handleAssignChange}>
-                                    <option value="Normal">Normal</option>
-                                    <option value="Scholarship">Scholarship</option>
-                                </select>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="form-group">
-                            <label className="form-label">Search & Add Students</label>
-                            <div style={{ position: 'relative', marginBottom: 12 }}>
-                                <FiSearch style={{ position: 'absolute', left: 12, top: 14, color: '#64748b' }} />
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Search by name or ID..."
-                                    style={{ paddingLeft: 36 }}
-                                    value={studentSearch}
-                                    onChange={(e) => setStudentSearch(e.target.value)}
-                                />
-                                {studentSearch && (
-                                    <div style={{
-                                        position: 'absolute', top: '100%', left: 0, right: 0,
-                                        background: 'white', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                        zIndex: 10, padding: 8, border: '1px solid #e2e8f0'
-                                    }}>
-                                        {mockStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).map(student => (
-                                            <div
-                                                key={student.id}
-                                                onClick={() => { handleStudentSearchAdd(student); setStudentSearch(''); }}
-                                                style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: 8, ':hover': { background: '#f1f5f9' } }}
-                                            >
-                                                {student.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {assignment.selectedStudents.map(student => (
-                                    <div key={student.id} className="status-badge" style={{ background: '#e0e7ff', color: '#4338ca', padding: '6px 12px' }}>
-                                        {student.name}
-                                        <FiX style={{ marginLeft: 6, cursor: 'pointer' }} onClick={() => removeStudent(student.id)} />
-                                    </div>
-                                ))}
-                                {assignment.selectedStudents.length === 0 && <span style={{ color: '#94a3b8', fontSize: 13 }}>No individual students selected.</span>}
-                            </div>
-                        </div>
-                    )}
-                </motion.div>
-
-                {/* Section 3: Payment Configuration (Enhanced with Installments) */}
-                <motion.div
-                    className="glass-card form-section"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    <div className="section-title">
-                        <div className="stat-icon" style={{ width: 32, height: 32, fontSize: 16 }}><FiCreditCard /></div>
-                        Payment Schedule & Rules
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 24 }}>
-                        <label className="form-label">Payment Schedule Structure</label>
-                        <select
-                            className="form-select"
-                            value={paymentConfig.schedule}
-                            onChange={(e) => setPaymentConfig({ ...paymentConfig, schedule: e.target.value })}
-                        >
-                            <option value="OneTime">One-Time Payment</option>
-                            <option value="Monthly">Monthly</option>
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="4Months">Every 4 Months</option>
-                            <option value="HalfYearly">Half Yearly (6 Months)</option>
-                            <option value="Yearly">Yearly</option>
-                            <option value="Installments">Custom Installments</option>
-                        </select>
-                    </div>
-
-                    {paymentConfig.schedule === 'Installments' ? (
-                        <div className="timeline-container">
-                            {paymentConfig.installments.map((inst, index) => (
-                                <div className="timeline-item" key={inst.id}>
-                                    <div className="timeline-dot"></div>
-                                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 2 }}>
-                                            <label className="form-label" style={{ fontSize: 11 }}>Installment Name</label>
-                                            <input type="text" className="form-input" value={inst.name} onChange={e => updateInstallment(inst.id, 'name', e.target.value)} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="form-label" style={{ fontSize: 11 }}>% of Total</label>
-                                            <input type="number" className="form-input" value={inst.percent} onChange={e => updateInstallment(inst.id, 'percent', e.target.value)} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label className="form-label" style={{ fontSize: 11 }}>Due Date</label>
-                                            <input type="date" className="form-input" value={inst.due} onChange={e => updateInstallment(inst.id, 'due', e.target.value)} />
-                                        </div>
-                                        {index > 0 && (
-                                            <button className="btn-icon" style={{ color: '#ef4444' }} onClick={() => removeInstallment(inst.id)}><FiX /></button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            <button className="btn-icon" onClick={addInstallment} style={{ marginLeft: 6, width: 'auto', paddingRight: 12 }}>
-                                <FiPlus /> Add Installment
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="form-group" style={{ marginBottom: 24 }}>
-                            <label className="form-label">Due Date</label>
-                            <div style={{ position: 'relative' }}>
-                                <FiCalendar style={{ position: 'absolute', left: 12, top: 14, color: '#64748b' }} />
-                                <input
-                                    type="date"
-                                    className="form-input"
-                                    style={{ paddingLeft: 36 }}
-                                    value={paymentConfig.dueDate}
-                                    onChange={(e) => setPaymentConfig({ ...paymentConfig, dueDate: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="section-divider"></div>
-
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label className="form-label" style={{ marginBottom: 12 }}>Late Fee Rules</label>
-                            <div
-                                className={`toggle-switch ${paymentConfig.lateFeeEnabled ? 'active' : ''}`}
-                                onClick={() => setPaymentConfig({ ...paymentConfig, lateFeeEnabled: !paymentConfig.lateFeeEnabled })}
-                            >
-                                <div className="toggle-track"><div className="toggle-thumb"></div></div>
-                                <span className="toggle-label">Enable Late Fee</span>
-                            </div>
-                        </div>
-                        {paymentConfig.lateFeeEnabled && (
-                            <>
-                                <div className="form-group">
-                                    <label className="form-label">Calculation Type</label>
-                                    <div style={{ display: 'flex', gap: 12 }}>
-                                        <button
-                                            className={`nav-tab ${paymentConfig.lateFeeType === 'amount' ? 'active' : ''}`}
-                                            onClick={() => setPaymentConfig({ ...paymentConfig, lateFeeType: 'amount' })}
-                                        >
-                                            Fixed Amount
-                                        </button>
-                                        <button
-                                            className={`nav-tab ${paymentConfig.lateFeeType === 'percentage' ? 'active' : ''}`}
-                                            onClick={() => setPaymentConfig({ ...paymentConfig, lateFeeType: 'percentage' })}
-                                        >
-                                            Percentage %
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Value</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        placeholder="Enter value"
-                                        value={paymentConfig.lateFeeValue}
-                                        onChange={(e) => setPaymentConfig({ ...paymentConfig, lateFeeValue: e.target.value })}
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* Section 4: Payment Methods */}
-                <motion.div className="glass-card form-section">
-                    <div className="section-title">
-                        <div className="stat-icon" style={{ width: 32, height: 32, fontSize: 16 }}><FiSettings /></div>
-                        Payment Methods
-                    </div>
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label className="form-label" style={{ marginBottom: 10 }}>Online Modes</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={paymentMethods.online.upi} onChange={() => toggleNested(setPaymentMethods, 'online', 'upi')} /> UPI
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={paymentMethods.online.card} onChange={() => toggleNested(setPaymentMethods, 'online', 'card')} /> Credit/Debit Card
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={paymentMethods.online.netbanking} onChange={() => toggleNested(setPaymentMethods, 'online', 'netbanking')} /> Net Banking
-                            </label>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ marginBottom: 10 }}>Manual Modes</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={paymentMethods.manual.cash} onChange={() => toggleNested(setPaymentMethods, 'manual', 'cash')} /> Cash
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={paymentMethods.manual.bankTransfer} onChange={() => toggleNested(setPaymentMethods, 'manual', 'bankTransfer')} /> Bank Transfer/Cheque
-                            </label>
-                        </div>
-                        <div className="form-group" style={{ justifyContent: 'center' }}>
-                            <div
-                                className={`toggle-switch ${paymentMethods.allowManualRecording ? 'active' : ''}`}
-                                onClick={() => setPaymentMethods({ ...paymentMethods, allowManualRecording: !paymentMethods.allowManualRecording })}
-                            >
-                                <div className="toggle-track"><div className="toggle-thumb"></div></div>
-                                <span className="toggle-label">Allow Admin Manual Record</span>
-                            </div>
-
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Section 5: Notifications */}
-                <motion.div className="glass-card form-section" style={{ marginBottom: 100 }}>
-                    <div className="section-title">
-                        <div className="stat-icon" style={{ width: 32, height: 32, fontSize: 16 }}><FiBell /></div>
-                        Notifications & Automation
-                    </div>
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label className="form-label">Recipients</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.notifyStudent} onChange={() => setNotifications({ ...notifications, notifyStudent: !notifications.notifyStudent })} /> Student
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.notifyParent} onChange={() => setNotifications({ ...notifications, notifyParent: !notifications.notifyParent })} /> Parent
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.notifyMentor} onChange={() => setNotifications({ ...notifications, notifyMentor: !notifications.notifyMentor })} /> Mentor
-                            </label>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Triggers</label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.triggers.onCreation} onChange={() => toggleNested(setNotifications, 'triggers', 'onCreation')} /> Fee Creation
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.triggers.onPending} onChange={() => toggleNested(setNotifications, 'triggers', 'onPending')} /> Pending Reminder
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                                <input type="checkbox" checked={notifications.triggers.onOverdue} onChange={() => toggleNested(setNotifications, 'triggers', 'onOverdue')} /> Overdue Alert
-                            </label>
-                        </div>
-                    </div>
-                </motion.div>
-
+                <NotificationSettings data={notifications} setData={setNotifications} toggleNested={toggleNested} />
             </div>
         </motion.div>
     );

@@ -1,8 +1,12 @@
-import AnimatedRoutes from './AnimatedRoutes'
-function Webinar() {
-  return (
-    <AnimatedRoutes />
-  )
-}
+import React from 'react';
 
-export default Webinar
+const Webinar = () => {
+  return (
+    <div className="p-4">
+      <h1>Webinar</h1>
+      <p>This is the new Webinar module.</p>
+    </div>
+  );
+};
+
+export default Webinar;
