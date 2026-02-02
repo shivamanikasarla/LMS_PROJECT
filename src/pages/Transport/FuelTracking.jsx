@@ -4,17 +4,11 @@ import {
     FiDroplet, FiPlus, FiSearch, FiEdit2, FiTrash2,
     FiCalendar, FiTruck, FiTrendingUp, FiX, FiActivity
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const FuelTracking = () => {
     // --- State ---
-    const [logs, setLogs] = useState(() => {
-        const saved = localStorage.getItem('lms_transport_fuel');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, vehicleId: 'KA-01-AB-1234', date: '2026-01-18', quantity: '50', cost: '5000', odo: '12500', station: 'Indian Oil, MG Road' },
-            { id: 2, vehicleId: 'KA-05-XY-9876', date: '2026-01-19', quantity: '40', cost: '4200', odo: '8900', station: 'Shell, Indiranagar' },
-        ];
-    });
-
+    const [logs, setLogs] = useState([]);
     const [vehicles, setVehicles] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,15 +16,27 @@ const FuelTracking = () => {
     const [formData, setFormData] = useState({
         vehicleId: '', date: '', quantity: '', cost: '', odo: '', station: ''
     });
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const savedVehicles = localStorage.getItem('lms_transport_vehicles');
-        if (savedVehicles) setVehicles(JSON.parse(savedVehicles));
+        fetchData();
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('lms_transport_fuel', JSON.stringify(logs));
-    }, [logs]);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [logsData, vehiclesData] = await Promise.all([
+                TransportService.Fuel.getFuelLogs().catch(() => []), // Fail gracefully if endpoint missing
+                TransportService.Vehicle.getAllVehicles()
+            ]);
+            setLogs(logsData || []);
+            setVehicles(vehiclesData || []);
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // --- Handlers ---
     const handleOpenModal = (log = null) => {
@@ -49,20 +55,30 @@ const FuelTracking = () => {
         setEditingLog(null);
     };
 
-    const handleDelete = (id) => {
-        if (window.confirm('Delete this fuel log?')) {
-            setLogs(logs.filter(l => l.id !== id));
-        }
+    const handleDelete = async (id) => {
+        // Warning: Backend delete not implemented in Service yet? Checked service file, only get/add.
+        // If backend support missing, alert user.
+        alert('Delete functionality not currently supported via API.');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (editingLog) {
-            setLogs(logs.map(l => l.id === editingLog.id ? { ...formData, id: l.id } : l));
-        } else {
-            setLogs([...logs, { ...formData, id: Date.now() }]);
+        setLoading(true);
+        try {
+            if (editingLog) {
+                // Update not supported in service yet? Checked service, only get/add.
+                alert('Update functionality not currently supported via API.');
+            } else {
+                const newLog = await TransportService.Fuel.addFuelLog(formData);
+                setLogs([...logs, newLog]);
+                handleCloseModal();
+            }
+        } catch (error) {
+            console.error('Error saving log:', error);
+            alert('Failed to save log');
+        } finally {
+            setLoading(false);
         }
-        handleCloseModal();
     };
 
     const filteredLogs = logs.filter(l =>

@@ -283,9 +283,9 @@ const FeeSettings = () => {
             });
 
             const errorMsg = error.response?.status === 404
-                ? 'Backend endpoint not found (404). Check if your friend\'s backend is running at 192.168.1.12:8080'
+                ? 'Backend endpoint not found (404). Check if your friend\'s backend is running at 192.168.1.16:8080'
                 : error.message.includes('Network Error')
-                    ? 'Cannot connect to backend at 192.168.1.12:8080. Please verify the backend is running and accessible.'
+                    ? 'Cannot connect to backend at 192.168.1.16:8080. Please verify the backend is running and accessible.'
                     : `Failed to load settings: ${error.message}`;
 
             alert(errorMsg);

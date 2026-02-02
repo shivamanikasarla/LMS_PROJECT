@@ -90,6 +90,26 @@ export const navigationConfig = [
     },
 
     {
+        id: 'transport',
+        label: 'Transport',
+        path: '/transport',
+        icon: 'bi-truck',
+        subItems: [
+            { label: 'Dashboard', path: '/transport', icon: 'bi-speedometer2' },
+            { label: 'Live Tracking', path: '/transport/live', icon: 'bi-broadcast' },
+            { label: 'Vehicles', path: '/transport/vehicles', icon: 'bi-truck' },
+            { label: 'Routes', path: '/transport/routes', icon: 'bi-signpost-split' },
+            { label: 'Drivers', path: '/transport/drivers', icon: 'bi-person-badge' },
+            { label: 'Student Mapping', path: '/transport/student-mapping', icon: 'bi-people' },
+            { label: 'Attendance', path: '/transport/attendance', icon: 'bi-calendar-check' },
+            { label: 'Transport Fees', path: '/transport/fees', icon: 'bi-cash-coin' },
+            { label: 'Fuel Tracking', path: '/transport/fuel', icon: 'bi-fuel-pump' },
+            { label: 'Maintenance', path: '/transport/maintenance', icon: 'bi-tools' },
+            { label: 'Reports', path: '/transport/reports', icon: 'bi-file-earmark-bar-graph' }
+        ]
+    },
+
+    {
         id: 'marketing',
         label: 'Marketing',
         path: '/marketing',

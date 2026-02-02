@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiGrid, FiTruck, FiUsers, FiMap, FiUserCheck, FiDollarSign,
@@ -18,13 +19,40 @@ import FuelTracking from './FuelTracking';
 import TransportReports from './TransportReports';
 import './Transport.css';
 
-// Create Dark Mode Context
-export const TransportThemeContext = createContext();
-
-export const useTransportTheme = () => useContext(TransportThemeContext);
+import { TransportThemeContext } from './TransportContext';
 
 const Transport = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('dashboard');
+
+    // Sync URL with Active Tab
+    useEffect(() => {
+        const path = location.pathname;
+        if (path === '/transport' || path === '/transport/') {
+            setActiveTab('dashboard');
+        } else if (path.includes('/transport/live')) {
+            setActiveTab('live');
+        } else if (path.includes('/transport/vehicles')) {
+            setActiveTab('vehicles');
+        } else if (path.includes('/transport/drivers')) {
+            setActiveTab('drivers');
+        } else if (path.includes('/transport/routes')) {
+            setActiveTab('routes');
+        } else if (path.includes('/transport/student-mapping')) {
+            setActiveTab('students');
+        } else if (path.includes('/transport/attendance')) {
+            setActiveTab('attendance');
+        } else if (path.includes('/transport/fees')) {
+            setActiveTab('fees');
+        } else if (path.includes('/transport/maintenance')) {
+            setActiveTab('maintenance');
+        } else if (path.includes('/transport/fuel')) {
+            setActiveTab('fuel');
+        } else if (path.includes('/transport/reports')) {
+            setActiveTab('reports');
+        }
+    }, [location.pathname]);
 
     // Listen to global theme from sidebar (data-theme attribute on body)
     const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -66,20 +94,6 @@ const Transport = () => {
             window.removeEventListener('storage', handleStorageChange);
         };
     }, []);
-
-    const tabs = [
-        { id: 'dashboard', label: 'Overview', icon: <FiGrid /> },
-        { id: 'live', label: 'Live Tracking', icon: <FiActivity /> },
-        { id: 'vehicles', label: 'Vehicles', icon: <FiTruck /> },
-        { id: 'drivers', label: 'Drivers', icon: <FiUsers /> },
-        { id: 'routes', label: 'Routes', icon: <FiMap /> },
-        { id: 'students', label: 'Students', icon: <FiUserCheck /> },
-        { id: 'attendance', label: 'Attendance', icon: <FiCheckSquare /> },
-        { id: 'fees', label: 'Fees', icon: <FiDollarSign /> },
-        { id: 'maintenance', label: 'Maintenance', icon: <FiTool /> },
-        { id: 'fuel', label: 'Fuel', icon: <FiDroplet /> },
-        { id: 'reports', label: 'Reports', icon: <FiBarChart2 /> },
-    ];
 
     // Theme colors
     const theme = {
@@ -177,39 +191,6 @@ const Transport = () => {
                         Manage fleet, routes, drivers, and student transport safety in real-time
                     </div>
                 </header>
-
-                {/* Navigation */}
-                <nav className="hide-scrollbar" style={{
-                    display: 'flex',
-                    gap: '4px',
-                    borderBottom: `1px solid ${theme.colors.border}`,
-                    marginBottom: '24px',
-                    overflowX: 'auto',
-                    paddingBottom: '2px'
-                }}>
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '12px 20px',
-                                background: 'transparent',
-                                border: 'none',
-                                borderBottom: activeTab === tab.id ? `2px solid ${theme.colors.primary}` : '2px solid transparent',
-                                color: activeTab === tab.id ? theme.colors.primary : theme.colors.textMuted,
-                                fontWeight: activeTab === tab.id ? '600' : '500',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {tab.icon} {tab.label}
-                        </button>
-                    ))}
-                </nav>
 
                 {/* Content Area */}
                 <AnimatePresence mode="wait">

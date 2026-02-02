@@ -4,6 +4,7 @@ import {
     FiMapPin, FiNavigation, FiClock, FiAlertTriangle,
     FiCheckCircle, FiMaximize2, FiList, FiTruck
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const LiveTracking = () => {
     // --- State ---
@@ -17,31 +18,35 @@ const LiveTracking = () => {
 
     // --- Mock Data Init ---
     useEffect(() => {
-        // Load active vehicles from storage or default
-        const savedVehicles = JSON.parse(localStorage.getItem('lms_transport_vehicles') || '[]');
-        const activeVehicles = savedVehicles.length > 0 ? savedVehicles.filter(v => v.status === 'Active' && v.gps === true) : [
-            { id: 1, number: 'KA-01-AB-1234', route: 'R-01', type: 'Bus' },
-            { id: 2, number: 'KA-05-XY-9876', route: 'R-02', type: 'Van' },
-            { id: 4, number: 'KA-52-MM-1122', route: 'R-05', type: 'Bus' }
-        ];
+        const fetchInitialVehicles = async () => {
+            try {
+                const data = await TransportService.Vehicle.getAllVehicles();
+                // Filter only active/moving/gps enabled if needed?
+                // For now map all, give random pos if no WS data yet
+                const initVehicles = data.map(v => ({
+                    id: v.id || v.vehicleNumber,
+                    number: v.vehicleNumber,
+                    route: v.route ? v.route.routeCode : 'Unassigned',
+                    type: v.vehicletype || 'Bus',
+                    x: Math.random() * 80 + 10, // Mock init pos
+                    y: Math.random() * 80 + 10,
+                    speed: 0,
+                    status: 'Offline', // Start offline, WS will update
+                    lastUpdate: 'Waiting for signal...',
+                    eta: '-'
+                }));
+                setVehicles(initVehicles);
+            } catch (err) {
+                console.error("Failed to fetch vehicles for tracking", err);
+            }
+        };
 
-        // Initialize with random positions
-        const initVehicles = activeVehicles.map(v => ({
-            ...v,
-            x: Math.random() * 80 + 10, // %
-            y: Math.random() * 80 + 10, // %
-            speed: Math.floor(Math.random() * 40 + 20),
-            status: 'Moving',
-            lastUpdate: 'Just now',
-            eta: Math.floor(Math.random() * 30 + 10) + ' mins'
-        }));
-
-        setVehicles(initVehicles);
+        fetchInitialVehicles();
     }, []);
 
     // --- WebSocket Live Tracking ---
     useEffect(() => {
-        const socket = new WebSocket("ws://192.168.1.16:9191/ws/live-tracking");
+        const socket = new WebSocket("ws://192.168.1.4:9191/ws/live-tracking");
 
         socket.onopen = () => {
             console.log("✅ WebSocket connected");

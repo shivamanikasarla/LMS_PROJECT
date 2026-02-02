@@ -77,7 +77,7 @@ The settings are stored in the `global_config` table with these keys:
 
 ## 🧪 Testing
 
-1. **Start Backend**: Make sure your friend's Spring Boot server is running on `http://192.168.1.16:9191`
+1. **Start Backend**: Make sure your friend's Spring Boot server is running on `http://192.168.1.4:9191`
 
 2. **Open Fee Settings**:
    ```

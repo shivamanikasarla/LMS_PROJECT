@@ -4,7 +4,8 @@ import {
     FiTruck, FiUsers, FiMap, FiUserCheck, FiActivity,
     FiAlertCircle, FiCheckCircle
 } from 'react-icons/fi';
-import { useTransportTheme } from './Transport';
+import { useTransportTheme } from './TransportContext';
+import TransportService from '../../services/transportService';
 
 const TransportDashboard = () => {
     const theme = useTransportTheme();
@@ -19,13 +20,19 @@ const TransportDashboard = () => {
         innerCircle: isDark ? '#0f172a' : '#ffffff',
     };
 
-    // Simulated Real-time Data
+    // Real-time Data State
     const [stats, setStats] = useState({
-        totalVehicles: 12,
-        activeDrivers: 10,
-        activeRoutes: 8,
-        studentsTransported: 345,
-        systemStatus: 'Operational' // Operational, Delayed, Maintenance
+        totalVehicles: 0,
+        activeDrivers: 0,
+        activeRoutes: 0,
+        studentsTransported: 0,
+        systemStatus: 'Operational'
+    });
+
+    const [vehicleStatus, setVehicleStatus] = useState({
+        active: 0,
+        maintenance: 0,
+        inactive: 0
     });
 
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -37,31 +44,64 @@ const TransportDashboard = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const [vehicleStatus, setVehicleStatus] = useState({
-        active: 8,
-        maintenance: 2,
-        inactive: 2
-    });
+    const [routeOccupancy, setRouteOccupancy] = useState([]);
 
-    const [routeOccupancy, setRouteOccupancy] = useState([
-        { route: 'R-01', capacity: 50, used: 42 },
-        { route: 'R-02', capacity: 50, used: 48 },
-        { route: 'R-03', capacity: 30, used: 25 },
-        { route: 'R-04', capacity: 30, used: 10 },
-        { route: 'R-05', capacity: 50, used: 35 },
-    ]);
+    // Fetch Real Data
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const [vehicles, drivers, routes, students] = await Promise.all([
+                    TransportService.Vehicle.getAllVehicles().catch(() => []),
+                    TransportService.Driver.getAllDrivers().catch(() => []),
+                    TransportService.Route.getAllRoutes().catch(() => []),
+                    TransportService.Student.getAllStudents().catch(() => [])
+                ]);
 
-    // Simulate Live Updates
+                // Calculate Stats
+                const activeVehicles = vehicles.filter(v => v.status === 'Active' || v.vehicleStatus === 'ACTIVE').length;
+                const maintVehicles = vehicles.filter(v => v.status === 'Maintenance' || v.vehicleStatus === 'MAINTENANCE').length;
+                const inactiveVehicles = vehicles.length - activeVehicles - maintVehicles;
+
+                const activeDriversCount = drivers.filter(d => d.active).length;
+                const activeRoutesCount = routes.filter(r => r.active).length;
+                const totalStudents = students.filter(s => s.user?.routeId).length; // Students with transport
+
+                setStats({
+                    totalVehicles: vehicles.length,
+                    activeDrivers: activeDriversCount,
+                    activeRoutes: activeRoutesCount,
+                    studentsTransported: totalStudents > 0 ? totalStudents : 0, // Fallback if 0
+                    systemStatus: 'Operational'
+                });
+
+                setVehicleStatus({
+                    active: activeVehicles,
+                    maintenance: maintVehicles,
+                    inactive: inactiveVehicles
+                });
+
+                // Map Routes to Occupancy (Mocked usage for now as we don't have real-time passenger count)
+                const occupancyData = routes.slice(0, 5).map(r => ({
+                    route: r.routeCode || r.routeName,
+                    capacity: 50, // Default avg capacity
+                    used: Math.floor(Math.random() * 40) + 5 // Mock usage
+                }));
+                setRouteOccupancy(occupancyData);
+
+            } catch (error) {
+                console.error("Failed to load dashboard stats", error);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    // Simulate Live Updates (Visual Candy only)
     useEffect(() => {
         const interval = setInterval(() => {
-            setStats(prev => ({
-                ...prev,
-                studentsTransported: prev.studentsTransported + (Math.random() > 0.5 ? 1 : -1)
-            }));
-
             setRouteOccupancy(prev => prev.map(r => ({
                 ...r,
-                used: Math.max(0, Math.min(r.capacity, r.used + (Math.floor(Math.random() * 3) - 1)))
+                used: Math.max(0, Math.min(r.capacity, r.used + (Math.floor(Math.random() * 5) - 2)))
             })));
         }, 5000);
 

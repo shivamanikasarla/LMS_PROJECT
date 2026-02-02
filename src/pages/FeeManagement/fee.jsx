@@ -15,6 +15,9 @@ import FeeBatches from './FeeBatches';
 import FeeInstallments from './FeeInstallments';
 
 import { FaRupeeSign } from 'react-icons/fa';
+import { batchService } from '../Batches/services/batchService';
+import { courseService } from '../Courses/services/courseService';
+import { enrollmentService } from '../Batches/services/enrollmentService';
 
 // --- Student Detail View Component ---
 const StudentFeeDetailView = ({ student, onBack }) => {
@@ -203,11 +206,56 @@ const FeeDashboard = () => {
         const handleClickOutside = () => setActiveActionId(null);
         window.addEventListener('click', handleClickOutside);
 
-        // Load Filters Data
-        const batches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
-        const uniqueCourses = [...new Set(batches.map(b => b.course))];
-        setAvailableCourses(uniqueCourses);
-        setAvailableBatches(batches);
+        const loadData = async () => {
+            try {
+                // 1. Fetch Courses (for Fee Info)
+                const courses = await courseService.getCourses();
+                const courseFeeMap = {};
+                const courseNameMap = {};
+                (courses || []).forEach(c => {
+                    courseFeeMap[c.courseId] = c.fee || c.price || c.amount || 0;
+                    courseNameMap[c.courseId] = c.courseName;
+                });
+                setAvailableCourses((courses || []).map(c => c.courseName));
+
+                // 2. Fetch Batches
+                const batches = await batchService.getAllBatches();
+
+                // 3. Fetch Students for Each Batch & Map Fees
+                const batchesWithStudents = await Promise.all(batches.map(async (batch) => {
+                    // Fetch students in this batch
+                    const students = await enrollmentService.getStudentsByBatch(batch.batchId);
+
+                    const courseFee = courseFeeMap[batch.courseId] || 0;
+                    const courseName = courseNameMap[batch.courseId] || 'Unknown Course';
+
+                    const mappedStudents = students.map(s => ({
+                        ...s,
+                        id: s.studentId, // Ensure ID consistency
+                        name: s.studentName || s.name,
+                        totalFee: s.totalFee || courseFee, // Use dynamic course fee!
+                        paidAmount: s.paidAmount || 0,
+                        status: s.status || 'PENDING',
+                        batchName: batch.batchName,
+                        courseName: courseName
+                    }));
+
+                    return {
+                        ...batch,
+                        name: batch.batchName, // Standardize naming for UI
+                        course: courseName,
+                        studentList: mappedStudents
+                    };
+                }));
+
+                setAvailableBatches(batchesWithStudents);
+
+            } catch (error) {
+                console.error("Failed to load Fee Dashboard data:", error);
+            }
+        };
+
+        loadData();
 
         return () => window.removeEventListener('click', handleClickOutside);
     }, []);
@@ -243,7 +291,7 @@ const FeeDashboard = () => {
                         setBatchFilter('All Batches'); // Reset batch when course changes
                     }}
                 >
-                    <option>All Courses</option>
+                    <option key="all">All Courses</option>
                     {availableCourses.map(c => <option key={c}>{c}</option>)}
                 </select>
                 <select
@@ -252,7 +300,7 @@ const FeeDashboard = () => {
                     value={batchFilter}
                     onChange={(e) => setBatchFilter(e.target.value)}
                 >
-                    <option>All Batches</option>
+                    <option key="all">All Batches</option>
                     {availableBatches
                         .filter(b => courseFilter === 'All Courses' || b.course === courseFilter)
                         .map(b => <option key={b.id} value={b.name}>{b.name}</option>)

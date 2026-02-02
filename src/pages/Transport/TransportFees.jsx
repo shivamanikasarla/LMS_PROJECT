@@ -4,31 +4,60 @@ import {
     FiDollarSign, FiSearch, FiTruck, FiUser,
     FiCheckCircle, FiAlertCircle, FiCreditCard, FiSettings
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const TransportFees = () => {
     // --- State ---
     const [routes, setRoutes] = useState([]);
     const [students, setStudents] = useState([]);
-    const [fees, setFees] = useState({}); // { routeId: { monthly: 1000, annual: 10000 } }
-    const [payments, setPayments] = useState({}); // { studentId: { status: 'Paid', amount: 1000, date: '...' } }
-    const [view, setView] = useState('status'); // 'status' or 'config'
+    const [fees, setFees] = useState({});
+    const [payments, setPayments] = useState({});
+    const [view, setView] = useState('status');
     const [selectedRouteId, setSelectedRouteId] = useState('');
+    const [loading, setLoading] = useState(false);
 
     // KPI State
     const [stats, setStats] = useState({ total: 0, collected: 0, pending: 0 });
 
     useEffect(() => {
-        // Load Data
-        const savedRoutes = localStorage.getItem('lms_transport_routes');
-        const savedStudents = localStorage.getItem('lms_transport_students');
+        fetchData();
+
+        // Load Config/Payments from LocalStorage (until backend is ready for these)
         const savedFees = localStorage.getItem('lms_transport_fees_config');
         const savedPayments = localStorage.getItem('lms_transport_payments');
-
-        if (savedRoutes) setRoutes(JSON.parse(savedRoutes));
-        if (savedStudents) setStudents(JSON.parse(savedStudents));
         if (savedFees) setFees(JSON.parse(savedFees));
         if (savedPayments) setPayments(JSON.parse(savedPayments));
     }, []);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [routesData, studentsData] = await Promise.all([
+                TransportService.Route.getAllRoutes(),
+                TransportService.Student.getAllStudents() // Ensure this maps correctly
+            ]);
+
+            setRoutes(routesData || []);
+
+            // Map students to unified format if needed
+            const mappedStudents = (studentsData || []).map(s => {
+                // Handle different student structures (Entity vs User UserDTO)
+                const user = s.user || {};
+                return {
+                    id: user.userId || s.id,
+                    name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || s.name || 'Unknown',
+                    routeId: user.routeId || s.routeId || null, // Ensure backend provides this
+                    class: s.grade || s.class || 'N/A'
+                };
+            });
+            setStudents(mappedStudents);
+
+        } catch (error) {
+            console.error("Failed to fetch transport fee data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Calculate Stats on data change
     useEffect(() => {

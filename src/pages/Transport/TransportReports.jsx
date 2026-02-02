@@ -5,7 +5,8 @@ import {
     FiTruck, FiUsers, FiMapPin, FiTool, FiDollarSign, FiDroplet,
     FiX, FiEye
 } from 'react-icons/fi';
-import { useTransportTheme } from './Transport';
+import { useTransportTheme } from './TransportContext';
+import TransportService from '../../services/transportService';
 
 const TransportReports = () => {
     const theme = useTransportTheme();
@@ -33,36 +34,59 @@ const TransportReports = () => {
     const [students, setStudents] = useState([]);
     const [fees, setFees] = useState({});
     const [payments, setPayments] = useState({});
+    const [loading, setLoading] = useState(false);
 
     // --- UI State ---
     const [previewModal, setPreviewModal] = useState({ open: false, report: null, data: [] });
 
     // --- Load Data ---
-    const loadData = () => {
-        const savedVehicles = localStorage.getItem('lms_transport_vehicles');
-        const savedDrivers = localStorage.getItem('lms_transport_drivers');
-        const savedRoutes = localStorage.getItem('lms_transport_routes');
-        const savedMaintenance = localStorage.getItem('lms_transport_maintenance');
-        const savedFuel = localStorage.getItem('lms_transport_fuel');
-        const savedStudents = localStorage.getItem('lms_transport_students');
-        const savedFees = localStorage.getItem('lms_transport_fees_config');
-        const savedPayments = localStorage.getItem('lms_transport_payments');
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [vehiclesData, driversData, routesData, maintenanceData, fuelData, studentsData] = await Promise.all([
+                TransportService.Vehicle.getAllVehicles().catch(() => []),
+                TransportService.Driver.getAllDrivers().catch(() => []),
+                TransportService.Route.getAllRoutes().catch(() => []),
+                TransportService.Maintenance.getMaintenanceLogs().catch(() => []),
+                TransportService.Fuel.getFuelLogs().catch(() => []),
+                TransportService.Student.getAllStudents().catch(() => [])
+            ]);
 
-        if (savedVehicles) setVehicles(JSON.parse(savedVehicles));
-        if (savedDrivers) setDrivers(JSON.parse(savedDrivers));
-        if (savedRoutes) setRoutes(JSON.parse(savedRoutes));
-        if (savedMaintenance) setMaintenance(JSON.parse(savedMaintenance));
-        if (savedFuel) setFuel(JSON.parse(savedFuel));
-        if (savedStudents) setStudents(JSON.parse(savedStudents));
-        if (savedFees) setFees(JSON.parse(savedFees));
-        if (savedPayments) setPayments(JSON.parse(savedPayments));
+            setVehicles(vehiclesData || []);
+            setDrivers(driversData || []);
+            setRoutes(routesData || []);
+            setMaintenance(maintenanceData || []);
+            setFuel(fuelData || []);
+
+            // Map students to unified format
+            const mappedStudents = (studentsData || []).map(s => {
+                const user = s.user || {};
+                return {
+                    id: user.userId || s.id,
+                    name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || s.name || 'Unknown',
+                    routeId: user.routeId || s.routeId || null,
+                    class: s.grade || s.class || 'N/A',
+                    shift: s.shift || 'Morning',
+                    pickup: s.pickupPoint || 'N/A'
+                };
+            });
+            setStudents(mappedStudents);
+
+            // Keep Fees/Payments in localStorage for now until backend API exists for them
+            const savedFees = localStorage.getItem('lms_transport_fees_config');
+            const savedPayments = localStorage.getItem('lms_transport_payments');
+            if (savedFees) setFees(JSON.parse(savedFees));
+            if (savedPayments) setPayments(JSON.parse(savedPayments));
+
+        } catch (error) {
+            console.error("Failed to load report data", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         loadData();
-        const handleStorageChange = () => loadData();
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
     // --- Report Generators ---

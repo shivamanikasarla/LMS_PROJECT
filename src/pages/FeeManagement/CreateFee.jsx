@@ -6,6 +6,11 @@ import {
     FiCalendar, FiDollarSign, FiBell, FiSettings, FiSearch, FiX, FiPlus, FiCheckCircle, FiInfo, FiFilter
 } from 'react-icons/fi';
 import './FeeManagement.css';
+import { batchService } from '../Batches/services/batchService';
+import { courseService } from '../Courses/services/courseService';
+import { userService } from '../Users/services/userService';
+import { enrollmentService } from '../Batches/services/enrollmentService';
+import { createFeeAllocation } from '../../services/feeService';
 
 // --- Sub-Components ---
 
@@ -136,7 +141,7 @@ const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searcha
                         >
                             <option value="">All Courses</option>
                             {availableCourses.map(c => (
-                                <option key={c} value={c}>{c}</option>
+                                <option key={c.courseId} value={c.courseId}>{c.courseName}</option>
                             ))}
                         </select>
                     </div>
@@ -154,8 +159,8 @@ const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searcha
                             disabled={!data.course}
                         >
                             <option value="">{data.course ? 'All Batches' : 'Select Course First'}</option>
-                            {availableBatches.filter(b => !data.course || b.course === data.course).map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
+                            {availableBatches.filter(b => !data.course || String(b.courseId) === String(data.course)).map(b => (
+                                <option key={b.batchId} value={b.batchId}>{b.batchName}</option>
                             ))}
                         </select>
                     </div>
@@ -513,38 +518,75 @@ const CreateFee = () => {
     const [availableCourses, setAvailableCourses] = useState([]);
     const [searchableStudents, setSearchableStudents] = useState([]);
 
-    // 1. Load Data on Mount
+    // 1. Load Data on Mount (From Backend)
     useEffect(() => {
-        const storedBatches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
-        setAvailableBatches(storedBatches);
-        const courses = [...new Set(storedBatches.map(b => b.course).filter(Boolean))];
-        setAvailableCourses(courses);
+        const loadData = async () => {
+            try {
+                // Fetch Courses
+                const coursesData = await courseService.getCourses();
+                setAvailableCourses(coursesData || []); // Expecting [{ courseId, courseName }, ...]
 
-        // Flatten all students initially
-        const allStudents = storedBatches.flatMap(b => b.studentList || []);
-        setSearchableStudents(allStudents);
+                // Fetch Batches
+                const batchesData = await batchService.getAllBatches();
+                setAvailableBatches(batchesData || []); // Expecting [{ batchId, batchName, courseId }, ...]
+
+                // Fetch All Students (for global search)
+                const allStus = await userService.getAllStudents(); // Expecting [{ studentId, user: { firstName, ... } }]
+
+                const formattedStudents = allStus.map(s => ({
+                    id: s.studentId,
+                    name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
+                    email: s.user?.email
+                }));
+                setSearchableStudents(formattedStudents);
+
+                // Keep a ref of all students if needed for resetting
+                // But here we just set searchableStudents initially
+            } catch (error) {
+                console.error("Failed to load initial data", error);
+            }
+        };
+
+        loadData();
     }, []);
 
     // 2. Filter Students when Batch Selected
     useEffect(() => {
-        if (assignment.batch) {
-            const selectedBatch = availableBatches.find(b => String(b.id) === String(assignment.batch));
-            if (selectedBatch && selectedBatch.studentList) {
-                setSearchableStudents(selectedBatch.studentList);
+        const fetchBatchStudents = async () => {
+            if (assignment.batch) {
+                // Fetch specifically for this batch
+                const batchStudents = await enrollmentService.getStudentsByBatch(assignment.batch);
+                const formatted = batchStudents.map(s => ({
+                    id: s.studentId,
+                    name: s.studentName || s.name || `Student ${s.studentId}`,
+                    email: s.studentEmail
+                }));
+                setSearchableStudents(formatted);
+            } else if (assignment.course) {
+                // If only course selected, find batches for this course, then maybe we can't easily get all students without iterating.
+                // For now, if no batch is selected, we revert to ALL students search (or previously loaded).
+                // Better UX: Show all students, but search filters them.
+                const allStus = await userService.getAllStudents();
+                const formattedStudents = allStus.map(s => ({
+                    id: s.studentId,
+                    name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
+                    email: s.user?.email
+                }));
+                setSearchableStudents(formattedStudents);
             } else {
-                setSearchableStudents([]);
+                // Reset to all
+                const allStus = await userService.getAllStudents();
+                const formattedStudents = allStus.map(s => ({
+                    id: s.studentId,
+                    name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
+                    email: s.user?.email
+                }));
+                setSearchableStudents(formattedStudents);
             }
-        } else if (assignment.course) {
-            // Filter by Course ONLY (if no batch selected)
-            const courseBatches = availableBatches.filter(b => b.course === assignment.course);
-            const courseStudents = courseBatches.flatMap(b => b.studentList || []);
-            setSearchableStudents(courseStudents);
-        } else {
-            // Show all students if no batch selected
-            const allStudents = availableBatches.flatMap(b => b.studentList || []);
-            setSearchableStudents(allStudents);
-        }
-    }, [assignment.batch, assignment.course, availableBatches]);
+        };
+
+        fetchBatchStudents();
+    }, [assignment.batch, assignment.course]);
 
     const handleStudentSearchAdd = (student) => {
         if (!assignment.selectedStudents.find(s => s.id === student.id)) {
@@ -569,7 +611,7 @@ const CreateFee = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (assignment.selectedStudents.length === 0) {
@@ -592,99 +634,40 @@ const CreateFee = () => {
 
         const feeName = basicDetails.name;
 
-        // 1. Load Centralized Data
-        const allBatches = JSON.parse(localStorage.getItem('lms_fee_data') || '[]');
-        let updatedBatches = [...allBatches];
-        let updatedCount = 0;
-        let studentsNotFound = [];
+        try {
+            // Send API Request for each student
+            const promises = assignment.selectedStudents.map(student => {
+                const payload = {
+                    // Try to satisfy both ID and Object mapping
+                    studentId: Number(student.id),
+                    student: { studentId: Number(student.id) },
 
-        // 2. Iterate selected students
-        assignment.selectedStudents.forEach(selected => {
-            let found = false;
-
-            // Find valid batch containing this student
-            // Prioritize the selected batch if any, otherwise search all
-
-            // NOTE: We update the source batch in lms_fee_data directly.
-
-            const batchIndex = updatedBatches.findIndex(b => b.studentList && b.studentList.some(s => s.id === selected.id));
-
-            if (batchIndex !== -1) {
-                const batch = updatedBatches[batchIndex];
-                const studentIndex = batch.studentList.findIndex(s => s.id === selected.id);
-
-                if (studentIndex !== -1) {
-                    // Update Student Record
-                    const student = batch.studentList[studentIndex];
-                    student.totalFee = (student.totalFee || 0) + finalAmount;
-
-                    found = true;
-                    updatedCount++;
-                }
-            }
-
-            if (!found) {
-                studentsNotFound.push(selected);
-            }
-        });
-
-        // 3. Handle Students NOT in any batch (Legacy fallback)
-        if (studentsNotFound.length > 0) {
-            const batchName = 'Individual Fees: ' + feeName;
-
-            const existingCustomIndex = updatedBatches.findIndex(b => b.name === batchName && String(b.id).startsWith('custom-'));
-
-            if (existingCustomIndex !== -1) {
-                const batch = updatedBatches[existingCustomIndex];
-                const newStudents = studentsNotFound.map(s => ({
-                    id: s.id,
-                    name: s.name,
-                    roll: 'IND-' + s.id,
-                    totalFee: finalAmount,
+                    studentName: student.name,
+                    feeName: feeName,
+                    feeType: basicDetails.type,
+                    amount: Number(finalAmount),
+                    totalAmount: Number(finalAmount),
+                    pendingAmount: Number(finalAmount),
                     paidAmount: 0,
-                    status: 'PENDING'
-                }));
-                batch.studentList = [...batch.studentList, ...newStudents];
-                batch.students = batch.studentList.length;
-            } else {
-                // Create New
-                const newBatchId = 'custom-' + Date.now();
-                updatedBatches.unshift({
-                    id: newBatchId,
-                    name: batchName,
-                    course: 'Custom Assignment',
-                    year: new Date().getFullYear(),
-                    students: studentsNotFound.length,
-                    collected: 0,
-                    studentList: studentsNotFound.map(s => ({
-                        id: s.id,
-                        name: s.name,
-                        roll: 'IND-' + s.id,
-                        totalFee: finalAmount,
-                        paidAmount: 0,
-                        status: 'PENDING'
-                    })),
-                    // Legacy container
-                    feeDetails: {
-                        structure: [{ name: basicDetails.type, amount: finalAmount }],
-                        totalFee: finalAmount * studentsNotFound.length,
-                        paidAmount: 0,
-                        pendingAmount: finalAmount * studentsNotFound.length,
-                        dueDate: paymentConfig.dueDate || '2026-12-31'
-                    }
-                });
-            }
+
+                    // Handle Date
+                    dueDate: paymentConfig.dueDate ? paymentConfig.dueDate : null,
+
+                    status: 'PENDING',
+                    description: basicDetails.description
+                };
+                return createFeeAllocation(payload);
+            });
+
+            await Promise.all(promises);
+
+            alert(`Successfully assigned fee to ${assignment.selectedStudents.length} students!`);
+            navigate('/fee', { state: { defaultTab: 'batches' } });
+
+        } catch (error) {
+            console.error("Failed to assign fees:", error);
+            alert("Failed to assign fees. Check console for details.\n" + (error.response?.data?.message || error.message));
         }
-
-        // 4. Save
-        localStorage.setItem('lms_fee_data', JSON.stringify(updatedBatches));
-
-        let message = '';
-        if (updatedCount > 0) message += `Updated fee for ${updatedCount} existing student(s). `;
-        if (studentsNotFound.length > 0) message += `Created/Merged ${studentsNotFound.length} student(s) into individual batch.`;
-
-        alert(message);
-        navigate('/fee', { state: { defaultTab: 'batches' } });
     };
 
     return (

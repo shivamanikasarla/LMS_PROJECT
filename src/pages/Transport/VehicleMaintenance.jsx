@@ -4,16 +4,11 @@ import {
     FiTool, FiPlus, FiSearch, FiEdit2, FiTrash2,
     FiCalendar, FiDollarSign, FiAlertCircle, FiCheckCircle, FiX
 } from 'react-icons/fi';
+import TransportService from '../../services/transportService';
 
 const VehicleMaintenance = () => {
     // --- State ---
-    const [records, setRecords] = useState(() => {
-        const saved = localStorage.getItem('lms_transport_maintenance');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, vehicleId: 'KA-01-AB-1234', type: 'Service', date: '2026-01-10', cost: '5000', description: 'Regular oil change and brake check', status: 'Completed', nextDue: '2026-07-10' },
-            { id: 2, vehicleId: 'KA-05-XY-9876', type: 'Repair', date: '2026-01-15', cost: '12000', description: 'Clutch plate replacement', status: 'Pending', nextDue: '-' },
-        ];
-    });
+    const [records, setRecords] = useState([]);
 
     const [vehicles, setVehicles] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,15 +17,27 @@ const VehicleMaintenance = () => {
     const [formData, setFormData] = useState({
         vehicleId: '', type: 'Service', date: '', cost: '', description: '', status: 'Pending', nextDue: ''
     });
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const savedVehicles = localStorage.getItem('lms_transport_vehicles');
-        if (savedVehicles) setVehicles(JSON.parse(savedVehicles));
+        fetchData();
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('lms_transport_maintenance', JSON.stringify(records));
-    }, [records]);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [recordsData, vehiclesData] = await Promise.all([
+                TransportService.Maintenance.getMaintenanceLogs().catch(() => []),
+                TransportService.Vehicle.getAllVehicles()
+            ]);
+            setRecords(recordsData || []);
+            setVehicles(vehiclesData || []);
+        } catch (error) {
+            console.error("Failed to load maintenance data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // --- Handlers ---
     const handleOpenModal = (record = null) => {
@@ -50,19 +57,26 @@ const VehicleMaintenance = () => {
     };
 
     const handleDelete = (id) => {
-        if (window.confirm('Delete this maintenance record?')) {
-            setRecords(records.filter(r => r.id !== id));
-        }
+        alert("Delete not supported via API yet.");
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (editingRecord) {
-            setRecords(records.map(r => r.id === editingRecord.id ? { ...formData, id: r.id } : r));
-        } else {
-            setRecords([...records, { ...formData, id: Date.now() }]);
+        setLoading(true);
+        try {
+            if (editingRecord) {
+                alert("Update not supported via API yet.");
+            } else {
+                const newRecord = await TransportService.Maintenance.addMaintenanceLog(formData);
+                setRecords([...records, newRecord]);
+                handleCloseModal();
+            }
+        } catch (error) {
+            console.error("Failed to save", error);
+            alert("Failed to save record");
+        } finally {
+            setLoading(false);
         }
-        handleCloseModal();
     };
 
     const filteredRecords = records.filter(r =>

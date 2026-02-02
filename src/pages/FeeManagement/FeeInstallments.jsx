@@ -4,6 +4,7 @@ import { FiSave, FiLayers, FiCalendar, FiDollarSign, FiPlus, FiTrash2, FiAlertCi
 import './FeeManagement.css';
 import { courseService } from '../Courses/services/courseService';
 import { batchService } from '../Batches/services/batchService';
+import { enrollmentService } from '../Batches/services/enrollmentService';
 import { getAllStudents, createInstallmentPlan, getStudentInstallments } from '../../services/feeService';
 
 const FeeInstallments = () => {
@@ -31,7 +32,49 @@ const FeeInstallments = () => {
 
                 // Fetch all batches
                 const batchesData = await batchService.getAllBatches();
-                setBatches(batchesData || []);
+
+                // Create a Map for faster Course Lookup
+                const courseMap = {};
+                coursesData.forEach(c => {
+                    // Normalize keys and store fee
+                    courseMap[String(c.courseId)] = Number(c.price || c.fee || c.amount || c.courseFee || 0);
+                });
+                console.log("💰 Fee Logic - Course Fees Map:", courseMap);
+
+                // Fetch fresh student counts & lists for "Members Present" accuracy
+                const batchesWithCounts = await Promise.all(batchesData.map(async (b) => {
+                    try {
+                        const s = await enrollmentService.getStudentsByBatch(b.batchId);
+
+                        // Find Fee for this Batch's Course
+                        // Handle potential nested course object or direct ID
+                        const cId = b.courseId || b.course?.courseId;
+                        const batchCourseFees = courseMap[String(cId)] || 0;
+                        console.log(`Checking Batch ${b.batchName} (Course ${b.courseId}) -> Found Fee: ${batchCourseFees}`);
+
+                        // Map Core Students to Fee UI Structure
+                        const mappedStudents = s.map(stu => ({
+                            ...stu,
+                            id: stu.studentId || stu.id,
+                            name: stu.studentName || stu.name || "Unknown Student",
+                            // Priority: Student Specific Fee -> Batch Override -> Course Fee -> 0
+                            totalFee: stu.totalFee || b.fee || batchCourseFees || 0,
+                            paidAmount: stu.paidAmount || 0,
+                            installments: stu.installments || []
+                        }));
+
+                        return {
+                            ...b,
+                            studentCount: s.length,
+                            studentList: mappedStudents
+                        };
+                    } catch (err) {
+                        console.error('Error enriching batch:', err);
+                        return { ...b, studentCount: 0, studentList: [] };
+                    }
+                }));
+
+                setBatches(batchesWithCounts || []);
             } catch (error) {
                 console.error('Error fetching courses/batches:', error);
                 setCourses([]);
@@ -80,7 +123,7 @@ const FeeInstallments = () => {
             case 'Quarterly': count = 4; break;
             case 'HalfYearly': count = 6; break;
             case 'Yearly': count = 12; break;
-            case 'Custom': count = customCount; break;
+            case 'Custom': count = Number(customCount) || (customCount === '' ? 1 : customCount); break;
             default: count = 1;
         }
 
@@ -113,9 +156,24 @@ const FeeInstallments = () => {
     };
 
     const handleCustomCountChange = (e) => {
-        const count = parseInt(e.target.value) || 1;
+        const val = e.target.value;
+
+        // Allow clearing the input (empty string)
+        if (val === '') {
+            setCustomCount('');
+            return;
+        }
+
+        const count = parseInt(val);
+
+        // Strict Check: Don't allow 0 or negative numbers
+        if (count <= 0) return;
+
+        // Update state if it's a number (or allow typing)
         setCustomCount(count);
-        if (planType === 'Custom' && configuringStudent) {
+
+        // Limit the heavy recalculation/logic to valid bounds
+        if (count <= 24 && planType === 'Custom' && configuringStudent) {
             const total = configuringStudent.totalFee || 0;
             const baseAmount = Math.floor(total / count);
             let remainder = total - (baseAmount * count);
@@ -146,12 +204,13 @@ const FeeInstallments = () => {
         setCustomCount(newInst.length);
     };
 
-    const saveStudentPlan = () => {
+    const saveStudentPlan = async () => {
         if (!configuringStudent || !selectedBatch) return;
 
         const totalFee = configuringStudent.totalFee || 0;
         const sum = installments.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
+        // Validation: Sum check with 1 unit tolerance for rounding errors
         if (Math.abs(sum - totalFee) > 1) {
             alert(`Validation Error: Sum (₹${sum}) must equal Total Fee (₹${totalFee}).`);
             return;
@@ -162,28 +221,90 @@ const FeeInstallments = () => {
             return;
         }
 
-        // Update Batch State
-        const updatedBatches = batches.map(b => {
-            if (b.id === selectedBatch.id) {
-                const updatedList = b.studentList.map(s => {
-                    if (s.id === configuringStudent.id) {
-                        return {
-                            ...s,
-                            installments: installments,
-                            planType: planType
-                        };
-                    }
-                    return s;
-                });
-                return { ...b, studentList: updatedList };
-            }
-            return b;
-        });
+        try {
+            // Prepare Payload for Friend's Backend
+            const payload = {
+                planType: planType,
+                totalFee: totalFee,
+                installments: installments.map(i => ({
+                    name: i.name,
+                    amount: Number(i.amount),
+                    dueDate: i.dueDate, // Date input values are already YYYY-MM-DD
+                    status: 'PENDING'
+                }))
+            };
 
-        localStorage.setItem('lms_fee_data', JSON.stringify(updatedBatches));
-        setBatches(updatedBatches);
-        setConfiguringStudent(null); // Close modal
-        // alert("Plan saved for " + configuringStudent.name);
+            // Call API
+            await createInstallmentPlan(configuringStudent.id, payload);
+
+            alert(`Successfully saved installment plan for ${configuringStudent.name} to Backend!`);
+
+            // Optimistic Update: Update Local State to reflect changes immediately
+            const updatedBatches = batches.map(b => {
+                if (b.id === selectedBatch.id) {
+                    const updatedList = b.studentList.map(s => {
+                        if (s.id === configuringStudent.id) {
+                            return {
+                                ...s,
+                                installments: installments,
+                                planType: planType
+                            };
+                        }
+                        return s;
+                    });
+                    return { ...b, studentList: updatedList };
+                }
+                return b;
+            });
+
+            // Optionally update local storage as a cache/fallback
+            localStorage.setItem('lms_fee_data', JSON.stringify(updatedBatches));
+
+            setBatches(updatedBatches);
+            setConfiguringStudent(null); // Close modal
+
+        } catch (error) {
+            console.error("Failed to save plan to backend:", error);
+
+            let displayMsg = "An unexpected error occurred.";
+
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                displayMsg = `Timeout Error: The backend took too long to respond (>30s).\nThis usually means the connection is slow or the server is busy.`;
+            } else if (error.message === 'Network Error') {
+                displayMsg = `Network Error: Cannot reach 192.168.1.16:8080.\n1. Check if the backend is running.\n2. Disable Firewall on the backend laptop.\n3. Verify IP address.`;
+            } else if (error.response) {
+                // Server responded with non-2xx code
+                displayMsg = `Server Error (${error.response.status}): ${JSON.stringify(error.response.data) || error.message}`;
+            } else {
+                displayMsg = error.message || "Unknown Error";
+            }
+
+            alert(`e: ${displayMsg}`);
+
+            // Fallback for demo purposes if backend fails (so user can still see UI working)
+            if (window.confirm(`${displayMsg}\n\nDo you want to save locally instead (for demo)?`)) {
+                // Update Batch State Locally
+                const updatedBatches = batches.map(b => {
+                    if (b.id === selectedBatch.id) {
+                        const updatedList = b.studentList.map(s => {
+                            if (s.id === configuringStudent.id) {
+                                return {
+                                    ...s,
+                                    installments: installments,
+                                    planType: planType
+                                };
+                            }
+                            return s;
+                        });
+                        return { ...b, studentList: updatedList };
+                    }
+                    return b;
+                });
+                localStorage.setItem('lms_fee_data', JSON.stringify(updatedBatches));
+                setBatches(updatedBatches);
+                setConfiguringStudent(null);
+            }
+        }
     };
 
     if (loading) {
@@ -279,7 +400,7 @@ const FeeInstallments = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '12px 16px', borderRadius: 12 }}>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>Total Students</div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>Members Present</div>
                                 <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{batch.studentCount || 0}</div>
                             </div>
                         </motion.div>
@@ -370,7 +491,24 @@ const FeeInstallments = () => {
 
                             <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 600, color: '#334155' }}>Total Fee to Split</span>
-                                <span style={{ fontSize: 20, fontWeight: 700, color: '#6366f1' }}>₹{(configuringStudent.totalFee || 0).toLocaleString()}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ color: '#64748b', fontSize: 18 }}>₹</span>
+                                    <input
+                                        type="number"
+                                        value={configuringStudent.totalFee || ''}
+                                        onChange={(e) => {
+                                            const newFee = Number(e.target.value);
+                                            setConfiguringStudent(prev => ({ ...prev, totalFee: newFee }));
+                                            // Recalculate installments immediately with new fee
+                                            initializeInstallments(planType, newFee);
+                                        }}
+                                        style={{
+                                            fontSize: 20, fontWeight: 700, color: '#6366f1',
+                                            border: 'none', background: 'transparent', width: 120, textAlign: 'right', outline: 'none'
+                                        }}
+                                    />
+                                    <FiEdit3 size={16} color="#94a3b8" />
+                                </div>
                             </div>
 
                             {/* Plan Configuration Logic (Reused) */}

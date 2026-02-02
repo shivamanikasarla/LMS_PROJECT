@@ -4,7 +4,7 @@ import {
     FiCheckCircle, FiXCircle, FiAlertCircle, FiClock, FiGrid, FiMapPin, FiRefreshCw, FiTruck
 } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
-import { useTransportTheme } from './Transport';
+import { useTransportTheme } from './TransportContext';
 import TransportService from '../../services/transportService';
 
 const TransportAttendance = () => {
@@ -64,7 +64,18 @@ const TransportAttendance = () => {
         setLoading(true);
         setError(null);
         try {
-            const allStudents = JSON.parse(localStorage.getItem('lms_transport_students') || '[]');
+            // Fetch students from backend instead of localStorage
+            const studentsData = await TransportService.Student.getAllStudents();
+            const allStudents = (studentsData || []).map(s => {
+                const user = s.user || {};
+                return {
+                    id: user.userId || s.id,
+                    name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || s.name || 'Unknown',
+                    routeId: user.routeId || s.routeId || null,
+                    pickup: s.pickupPoint || '',
+                };
+            });
+
             let studentsToDisplay = [];
 
             if (selectedVehicle) {

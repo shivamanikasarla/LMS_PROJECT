@@ -97,7 +97,7 @@ const AppRoutes = () => {
           <Route path="/webinar" element={<Webinar />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/website" element={<Website />} />
-          <Route path="/transport" element={<Transport />} />
+          <Route path="/transport/*" element={<Transport />} />
 
           {/* ===== 404 ===== */}
           <Route path="*" element={<NotFound />} />

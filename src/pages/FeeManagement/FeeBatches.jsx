@@ -6,7 +6,10 @@ import {
     FiAlertCircle, FiDownload, FiCreditCard, FiTrash2, FiEdit3, FiLoader, FiRefreshCcw
 } from 'react-icons/fi';
 import './FeeManagement.css';
-import { getAllStudents, getStudentsByBatch, getAllBatches } from '../../services/feeService';
+import { getAllStudents, getStudentsByBatch } from '../../services/feeService';
+import { batchService } from '../../pages/Batches/services/batchService';
+import { enrollmentService } from '../../pages/Batches/services/enrollmentService';
+import { courseService } from '../../pages/Courses/services/courseService';
 
 const FeeBatches = () => {
     // --- State Management ---
@@ -45,17 +48,35 @@ const FeeBatches = () => {
         setLoading(true);
         try {
             // Fetch batches from Fee Backend
-            const batchesData = await getAllBatches();
+            const batchesData = await batchService.getAllBatches();
+
+            // Fetch Courses for Fee Info
+            const coursesData = await courseService.getCourses();
+            const courseFeeMap = {};
+            if (coursesData && Array.isArray(coursesData)) {
+                coursesData.forEach(c => {
+                    courseFeeMap[c.courseId] = c.fee || c.price || c.amount || 0;
+                });
+            }
+
+            // Fetch fresh student counts for "Members Present" accuracy
+            const batchesWithCounts = await Promise.all(batchesData.map(async (b) => {
+                try {
+                    const s = await enrollmentService.getStudentsByBatch(b.batchId);
+                    return { ...b, _realCount: s.length };
+                } catch { return { ...b, _realCount: 0 }; }
+            }));
 
             // Transform backend data to match UI expectations
-            const transformedBatches = batchesData.map(batch => ({
+            const transformedBatches = batchesWithCounts.map(batch => ({
                 id: batch.batchId,
                 batchId: batch.batchId,
                 name: batch.batchName,
                 course: batch.courseName || 'Course',
                 courseId: batch.courseId,
+                courseFee: courseFeeMap[batch.courseId] || 0, // Store correct fee here
                 year: batch.academicYear || batch.startDate?.substring(0, 4) || '2025-26',
-                students: batch.studentCount || 0,
+                students: batch._realCount, // Actual Members Present
                 collected: calculateCollectionPercentage(batch),
                 studentList: [], // Will be loaded when batch is clicked
             }));
@@ -78,19 +99,37 @@ const FeeBatches = () => {
     };
 
     // --- 2) BATCH -> STUDENTS FLOW ---
-    const handleBatchClick = (batch) => {
+    const handleBatchClick = async (batch) => {
         setSelectedBatch(batch);
         setSearchTerm(''); // Reset search
         setFilterStatus('All'); // Reset filter
+        setLoading(true);
 
-        // Data is now always in studentList due to unified structure
-        if (batch.studentList) {
-            setStudents(batch.studentList);
+        try {
+            // Fetch students using Enrollment Service (from Core LMS)
+            // This ensures we see students even if Fee Backend is empty/isolated
+            const enrolledStudents = await enrollmentService.getStudentsByBatch(batch.id);
+
+            // Map to Fee Structure
+            // Note: feeService.getStudentsByBatch might eventually replace this to get REAL fee data.
+            // For now, we map Core students to Fee UI structure (with placeholder fee amounts).
+            const mappedStudents = enrolledStudents.map(s => ({
+                id: s.studentId || s.id,
+                name: s.studentName || s.name || "Unknown Student",
+                roll: s.rollNo || `STU-${s.id || s.studentId}`,
+                totalFee: s.totalFee || batch.courseFee || 0, // Fee from Course (via Batch lookup) or 0
+                paidAmount: s.paidAmount || 0,
+                status: s.status || 'PENDING'
+            }));
+
+            setStudents(mappedStudents);
             setView('list');
-        } else {
-            // Fallback for legacy empty structure
+        } catch (error) {
+            console.error("Failed to fetch batch students:", error);
             setStudents([]);
             setView('list');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -498,7 +537,7 @@ const FeeBatches = () => {
                                     <FiCalendar size={14} /> {batch.year}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <FiUsers size={14} /> {batch.students} Students
+                                    <FiUsers size={14} /> {batch.students} Members Present
                                 </div>
                             </div>
 

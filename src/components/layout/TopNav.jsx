@@ -63,6 +63,12 @@ const TopNav = () => {
 
                         {/* USER ACTIONS */}
                         <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto ms-md-0">
+                            {/* Admin Login Button */}
+                            <NavLink to="/login" className="btn btn-primary d-flex align-items-center gap-2 rounded-pill px-3 py-1 text-decoration-none shadow-sm border-0" style={{ fontSize: '0.85rem' }}>
+                                <i className="bi bi-shield-lock-fill"></i>
+                                <span className="d-none d-sm-inline">Admin Login</span>
+                            </NavLink>
+
                             <button className="btn btn-light rounded-circle p-2 d-none d-lg-block text-secondary border-0">
                                 <i className="bi bi-search"></i>
                             </button>

@@ -4,7 +4,7 @@ import {
     FiMap, FiPlus, FiSearch, FiEdit2, FiTrash2,
     FiMapPin, FiTruck, FiUsers, FiClock, FiX, FiRefreshCw
 } from 'react-icons/fi';
-import { RouteService } from '../../services/transportService';
+import TransportService from '../../services/transportService';
 
 const RouteManagement = () => {
     // --- State ---
@@ -31,7 +31,7 @@ const RouteManagement = () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await RouteService.getAllRoutes();
+            const data = await TransportService.Route.getAllRoutes();
             setRoutes(data || []);
         } catch (err) {
             setError(err.message);
@@ -84,7 +84,7 @@ const RouteManagement = () => {
         if (window.confirm('Are you sure you want to delete this route?')) {
             try {
                 setLoading(true);
-                await RouteService.deleteRoute(routeCode);
+                await TransportService.Route.deleteRoute(routeCode);
                 setRoutes(routes.filter(r => r.routeCode !== routeCode));
             } catch (error) {
                 console.error('Error deleting route:', error);
@@ -123,11 +123,11 @@ const RouteManagement = () => {
 
             if (editingRoute) {
                 // Update existing route
-                const updated = await RouteService.updateRoute(editingRoute.routeCode, payload);
+                const updated = await TransportService.Route.updateRoute(editingRoute.routeCode, payload);
                 setRoutes(routes.map(r => r.routeCode === editingRoute.routeCode ? updated : r));
             } else {
                 // Create new route
-                const newRoute = await RouteService.addRoute(payload);
+                const newRoute = await TransportService.Route.createRoute(payload);
                 setRoutes([...routes, newRoute]);
             }
             handleCloseModal();

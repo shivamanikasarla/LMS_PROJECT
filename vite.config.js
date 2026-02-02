@@ -7,42 +7,49 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/student-batches': {
-        target: 'http://192.168.1.20:5151', // Corrected: StudentBatchController is in Main LMS (5151)
+        target: 'http://192.168.1.22:5151', // Corrected: StudentBatchController is in Main LMS (5151)
         changeOrigin: true,
         secure: false,
       },
-      '/api/fee': {
-        target: 'http://192.168.1.12:8080', // Fee Management Backend (Settings)
+      '/api/fee-management': {
+        target: 'http://192.168.1.16:8080', // Fee Management Backend (Settings)
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api\/fee-management/, ''),
+      },
+      '/api/transport': {
+        target: 'http://192.168.1.4:9191', // Transport Management Backend
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api': {
-        target: 'http://192.168.1.20:5151', // Gateway / Other Modules
+        target: 'http://192.168.1.22:5151', // Gateway / Other Modules
         changeOrigin: true,
         secure: false,
       },
       '/admin': {
-        target: 'http://192.168.1.22:8081',
+        target: 'http://192.168.1.17:8081',
         changeOrigin: true,
         secure: false,
       },
       '/student': {
-        target: 'http://192.168.1.22:8081',
+        target: 'http://192.168.1.17:8081',
         changeOrigin: true,
         secure: false,
       },
       '/auth': {
-        target: 'http://192.168.1.22:8081',
+        target: 'http://192.168.1.17:8081',
         changeOrigin: true,
         secure: false,
       },
       '/users': {
-        target: 'http://192.168.1.22:8081',
+        target: 'http://192.168.1.17:8081',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://192.168.1.20:5151',
+        target: 'http://192.168.1.22:5151',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

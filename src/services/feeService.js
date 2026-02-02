@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api/fee';
+const API_BASE_URL = '/api/fee-management';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -10,7 +10,7 @@ const getAuthToken = () => {
 // Create axios instance with interceptors
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 5000,
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -261,6 +261,8 @@ export const getStudentInstallments = async (studentId) => {
 
 export const createInstallmentPlan = async (studentId, planData) => {
     try {
+        // Debug Log
+        console.log(`POST /student/${studentId}/installments Payload:`, JSON.stringify(planData, null, 2));
         const response = await apiClient.post(`/student/${studentId}/installments`, planData);
         return response.data;
     } catch (error) {
@@ -279,6 +281,16 @@ export const createFee = async (feeData) => {
         return response.data;
     } catch (error) {
         console.error('Error creating fee:', error);
+        throw error;
+    }
+};
+
+export const createFeeAllocation = async (allocationData) => {
+    try {
+        const response = await apiClient.post('/fee-allocations', allocationData);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating fee allocation:', error);
         throw error;
     }
 };
