@@ -13,6 +13,7 @@ import FeeRefunds from './FeeRefunds';
 import FeeSettings from './FeeSettings';
 import FeeBatches from './FeeBatches';
 import FeeInstallments from './FeeInstallments';
+import FeeAuditLogs from './FeeAuditLogs';
 
 import { FaRupeeSign } from 'react-icons/fa';
 import { batchService } from '../Batches/services/batchService';
@@ -292,7 +293,7 @@ const FeeDashboard = () => {
                     }}
                 >
                     <option key="all">All Courses</option>
-                    {availableCourses.map(c => <option key={c}>{c}</option>)}
+                    {availableCourses.map((c, index) => <option key={`${c}-${index}`}>{c}</option>)}
                 </select>
                 <select
                     className="form-select"
@@ -658,6 +659,7 @@ const FeeManagement = () => {
         { id: 'payments', label: 'Payments', icon: <FiCreditCard /> },
         { id: 'refunds', label: 'Refunds', icon: <FiRefreshCcw /> },
         { id: 'settings', label: 'Settings', icon: <FiSettings /> },
+        { id: 'audit', label: 'Audit Log', icon: <FiActivity /> },
     ];
 
     return (
@@ -702,6 +704,7 @@ const FeeManagement = () => {
                     {activeTab === 'payments' && <FeePayments setActiveTab={setActiveTab} />}
                     {activeTab === 'refunds' && <FeeRefunds />}
                     {activeTab === 'settings' && <FeeSettings />}
+                    {activeTab === 'audit' && <FeeAuditLogs />}
 
 
                 </motion.div>

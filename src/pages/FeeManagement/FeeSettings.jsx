@@ -51,23 +51,19 @@ const NotificationCard = ({ notifType, data, onToggle, onConfigChange, onTest })
                     <div className="section-divider" style={{ margin: '16px 0' }}></div>
 
                     <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
-
-
-
-                        {/* Channels */}
+                        {/* Channels (Read Only) */}
                         <div>
                             <label className="form-label" style={{ marginBottom: 12, display: 'block' }}>Channels</label>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={data.channels.email}
-                                        onChange={() => onToggle(notifType, 'channels', 'email')}
-                                    />
-                                    <FiMail size={14} /> Email
-                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#64748b' }}>
+                                    <FiMail size={16} /> Email
+                                </div>
                             </div>
                         </div>
+
+
+
+
 
                         {/* Configuration Specifics */}
                         {(data.config || data.template) && !['pending', 'overdue', 'paymentSuccess', 'partialPayment', 'refundStatus'].includes(notifType) && (
@@ -175,11 +171,11 @@ const FeeSettings = () => {
 
     const defaultLateFee = {
         enabled: false,
-        amount: 50,
+        amount: 2000.00,
         type: 'fixed', // or 'percentage'
         maxCap: 2000,
         sendEmail: true,
-        frequency: 'weekly'
+        frequency: 'MONTHLY'
     };
 
     const defaultNotifications = {
@@ -253,16 +249,31 @@ const FeeSettings = () => {
             const data = await getFeeSettings();
             console.log('✅ Settings loaded successfully:', data);
 
+            // DEBUG: Check for HTML response (common proxy issue)
+            if (typeof data === 'string' && data.includes('<!DOCTYPE html>')) {
+                throw new Error('Received HTML instead of JSON. Check Proxy URL or Backend Endpoint.');
+            }
+
             // Map backend data to frontend state
-            if (data.general) {
+            if (data && data.general) {
                 setGeneralSettings(data.general);
+            } else {
+                console.warn('⚠️ Received data is missing "general" key:', data);
+                // Optional: Throw error if strict validation is needed
+                // throw new Error('Invalid data structure details: ' + JSON.stringify(data));
             }
 
-            if (data.lateFee) {
-                setLateFeeSettings(data.lateFee);
+            if (data && data.lateFee) {
+                // Merge with defaults to ensure all fields exist
+                // Normalize frequency to uppercase to match dropdown options (backend might send lowercase)
+                setLateFeeSettings(prev => ({
+                    ...defaultLateFee,
+                    ...data.lateFee,
+                    frequency: data.lateFee.frequency ? data.lateFee.frequency.toUpperCase() : defaultLateFee.frequency
+                }));
             }
 
-            if (data.notifications) {
+            if (data && data.notifications) {
                 // Backend sends simple boolean values, map to frontend structure
                 setNotifications(prev => ({
                     creation: { ...prev.creation, enabled: data.notifications.creation },
@@ -283,9 +294,9 @@ const FeeSettings = () => {
             });
 
             const errorMsg = error.response?.status === 404
-                ? 'Backend endpoint not found (404). Check if your friend\'s backend is running at 192.168.1.16:8080'
+                ? 'Backend endpoint not found (404). Check if your friend\'s backend is running at 192.168.1.11:8080'
                 : error.message.includes('Network Error')
-                    ? 'Cannot connect to backend at 192.168.1.16:8080. Please verify the backend is running and accessible.'
+                    ? 'Cannot connect to backend at 192.168.1.11:8080. Please verify the backend is running and accessible.'
                     : `Failed to load settings: ${error.message}`;
 
             alert(errorMsg);
@@ -314,12 +325,7 @@ const FeeSettings = () => {
 
             await saveFeeSettings(payload);
 
-            // Log the settings update to audit log
-            await logAction('SETTINGS_UPDATED', {
-                details: `Updated fee management settings: Currency: ${generalSettings.currency}, Late Fee: ${lateFeeSettings.enabled ? 'Enabled' : 'Disabled'}`,
-                targetUser: null,
-                status: 'SUCCESS'
-            });
+
 
             alert('Configuration saved successfully to database!');
         } catch (error) {
@@ -500,23 +506,51 @@ const FeeSettings = () => {
                                         style={{ overflow: 'hidden' }}
                                     >
                                         <div className="section-divider"></div>
-                                        <div className="form-group">
-                                            <label className="form-label">Fee Amount ({generalSettings.currencySymbol})</label>
-                                            <input
-                                                type="number"
-                                                name="amount"
-                                                value={lateFeeSettings.amount}
-                                                onChange={handleLateFeeChange}
-                                                className="form-input"
-                                                placeholder="50"
-                                            />
+                                        <div className="form-grid">
+                                            <div className="form-group">
+                                                <label className="form-label">Fee Amount ({generalSettings.currencySymbol})</label>
+                                                <input
+                                                    type="number"
+                                                    name="amount"
+                                                    value={lateFeeSettings.amount}
+                                                    onChange={handleLateFeeChange}
+                                                    className="form-input"
+                                                    placeholder="50"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Application Frequency</label>
+                                                <select
+                                                    name="frequency"
+                                                    value={lateFeeSettings.frequency}
+                                                    onChange={handleLateFeeChange}
+                                                    className="form-select"
+                                                >
+                                                    <option value="WEEKLY">Weekly</option>
+                                                    <option value="MONTHLY">Monthly</option>
+                                                    <option value="ONE_TIME">One-Time</option>
+                                                </select>
+                                            </div>
+
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', marginTop: 16, justifyContent: 'flex-start' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 500, color: '#334155' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    name="sendEmail"
+                                                    checked={lateFeeSettings.sendEmail}
+                                                    onChange={handleLateFeeChange}
+                                                    style={{ width: 18, height: 18, accentColor: '#6366f1' }}
+                                                />
+                                                Email
+                                            </label>
                                         </div>
                                         <div style={{ marginTop: 16, padding: '12px', background: 'rgba(99, 102, 241, 0.05)', borderRadius: 8, border: '1px solid rgba(99, 102, 241, 0.1)' }}>
                                             <div style={{ fontSize: 14, fontWeight: 500, color: '#4338ca' }}>
-                                                📧 Late Fee Notification (Daily)
+                                                📧 Late Fee Notification ({lateFeeSettings.frequency})
                                             </div>
                                             <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                                                Automatic notifications will be sent daily for overdue payments
+                                                Automatic notifications will be sent based on the selected frequency for overdue payments
                                             </div>
                                         </div>
                                     </motion.div>

@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
     FiArrowLeft, FiSave, FiLayers, FiUsers, FiCreditCard,
-    FiCalendar, FiDollarSign, FiBell, FiSettings, FiSearch, FiX, FiPlus, FiCheckCircle, FiInfo, FiFilter
+    FiCalendar, FiDollarSign, FiBell, FiSettings, FiSearch, FiX, FiPlus, FiCheckCircle, FiInfo, FiFilter, FiLoader
 } from 'react-icons/fi';
 import './FeeManagement.css';
 import { batchService } from '../Batches/services/batchService';
 import { courseService } from '../Courses/services/courseService';
 import { userService } from '../Users/services/userService';
 import { enrollmentService } from '../Batches/services/enrollmentService';
-import { createFeeAllocation } from '../../services/feeService';
+import { createFeeAllocation, createBatchFee, createFee } from '../../services/feeService';
 
 // --- Sub-Components ---
 
@@ -43,7 +43,12 @@ const BasicDetails = ({ data, onChange }) => (
             </div>
             <div className="form-group">
                 <label className="form-label">Fee Type *</label>
-                <select name="type" className="form-select" value={data.type} onChange={onChange}>
+                <select
+                    name="type"
+                    className="form-select"
+                    value={data.type} // This keeps the string value for the UI state
+                    onChange={onChange}
+                >
                     <option value="Tuition Fee">Tuition Fee</option>
                     <option value="Admission Fee">Admission Fee</option>
                     <option value="Exam Fee">Exam Fee</option>
@@ -127,6 +132,40 @@ const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searcha
         <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
             <SectionHeader icon={FiUsers} title="Assign Fee To" description="Select specific students or batches for this fee" />
 
+            {/* Target Selection Toggles */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 24, padding: 4, background: '#f1f5f9', borderRadius: 12, width: 'fit-content' }}>
+                <button
+                    className={`nav-tab ${data.targetType === 'student' ? 'active' : ''}`}
+                    onClick={() => setData({ ...data, targetType: 'student' })}
+                    style={{
+                        margin: 0,
+                        border: 'none',
+                        background: data.targetType === 'student' ? 'white' : 'transparent',
+                        boxShadow: data.targetType === 'student' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                        color: data.targetType === 'student' ? '#0f172a' : '#64748b',
+                        padding: '8px 16px',
+                        borderRadius: 8
+                    }}
+                >
+                    <FiUsers size={14} style={{ marginRight: 8 }} /> Individual Students
+                </button>
+                <button
+                    className={`nav-tab ${data.targetType === 'batch' ? 'active' : ''}`}
+                    onClick={() => setData({ ...data, targetType: 'batch' })}
+                    style={{
+                        margin: 0,
+                        border: 'none',
+                        background: data.targetType === 'batch' ? 'white' : 'transparent',
+                        boxShadow: data.targetType === 'batch' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                        color: data.targetType === 'batch' ? '#0f172a' : '#64748b',
+                        padding: '8px 16px',
+                        borderRadius: 8
+                    }}
+                >
+                    <FiLayers size={14} style={{ marginRight: 8 }} /> Entire Batch
+                </button>
+            </div>
+
             {/* Course & Batch Filters */}
             <div className="form-grid" style={{ marginBottom: 24, gridTemplateColumns: '1fr 1fr' }}>
                 <div className="form-group">
@@ -160,59 +199,61 @@ const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searcha
                         >
                             <option value="">{data.course ? 'All Batches' : 'Select Course First'}</option>
                             {availableBatches.filter(b => !data.course || String(b.courseId) === String(data.course)).map(b => (
-                                <option key={b.batchId} value={b.batchId}>{b.batchName}</option>
+                                <option key={b.batchId || b.id} value={b.batchId || b.id}>{b.batchName}</option>
                             ))}
                         </select>
                     </div>
                 </div>
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Search & Add Students {data.batch ? '(from selected batch)' : ''}</label>
-                <div style={{ position: 'relative', marginBottom: 16 }}>
-                    <FiSearch style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
-                    <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Search by name or ID..."
-                        style={{ paddingLeft: 38 }}
-                        value={studentSearch}
-                        onChange={(e) => setStudentSearch(e.target.value)}
-                    />
-                    {studentSearch && (
-                        <div style={{
-                            position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
-                            background: 'white', borderRadius: 12, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                            zIndex: 10, padding: 8, border: '1px solid #e2e8f0'
-                        }}>
-                            {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).map(student => (
-                                <div
-                                    key={student.id}
-                                    onClick={() => { handleStudentSearchAdd(student); setStudentSearch(''); }}
-                                    style={{ padding: '10px 14px', cursor: 'pointer', borderRadius: 8, transition: 'background 0.2s' }}
-                                    onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
-                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                >
-                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{student.name}</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ID: #{student.id}</div>
-                                </div>
-                            ))}
-                            {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).length === 0 && (
-                                <div style={{ padding: 12, textAlign: 'center', color: '#94a3b8' }}>No students found</div>
-                            )}
-                        </div>
-                    )}
+            {data.targetType === 'student' && (
+                <div className="form-group">
+                    <label className="form-label">Search & Add Students {data.batch ? '(from selected batch)' : ''}</label>
+                    <div style={{ position: 'relative', marginBottom: 16 }}>
+                        <FiSearch style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Search by name or ID..."
+                            style={{ paddingLeft: 38 }}
+                            value={studentSearch}
+                            onChange={(e) => setStudentSearch(e.target.value)}
+                        />
+                        {studentSearch && (
+                            <div style={{
+                                position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+                                background: 'white', borderRadius: 12, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                                zIndex: 10, padding: 8, border: '1px solid #e2e8f0'
+                            }}>
+                                {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).map(student => (
+                                    <div
+                                        key={student.id}
+                                        onClick={() => { handleStudentSearchAdd(student); setStudentSearch(''); }}
+                                        style={{ padding: '10px 14px', cursor: 'pointer', borderRadius: 8, transition: 'background 0.2s' }}
+                                        onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                    >
+                                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{student.name}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ID: #{student.id}</div>
+                                    </div>
+                                ))}
+                                {searchableStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || String(s.id).includes(studentSearch)).length === 0 && (
+                                    <div style={{ padding: 12, textAlign: 'center', color: '#94a3b8' }}>No students found</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {data.selectedStudents.map(student => (
+                            <div key={student.id} className="status-badge" style={{ background: '#e0e7ff', color: '#4338ca', padding: '8px 14px', border: '1px solid #c7d2fe' }}>
+                                {student.name}
+                                <FiX style={{ marginLeft: 8, cursor: 'pointer', opacity: 0.7 }} onClick={() => removeStudent(student.id)} />
+                            </div>
+                        ))}
+                        {data.selectedStudents.length === 0 && <div style={{ padding: 20, width: '100%', textAlign: 'center', border: '2px dashed var(--glass-border)', borderRadius: 12, color: 'var(--text-secondary)' }}>No students selected. Search above to add.</div>}
+                    </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {data.selectedStudents.map(student => (
-                        <div key={student.id} className="status-badge" style={{ background: '#e0e7ff', color: '#4338ca', padding: '8px 14px', border: '1px solid #c7d2fe' }}>
-                            {student.name}
-                            <FiX style={{ marginLeft: 8, cursor: 'pointer', opacity: 0.7 }} onClick={() => removeStudent(student.id)} />
-                        </div>
-                    ))}
-                    {data.selectedStudents.length === 0 && <div style={{ padding: 20, width: '100%', textAlign: 'center', border: '2px dashed var(--glass-border)', borderRadius: 12, color: 'var(--text-secondary)' }}>No students selected. Search above to add.</div>}
-                </div>
-            </div>
+            )}
         </motion.div>
     );
 };
@@ -467,6 +508,8 @@ const CreateFee = () => {
         taxPercentage: 18
     });
 
+    const [saving, setSaving] = useState(false);
+
     const [discount, setDiscount] = useState({
         enabled: false,
         category: 'Scholarship',
@@ -479,7 +522,7 @@ const CreateFee = () => {
         course: '',
         batch: '', // This will now hold selected batch ID
         category: 'Normal',
-        targetType: 'group',
+        targetType: 'student',
         selectedStudents: []
     });
 
@@ -614,59 +657,140 @@ const CreateFee = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (assignment.selectedStudents.length === 0) {
+        // Validation based on Target Type
+        if (assignment.targetType === 'student' && assignment.selectedStudents.length === 0) {
             alert('Please select at least one student.');
             return;
         }
-
-        const feeAmount = Number(basicDetails.amount);
-        let finalAmount = feeAmount;
-
-        // Apply Discount Logic
-        if (discount.enabled && discount.value) {
-            const discVal = Number(discount.value);
-            if (discount.type === 'flat') {
-                finalAmount = Math.max(0, feeAmount - discVal);
-            } else {
-                finalAmount = Math.max(0, feeAmount - (feeAmount * discVal / 100));
-            }
+        if (assignment.targetType === 'batch' && !assignment.batch) {
+            alert('Please select a batch.');
+            return;
         }
 
-        const feeName = basicDetails.name;
-
         try {
-            // Send API Request for each student
-            const promises = assignment.selectedStudents.map(student => {
-                const payload = {
-                    // Try to satisfy both ID and Object mapping
-                    studentId: Number(student.id),
-                    student: { studentId: Number(student.id) },
+            setSaving(true);
 
-                    studentName: student.name,
-                    feeName: feeName,
-                    feeType: basicDetails.type,
-                    amount: Number(finalAmount),
-                    totalAmount: Number(finalAmount),
-                    pendingAmount: Number(finalAmount),
-                    paidAmount: 0,
+            // 1. Calculate Final Amount (Base + Tax) - Backend expects Total Amount
+            let finalAmount = Number(basicDetails.amount);
 
-                    // Handle Date
-                    dueDate: paymentConfig.dueDate ? paymentConfig.dueDate : null,
+            // Apply Tax Logic
+            if (basicDetails.taxEnabled && basicDetails.taxPercentage) {
+                const taxRate = Number(basicDetails.taxPercentage);
+                const taxAmount = finalAmount * (taxRate / 100);
+                finalAmount += taxAmount;
+            }
 
-                    status: 'PENDING',
-                    description: basicDetails.description
+            // Round to 2 decimal places
+            finalAmount = Math.round(finalAmount * 100) / 100;
+
+            // Description Helper
+            let feeDescription = basicDetails.description;
+            if (basicDetails.taxEnabled && basicDetails.taxPercentage) {
+                feeDescription = (feeDescription || '') + ` [Tax: ${basicDetails.taxPercentage}% included]`;
+            }
+
+            // 2. CREATE FEE STRUCTURE (Master Record)
+
+            // Map String Type to ID (Temporary Hardcoded Mapping based on your backend)
+            const feeTypeMap = {
+                'Tuition Fee': 1,
+                'Admission Fee': 2,
+                'Exam Fee': 3,
+                'Library Fee': 4,
+                'Custom Fee': 5
+            };
+            const selectedFeeTypeId = feeTypeMap[basicDetails.type] || 1; // Default to 1 if not found
+
+            const structurePayload = {
+                name: basicDetails.name,
+                totalAmount: finalAmount,         // Calculated Total
+                currency: 'INR',
+                academicYear: '2024-25',          // Ideally dynamic or from settings
+                courseId: Number(assignment.course),
+
+                // If a batch is selected (even in 'student' mode to filter), use it.
+                // Otherwise only use it if strictly in 'batch' mode. 
+                // Updating logic: If assignment.batch has a value, send it.
+                batchId: assignment.batch ? Number(assignment.batch) : null,
+                isActive: true,
+                feeTypeId: selectedFeeTypeId,
+                triggerOnCreation: true, // Explicitly setting this flag as requested
+                description: feeDescription
+            };
+
+            console.log("Creating Fee Structure:", structurePayload);
+            const createdStructure = await createFee(structurePayload); // Expects { id: 123, ... }
+
+            if (!createdStructure || !createdStructure.id) {
+                throw new Error("Failed to create Fee Structure. No ID returned.");
+            }
+
+            console.log("✅ Fee Structure Created. ID:", createdStructure.id);
+            const feeStructureId = createdStructure.id;
+
+            // 3. IDENTIFY TARGET STUDENTS
+            let targetStudents = [];
+            if (assignment.targetType === 'batch') {
+                console.log("Fetching students for batch:", assignment.batch);
+                // Currently fetching via enrollmentService logic which returns enrolled students
+                const batchStudents = await enrollmentService.getStudentsByBatch(assignment.batch);
+
+                // Map enrollment format to simple { id, name, email }
+                // Adjust per your actual Enrollment response structure
+                targetStudents = batchStudents.map(e => ({
+                    id: e.studentId || e.student?.studentId || e.student?.id,
+                    name: e.studentName || (e.student?.user?.firstName + ' ' + e.student?.user?.lastName),
+                    email: e.studentEmail || e.student?.user?.email
+                })).filter(s => s.id); // Ensure ID exists
+            } else {
+                targetStudents = assignment.selectedStudents;
+            }
+
+            if (targetStudents.length === 0) {
+                alert("No students found in the selected target to assign fees to.");
+                setSaving(false);
+                return;
+            }
+
+            // 4. CREATE ALLOCATIONS (Link Students to Structure)
+            // 4. CREATE ALLOCATIONS (Link Students to Structure)
+
+            // Calculate Discount Amount (if enabled)
+            let discountAmount = 0;
+            if (discount.enabled && discount.value) {
+                const discVal = Number(discount.value);
+                if (discount.type === 'flat') {
+                    discountAmount = discVal;
+                } else {
+                    discountAmount = (finalAmount * discVal) / 100;
+                }
+            }
+            // Round discount to 2 decimals
+            discountAmount = Math.round(discountAmount * 100) / 100;
+
+            const allocationPromises = targetStudents.map(student => {
+                const allocationPayload = {
+                    feeStructureId: feeStructureId,
+                    userId: Number(student.id),
+                    studentEmail: student.email, // For notification
+                    status: 'ACTIVE',
+                    originalAmount: finalAmount, // Send Base Amount
+                    totalDiscount: discountAmount // Send Only Calculated Discount (Backend calculates Payable)
                 };
-                return createFeeAllocation(payload);
+                return createFeeAllocation(allocationPayload);
             });
 
-            await Promise.all(promises);
+            await Promise.all(allocationPromises);
 
-            alert(`Successfully assigned fee to ${assignment.selectedStudents.length} students!`);
+            alert(`Successfully created fee and assigned to ${targetStudents.length} students!`);
             navigate('/fee', { state: { defaultTab: 'batches' } });
 
         } catch (error) {
             console.error("Failed to assign fees:", error);
-            alert("Failed to assign fees. Check console for details.\n" + (error.response?.data?.message || error.message));
+            const msg = error.response?.data?.message || error.message || "Unknown error";
+            alert("Failed to assign fees. \nError: " + msg);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -697,8 +821,8 @@ const CreateFee = () => {
                     }} onMouseEnter={(e) => e.target.style.background = '#f1f5f9'} onMouseLeave={(e) => e.target.style.background = 'transparent'}>
                         Cancel
                     </button>
-                    <button onClick={handleSubmit} className="btn-primary">
-                        <FiSave /> Save Fee Structure
+                    <button onClick={handleSubmit} className="btn-primary" disabled={saving}>
+                        {saving ? <FiLoader className="spin" /> : <FiSave />} {saving ? 'Saving...' : 'Save Fee Structure'}
                     </button>
                 </div>
             </header>

@@ -26,7 +26,7 @@ const AffiliatePortal = lazy(() => import('../pages/Affiliates/AffiliatePortal')
 const LoginPage = lazy(() => import('../pages/Login/LoginPage'));
 
 // New Modules
-const Fee = lazy(() => import('../pages/Fee/Fee'));
+const Fee = lazy(() => import('../pages/FeeManagement/fee'));
 const CreateFee = lazy(() => import('../pages/FeeManagement/CreateFee'));
 const Webinar = lazy(() => import('../pages/Webinar/Webinar'));
 const Settings = lazy(() => import('../pages/Settings/Settings'));

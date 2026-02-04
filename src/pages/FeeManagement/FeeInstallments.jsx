@@ -271,7 +271,7 @@ const FeeInstallments = () => {
             if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
                 displayMsg = `Timeout Error: The backend took too long to respond (>30s).\nThis usually means the connection is slow or the server is busy.`;
             } else if (error.message === 'Network Error') {
-                displayMsg = `Network Error: Cannot reach 192.168.1.16:8080.\n1. Check if the backend is running.\n2. Disable Firewall on the backend laptop.\n3. Verify IP address.`;
+                displayMsg = `Network Error: Cannot reach 192.168.1.11:8080.\n1. Check if the backend is running.\n2. Disable Firewall on the backend laptop.\n3. Verify IP address.`;
             } else if (error.response) {
                 // Server responded with non-2xx code
                 displayMsg = `Server Error (${error.response.status}): ${JSON.stringify(error.response.data) || error.message}`;

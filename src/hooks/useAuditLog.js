@@ -14,7 +14,7 @@ const useAuditLog = () => {
             const logData = {
                 action,
                 adminEmail: userEmail,
-                adminId: userId ? parseInt(userId) : null,
+                adminId: userId ? parseInt(userId) : 1, // Default to 1 (Admin) if null to prevent 500 errors
                 timestamp: new Date().toISOString(),
                 details: typeof details === 'string' ? details : JSON.stringify(details),
                 module: 'FEE_MANAGEMENT',
