@@ -10,7 +10,7 @@ import { batchService } from '../Batches/services/batchService';
 import { courseService } from '../Courses/services/courseService';
 import { userService } from '../Users/services/userService';
 import { enrollmentService } from '../Batches/services/enrollmentService';
-import { createFeeAllocation, createBatchFee, createFee } from '../../services/feeService';
+import { createFeeAllocation, createBatchFee, createFee, getStudentById } from '../../services/feeService';
 
 // --- Sub-Components ---
 
@@ -54,6 +54,7 @@ const BasicDetails = ({ data, onChange }) => (
                     <option value="Exam Fee">Exam Fee</option>
                     <option value="Library Fee">Library Fee</option>
                     <option value="Custom Fee">Custom Fee</option>
+                    <option value="Course Fee">Course Fee</option>
                 </select>
             </div>
             <div className="form-group">
@@ -64,10 +65,12 @@ const BasicDetails = ({ data, onChange }) => (
                         type="number"
                         name="amount"
                         className="form-input"
-                        style={{ paddingLeft: 38 }}
+                        style={{ paddingLeft: 38, cursor: data.type === 'Course Fee' ? 'not-allowed' : 'text', background: data.type === 'Course Fee' ? '#f1f5f9' : 'white' }}
                         placeholder="0.00"
                         value={data.amount}
                         onChange={onChange}
+                        disabled={data.type === 'Course Fee'}
+                        title={data.type === 'Course Fee' ? "Amount is auto-fetched from Batch/Course settings" : ""}
                     />
                 </div>
             </div>
@@ -129,7 +132,7 @@ const BasicDetails = ({ data, onChange }) => (
 
 const FeeAssignment = ({ data, setData, studentSearch, setStudentSearch, searchableStudents, handleStudentSearchAdd, removeStudent, availableBatches, availableCourses }) => {
     return (
-        <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+        <motion.div className="glass-card form-section" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} style={{ position: 'relative', zIndex: 10 }}>
             <SectionHeader icon={FiUsers} title="Assign Fee To" description="Select specific students or batches for this fee" />
 
             {/* Target Selection Toggles */}
@@ -567,11 +570,28 @@ const CreateFee = () => {
             try {
                 // Fetch Courses
                 const coursesData = await courseService.getCourses();
-                setAvailableCourses(coursesData || []); // Expecting [{ courseId, courseName }, ...]
+                setAvailableCourses(coursesData || []);
+
+                // Create Course Fee Map (Same as FeeInstallments)
+                const courseMap = {};
+                (coursesData || []).forEach(c => {
+                    courseMap[String(c.courseId)] = Number(c.price || c.fee || c.amount || c.courseFee || 0);
+                });
+                console.log("CreateFee - Course Fee Map:", courseMap);
 
                 // Fetch Batches
                 const batchesData = await batchService.getAllBatches();
-                setAvailableBatches(batchesData || []); // Expecting [{ batchId, batchName, courseId }, ...]
+
+                // Enrich Batches with Cache Fee
+                const enrichedBatches = (batchesData || []).map(b => {
+                    const cId = b.courseId || b.course?.courseId;
+                    const feeFromCourse = courseMap[String(cId)] || 0;
+                    return {
+                        ...b,
+                        cachedFee: feeFromCourse // Store for easy access
+                    };
+                });
+                setAvailableBatches(enrichedBatches);
 
                 // Fetch All Students (for global search)
                 const allStus = await userService.getAllStudents(); // Expecting [{ studentId, user: { firstName, ... } }]
@@ -579,12 +599,11 @@ const CreateFee = () => {
                 const formattedStudents = allStus.map(s => ({
                     id: s.studentId,
                     name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
-                    email: s.user?.email
+                    email: s.user?.email,
+                    totalFee: s.totalFee || s.fee || 0
                 }));
                 setSearchableStudents(formattedStudents);
 
-                // Keep a ref of all students if needed for resetting
-                // But here we just set searchableStudents initially
             } catch (error) {
                 console.error("Failed to load initial data", error);
             }
@@ -599,10 +618,31 @@ const CreateFee = () => {
             if (assignment.batch) {
                 // Fetch specifically for this batch
                 const batchStudents = await enrollmentService.getStudentsByBatch(assignment.batch);
+
+                // Calculate Fee for this Batch context (Logic from FeeInstallments)
+                let calculatedFee = 0;
+                const currentBatch = availableBatches.find(b => String(b.batchId || b.id) === String(assignment.batch));
+
+                if (currentBatch) {
+                    // 1. Check Batch Override
+                    calculatedFee = currentBatch.fee || currentBatch.amount || 0;
+
+                    // 2. Check Course Fee
+                    if (!calculatedFee) {
+                        const cId = currentBatch.courseId || currentBatch.course?.courseId;
+                        const currentCourse = availableCourses.find(c => String(c.courseId || c.id) === String(cId));
+                        if (currentCourse) {
+                            calculatedFee = currentCourse.fee || currentCourse.price || currentCourse.amount || currentCourse.totalFee || 0;
+                        }
+                    }
+                }
+
                 const formatted = batchStudents.map(s => ({
                     id: s.studentId,
                     name: s.studentName || s.name || `Student ${s.studentId}`,
-                    email: s.studentEmail
+                    email: s.studentEmail,
+                    // Use calculated fee for the context, fallback to student's own existing fee if any
+                    totalFee: calculatedFee || s.totalFee || s.fee || 0
                 }));
                 setSearchableStudents(formatted);
             } else if (assignment.course) {
@@ -613,7 +653,8 @@ const CreateFee = () => {
                 const formattedStudents = allStus.map(s => ({
                     id: s.studentId,
                     name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
-                    email: s.user?.email
+                    email: s.user?.email,
+                    totalFee: s.totalFee || s.fee || 0
                 }));
                 setSearchableStudents(formattedStudents);
             } else {
@@ -622,14 +663,15 @@ const CreateFee = () => {
                 const formattedStudents = allStus.map(s => ({
                     id: s.studentId,
                     name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
-                    email: s.user?.email
+                    email: s.user?.email,
+                    totalFee: s.totalFee || s.fee || 0
                 }));
                 setSearchableStudents(formattedStudents);
             }
         };
 
         fetchBatchStudents();
-    }, [assignment.batch, assignment.course]);
+    }, [assignment.batch, assignment.course, availableBatches, availableCourses]);
 
     const handleStudentSearchAdd = (student) => {
         if (!assignment.selectedStudents.find(s => s.id === student.id)) {
@@ -642,6 +684,75 @@ const CreateFee = () => {
     };
 
     const handleBasicChange = (e) => setBasicDetails({ ...basicDetails, [e.target.name]: e.target.value });
+
+    // Auto-Populate Amount for Course Fee
+    useEffect(() => {
+        const fetchDynamicFee = async () => {
+            if (basicDetails.type !== 'Course Fee') return;
+
+            let autoFee = 0;
+
+            try {
+                // Determine Authority Context
+                let relevantBatchId = null;
+
+                // Priority 1: Batch Filter (Strongest Intent)
+                if (assignment.batch) {
+                    relevantBatchId = assignment.batch;
+                }
+                // Priority 2: Student's Batch
+                else if (assignment.targetType === 'student' && assignment.selectedStudents.length > 0) {
+                    const stu = assignment.selectedStudents[0];
+                    const cachedStu = searchableStudents.find(s => s.id === stu.id);
+
+                    if (cachedStu && cachedStu.totalFee > 0) {
+                        autoFee = Number(cachedStu.totalFee);
+                    }
+                    if (!autoFee) {
+                        relevantBatchId = cachedStu?.batchId || cachedStu?.batch?.id;
+                    }
+                }
+
+                // If we found a Batch Context, resolve the Course Fee
+                if (!autoFee && relevantBatchId) {
+                    const batch = availableBatches.find(b => String(b.batchId || b.id) === String(relevantBatchId));
+                    if (batch) {
+                        // 1. Check Batch Fee
+                        if (batch.fee || batch.amount) {
+                            autoFee = Number(batch.fee || batch.amount);
+                        }
+                        // 2. Check Cached Course Fee (Enriched on Load - Logic from FeeInstallments)
+                        else if (batch.cachedFee) {
+                            autoFee = Number(batch.cachedFee);
+                        }
+
+                        // 3. Last Resort Fallback
+                        if (!autoFee) {
+                            const cId = batch.courseId || batch.course?.courseId;
+                            if (cId) {
+                                const course = availableCourses.find(c => String(c.courseId || c.id) === String(cId));
+                                if (course) {
+                                    autoFee = Number(course.fee || course.price || course.amount || course.totalFee || 0);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error calculating dynamic fee:", err);
+            }
+
+            // Update State
+            if (autoFee > 0) {
+                setBasicDetails(prev => {
+                    if (prev.amount !== autoFee) return { ...prev, amount: autoFee };
+                    return prev;
+                });
+            }
+        };
+
+        fetchDynamicFee();
+    }, [basicDetails.type, assignment.batch, assignment.targetType, assignment.selectedStudents, availableBatches, availableCourses, searchableStudents]);
 
     // Toggle helper
     const toggleNested = (stateSetter, parentKey, childKey) => {
@@ -697,7 +808,8 @@ const CreateFee = () => {
                 'Admission Fee': 2,
                 'Exam Fee': 3,
                 'Library Fee': 4,
-                'Custom Fee': 5
+                'Custom Fee': 5,
+                'Course Fee': 6
             };
             const selectedFeeTypeId = feeTypeMap[basicDetails.type] || 1; // Default to 1 if not found
 
@@ -755,9 +867,9 @@ const CreateFee = () => {
             // 4. CREATE ALLOCATIONS (Link Students to Structure)
             // 4. CREATE ALLOCATIONS (Link Students to Structure)
 
-            // Calculate Discount Amount (if enabled)
+            // Calculate Discount Amount (if enabled and applicable)
             let discountAmount = 0;
-            if (discount.enabled && discount.value) {
+            if (basicDetails.type === 'Course Fee' && discount.enabled && discount.value) {
                 const discVal = Number(discount.value);
                 if (discount.type === 'flat') {
                     discountAmount = discVal;
@@ -831,7 +943,9 @@ const CreateFee = () => {
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <BasicDetails data={basicDetails} onChange={handleBasicChange} />
 
-                <DiscountSettings data={discount} setData={setDiscount} />
+                {basicDetails.type === 'Course Fee' && (
+                    <DiscountSettings data={discount} setData={setDiscount} />
+                )}
 
                 <FeeAssignment
                     data={assignment}

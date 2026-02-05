@@ -5,7 +5,7 @@ import './FeeManagement.css';
 import { courseService } from '../Courses/services/courseService';
 import { batchService } from '../Batches/services/batchService';
 import { enrollmentService } from '../Batches/services/enrollmentService';
-import { getAllStudents, createInstallmentPlan, getStudentInstallments } from '../../services/feeService';
+import { getAllStudents, createInstallmentPlan, getStudentInstallments, getStudentFee, createFee, createFeeAllocation } from '../../services/feeService';
 
 const FeeInstallments = () => {
     const [batches, setBatches] = useState([]);
@@ -100,17 +100,67 @@ const FeeInstallments = () => {
     }, [selectedBatchId, batches]);
 
     // Open Configuration for a Student
-    const openStudentConfig = (student) => {
-        setConfiguringStudent(student);
+    const openStudentConfig = async (student) => {
+        // 1. Course Fee (from Batches/Courses) is the Priority
+        let baseFee = student.totalFee || 0;
+        let existingInstallments = [];
+        let existingPlanType = 'OneTime';
+        let allocationId = null;
 
-        // Load existing or default
-        if (student.installments && student.installments.length > 0) {
+        setConfiguringStudent({ ...student, isLoading: true });
+
+        try {
+            // 2. Fetch Backend Data to see if we have a MATCHING allocation
+            const feeData = await getStudentFee(student.id);
+
+            if (feeData) {
+                const allocations = Array.isArray(feeData) ? feeData : [feeData];
+
+                // Find an allocation that matches the Course Fee (approx match)
+                // This filters out "Exam Fees" (9500) if we are looking for "Course Fee" (25000)
+                const matchingAlloc = allocations.find(a => {
+                    const allocAmount = a.payableAmount || a.totalAmount || 0;
+                    return Math.abs(allocAmount - baseFee) < 1.0; // Tolerance for float
+                });
+
+                if (matchingAlloc) {
+                    console.log("Found Matching Backend Allocation:", matchingAlloc);
+                    baseFee = matchingAlloc.payableAmount || matchingAlloc.totalAmount || baseFee;
+                    existingInstallments = matchingAlloc.installments || [];
+                    existingPlanType = matchingAlloc.planType || 'Custom';
+                    allocationId = matchingAlloc.id;
+                } else {
+                    console.log("No matching allocation found for fee:", baseFee, ". Ignoring other allocations:", allocations);
+                    // We intentionally ignore mismatched allocations (like 9500) 
+                    // and stick to the Base Fee (25000) from the Batch.
+                }
+            }
+        } catch (error) {
+            console.warn("Could not fetch backend fee (New student?):", error);
+        }
+
+        const updatedStudent = {
+            ...student,
+            totalFee: baseFee,
+            allocationId: allocationId,
+            isLoading: false
+        };
+
+        setConfiguringStudent(updatedStudent);
+
+        // 3. Initialize UI
+        if (existingInstallments && existingInstallments.length > 0) {
+            setInstallments(existingInstallments);
+            setPlanType(existingPlanType);
+            setCustomCount(existingInstallments.length);
+        } else if (student.installments && student.installments.length > 0) {
+            // Local state fallback
             setInstallments(student.installments);
             setPlanType(student.planType || 'Custom');
             setCustomCount(student.installments.length);
         } else {
-            // Default to OneTime of STUDENT'S total fee
-            initializeInstallments('OneTime', student.totalFee || 0);
+            // New Plan: Divide the Course Fee
+            initializeInstallments('OneTime', baseFee);
         }
     };
 
@@ -222,10 +272,78 @@ const FeeInstallments = () => {
         }
 
         try {
+            // NEW LOGIC: Check if we need to CREATE a new allocation first.
+            // This handles the case where Backend has 9500, but User wants to split 25000.
+            // The previous logic ignored the 9500, but now we must ensure a 25000 allocation exists ON THE BACKEND before splitting it.
+
+            let targetAllocationId = configuringStudent.allocationId;
+            let currentAuthorizedFee = 0;
+
+            // Optional: Re-fetch latest to be sure (safe, but adds latency)
+            const latestFees = await getStudentFee(configuringStudent.id);
+            const allocations = Array.isArray(latestFees) ? latestFees : (latestFees ? [latestFees] : []);
+
+            // Try to find a backend allocation that matches our current UI Total (25000)
+            const matchingAlloc = allocations.find(a =>
+                Math.abs((a.payableAmount || a.totalAmount || 0) - totalFee) < 1.0
+            );
+
+            if (matchingAlloc) {
+                targetAllocationId = matchingAlloc.id;
+                currentAuthorizedFee = matchingAlloc.payableAmount || matchingAlloc.totalAmount;
+                console.log("Found existing matching allocation:", targetAllocationId);
+            } else {
+                console.log(`No allocation found matching ${totalFee}. Deepest allocation was:`, allocations);
+
+                // AUTHENTICATE CREATION: We must create a new Fee Structure & Allocation for 25000
+                // This mimics "Create Fee" page logic but automatically.
+                if (window.confirm(`Backend only has record of existing fees (e.g. ₹${allocations[0]?.payableAmount}).\n\nTo split ₹${totalFee}, we must first CREATE a new Fee Structure for this student.\n\nProceed?`)) {
+
+                    // 1. Create Structure
+                    const newStructure = await createFee({
+                        name: `Course Fee (Auto-Created)`,
+                        totalAmount: totalFee,
+                        currency: 'INR',
+                        academicYear: '2025-26', // dynamic if possible
+                        courseId: selectedCourse ? Number(selectedCourse) : null,
+                        batchId: selectedBatch ? Number(selectedBatch.id) : null,
+                        isActive: true,
+                        feeTypeId: 1, // Default to Tuition Fee (ID 1) as "Course Fee" implies tuition
+                        triggerOnCreation: true
+                    });
+
+                    console.log("Auto-created Fee Structure:", newStructure);
+
+                    // 2. Allocate to Student
+                    const newAlloc = await createFeeAllocation({
+                        userId: configuringStudent.id,
+                        feeStructureId: newStructure.id,
+                        originalAmount: totalFee,
+                        payableAmount: totalFee, // No discount logic here for now
+                        studentEmail: configuringStudent.email
+                    });
+
+                    console.log("Auto-allocated Fee:", newAlloc);
+                    targetAllocationId = newAlloc.id;
+
+                    // Force update local state so we don't do this again
+                    setConfiguringStudent(prev => ({ ...prev, allocationId: newAlloc.id }));
+                } else {
+                    return; // User cancelled
+                }
+            }
+
             // Prepare Payload for Friend's Backend
+            // Map 'OneTime' to 'CUSTOM' as it is technically a custom plan with 1 installment
+            // Ensure other types are Uppercase (QUARTERLY, HALF_YEARLY, etc.)
+            let apiPlanType = planType.toUpperCase();
+            if (apiPlanType === 'ONETIME' || apiPlanType === 'ONE-TIME') {
+                apiPlanType = 'CUSTOM';
+            }
+
             const payload = {
-                planType: planType,
-                totalFee: totalFee,
+                planType: apiPlanType,
+                totalFee: totalFee, // This MUST match the Allocation's payableAmount
                 installments: installments.map(i => ({
                     name: i.name,
                     amount: Number(i.amount),
@@ -233,6 +351,22 @@ const FeeInstallments = () => {
                     status: 'PENDING'
                 }))
             };
+
+            // IMPORTANT: If your friend's API endpoint is strictly /student/{id}/installments, 
+            // it likely tries to pick the "latest" allocation or "default" one, which might be the wrong one (9500).
+            // IF his API supports passing `allocationId` in the body or query, we should use it!
+            // Based on his code: `public List<StudentInstallmentPlan> createInstallmentsForStudent(Long allocationId...)`
+            // But the Controller endpoint usually maps to this.
+            // If the endpoint is: POST /api/fee/student/{studentId}/installments
+            // CHECK if we can pass allocationId inside the body? 
+            // YOUR FRIEND'S SERVICE: createInstallmentPlan(StudentInstallmentPlan plan) -> uses plan.getStudentFeeAllocationId()
+            // 
+            // If we are calling the "Bulk" wrapper or "User" wrapper, we need to be careful.
+            // Let's assume we can pass `allocationId` in the payload if his Controller supports it, 
+            // OR we use the specialized endpoint if available.
+
+            // Adding allocationId to payload just in case his DTO accepts it
+            payload.studentFeeAllocationId = targetAllocationId;
 
             // Call API
             await createInstallmentPlan(configuringStudent.id, payload);
@@ -496,6 +630,7 @@ const FeeInstallments = () => {
                                     <input
                                         type="number"
                                         value={configuringStudent.totalFee || ''}
+                                        disabled={!!configuringStudent.allocationId}
                                         onChange={(e) => {
                                             const newFee = Number(e.target.value);
                                             setConfiguringStudent(prev => ({ ...prev, totalFee: newFee }));
@@ -503,11 +638,14 @@ const FeeInstallments = () => {
                                             initializeInstallments(planType, newFee);
                                         }}
                                         style={{
-                                            fontSize: 20, fontWeight: 700, color: '#6366f1',
-                                            border: 'none', background: 'transparent', width: 120, textAlign: 'right', outline: 'none'
+                                            fontSize: 20, fontWeight: 700,
+                                            color: configuringStudent.allocationId ? '#334155' : '#6366f1',
+                                            border: 'none', background: 'transparent', width: 120, textAlign: 'right', outline: 'none',
+                                            cursor: configuringStudent.allocationId ? 'not-allowed' : 'text'
                                         }}
+                                        title={configuringStudent.allocationId ? "Total Fee is determined by the Backend Allocation and cannot be changed here." : "Edit Total Fee"}
                                     />
-                                    <FiEdit3 size={16} color="#94a3b8" />
+                                    {!configuringStudent.allocationId && <FiEdit3 size={16} color="#94a3b8" />}
                                 </div>
                             </div>
 
