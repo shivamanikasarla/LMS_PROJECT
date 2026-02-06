@@ -80,7 +80,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
               <SidebarItem to="/exams" icon="FiEdit" label="Exams" isOpen={isOpen} isSub />
               <SidebarItem to="/certificates" icon="FiAward" label="Certificates" isOpen={isOpen} isSub />
               <SidebarItem to="/attendance" icon="FiCalendar" label="Attendance" isOpen={isOpen} isSub />
-              <SidebarItem to="/library" icon="FiBook" label="Library" isOpen={isOpen} isSub />
+              <SidebarItem to="/library" icon="book" label="Library" isOpen={isOpen} isSub />
+              <SidebarItem to="/community/announcements" icon="chat-dots" label="Community" isOpen={isOpen} isSub />
             </MenuGroup>
 
             {/* USERS GROUP */}

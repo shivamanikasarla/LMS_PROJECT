@@ -30,7 +30,8 @@ export const navigationConfig = [
             { label: 'Courses', path: '/courses', icon: 'bi-journal-text' },
             { label: 'Batches', path: '/batches', icon: 'bi-people' },
             { label: 'Webinars', path: '/webinar', icon: 'bi-camera-video' },
-            { label: 'Certificates', path: '/certificates', icon: 'bi-award' }
+            { label: 'Certificates', path: '/certificates', icon: 'bi-award' },
+            { label: 'Community', path: '/community', icon: 'bi-chat-dots' }
         ]
     },
 

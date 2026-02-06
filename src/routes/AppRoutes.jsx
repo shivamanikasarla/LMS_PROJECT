@@ -32,6 +32,7 @@ const Webinar = lazy(() => import('../pages/Webinar/Webinar'));
 const Settings = lazy(() => import('../pages/Settings/Settings'));
 const Website = lazy(() => import('../pages/Website/Website'));
 const Transport = lazy(() => import('../pages/Transport/Transport'));
+const Community = lazy(() => import('../pages/Community/Community'));
 
 const AppRoutes = () => {
   return (
@@ -98,6 +99,7 @@ const AppRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="/website" element={<Website />} />
           <Route path="/transport/*" element={<Transport />} />
+          <Route path="/community/*" element={<Community />} />
 
           {/* ===== 404 ===== */}
           <Route path="*" element={<NotFound />} />
