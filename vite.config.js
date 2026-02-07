@@ -7,17 +7,17 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/student-batches': {
-        target: 'http://192.168.1.18:5151', // Corrected: StudentBatchController is in Main LMS (5151)
+        target: 'http://localhost:5151', // Corrected: StudentBatchController is in Main LMS (5151)
         changeOrigin: true,
         secure: false,
       },
       '/api/fee-management': {
-        target: 'http://192.168.1.11:8080', // Fee Management Backend (Settings)
+        target: 'http://localhost:3130', // Fee Management Backend (Settings)
         changeOrigin: true,
         secure: false,
       },
       '/api/fee-management/master-settings': {
-        target: 'http://192.168.1.11:8080', // Fee Management Backend (Settings)
+        target: 'http://192.168.1.21:3130', // Fee Management Backend (Settings)
         changeOrigin: true,
         secure: false,
       },
@@ -53,7 +53,7 @@ export default defineConfig({
         secure: false,
       },
       '/uploads': {
-        target: 'http://192.168.1.18:5151',
+        target: 'http://localhost:5151',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

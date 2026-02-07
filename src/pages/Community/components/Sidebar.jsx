@@ -1,38 +1,41 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { mockChannels } from '../constants'; // Use shared constants or fetch from service
-import { Hash, Megaphone, HelpCircle, MessageSquare } from 'lucide-react'; // Assuming lucide-react is available
+import { TOPIC_BOARDS } from '../constants';
+import { Layout, HelpCircle, MessageSquare, BookOpen } from 'lucide-react';
 
 const Sidebar = () => {
     const getIcon = (id) => {
         switch (id) {
-            case 'announcements': return <Megaphone size={18} />;
-            case 'doubts': return <HelpCircle size={18} />;
-            case 'discussion': return <MessageSquare size={18} />;
-            default: return <Hash size={18} />;
+            case 'announcements': return <Layout size={20} />;
+            case 'questions': return <HelpCircle size={20} />; // 'questions' or 'doubts' check constant
+            case 'doubts': return <HelpCircle size={20} />;
+            case 'discussions': return <MessageSquare size={20} />;
+            case 'resources': return <BookOpen size={20} />;
+            default: return <MessageSquare size={20} />;
         }
     };
 
     return (
-        <aside className="community-sidebar">
-            <div className="community-header">
-                <h1 className="community-title">Community</h1>
-                <p className="community-subtitle">Learn together</p>
-            </div>
-
-            <nav className="channel-nav">
-                {mockChannels.map(channel => (
+        <div className="community-sidebar">
+            <h3 className="sidebar-title">Menu</h3>
+            <div className="sidebar-menu">
+                {TOPIC_BOARDS.map(board => (
                     <NavLink
-                        key={channel.id}
-                        to={`/community/${channel.id}`}
-                        className={({ isActive }) => `channel-item ${isActive ? 'active' : ''}`}
+                        key={board.id}
+                        to={`/community/board/${board.id}`}
+                        className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
+                        style={{ borderLeftColor: board.color }}
                     >
-                        <span className="channel-icon">{getIcon(channel.id)}</span>
-                        {channel.name}
+                        <span className="board-icon" style={{ color: board.color }}>
+                            {getIcon(board.id)}
+                        </span>
+                        <div className="board-info">
+                            <span className="board-name">{board.name}</span>
+                        </div>
                     </NavLink>
                 ))}
-            </nav>
-        </aside>
+            </div>
+        </div>
     );
 };
 

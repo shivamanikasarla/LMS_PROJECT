@@ -1,150 +1,181 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import communityService from '../../../services/communityService';
-import { ArrowLeft, MessageSquare, Send } from 'lucide-react';
+import { TOPIC_BOARDS, THREAD_STATUS } from '../constants';
+import { ArrowLeft, MessageSquare, Send, CheckCircle, ShieldCheck, Clock, AlertCircle } from 'lucide-react';
 
-const PostDetail = () => {
-    const { postId } = useParams();
+const ThreadDetail = () => {
+    const { threadId } = useParams();
     const navigate = useNavigate();
-    const [post, setPost] = useState(null);
+    const [thread, setThread] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [commentText, setCommentText] = useState('');
+    const [replyText, setReplyText] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        loadPost();
-    }, [postId]);
+    // Mock current user role - in real app get from AuthContext
+    const currentUserRole = "Instructor";
 
-    const loadPost = async () => {
+    useEffect(() => {
+        loadThread();
+    }, [threadId]);
+
+    const loadThread = async () => {
         try {
-            const data = await communityService.getPostById(postId);
-            setPost(data);
+            const data = await communityService.getThreadById(threadId);
+            setThread(data);
         } catch (error) {
-            console.error("Failed to load post", error);
+            console.error("Failed to load thread", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCommentSubmit = async (e) => {
+    const handleReplySubmit = async (e) => {
         e.preventDefault();
-        if (!commentText.trim()) return;
+        if (!replyText.trim()) return;
 
         setSubmitting(true);
         try {
-            const newComment = await communityService.createComment(postId, { content: commentText });
-            setPost(prev => ({
+            const newReply = await communityService.createReply(threadId, { content: replyText });
+            setThread(prev => ({
                 ...prev,
-                comments: [...prev.comments, newComment]
+                replies: [...prev.replies, newReply]
             }));
-            setCommentText('');
+            setReplyText('');
         } catch (error) {
-            console.error("Failed to post comment", error);
+            console.error("Failed to post reply", error);
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (loading) return <div className="p-5 text-center">Loading post...</div>;
-    if (!post) return <div className="p-5 text-center">Post not found</div>;
+    const handleMarkResolved = async (replyId) => {
+        try {
+            const updatedThread = await communityService.markAsResolved(threadId, replyId);
+            setThread(updatedThread);
+        } catch (error) {
+            console.error("Failed to mark resolved", error);
+        }
+    };
+
+    if (loading) return <div className="p-5 text-center">Loading discussion...</div>;
+    if (!thread) return <div className="p-5 text-center">Discussion not found</div>;
+
+    const board = TOPIC_BOARDS.find(b => b.id === thread.boardId) || {};
 
     return (
-        <div className="post-detail-container">
+        <div className="thread-detail-container">
             <button className="back-btn" onClick={() => navigate(-1)}>
-                <ArrowLeft size={18} /> Back to discussions
+                <ArrowLeft size={18} /> Back to {board.name || 'Board'}
             </button>
 
-            <div className="full-post">
-                <div className="post-header">
-                    <div className="post-meta">
-                        <div className="avatar-placeholder">
-                            {post.author?.charAt(0) || '?'}
-                        </div>
-                        <div className="author-info">
-                            <span className="author-name">{post.author}</span>
-                            <span className={`author-role role-${post.authorRole?.toLowerCase()}`}>
-                                {post.authorRole}
-                            </span>
-                        </div>
+            <div className={`thread-main-card status-${thread.status}`}>
+                <div className="thread-header">
+                    <div className="thread-meta-row">
+                        <span className={`status-badge ${thread.status}`}>
+                            {thread.status === THREAD_STATUS.RESOLVED && <><CheckCircle size={14} /> Resolved</>}
+                            {thread.status === THREAD_STATUS.OPEN && <><Clock size={14} /> Open</>}
+                            {thread.status === THREAD_STATUS.NEEDS_ATTENTION && <><AlertCircle size={14} /> Needs Attention</>}
+                        </span>
+                        <span className="thread-date">{new Date(thread.timestamp).toLocaleString()}</span>
                     </div>
-                    <span className="post-time">
-                        {new Date(post.timestamp).toLocaleString()}
-                    </span>
                 </div>
 
-                <h1 className="post-title" style={{ fontSize: '1.75rem', marginBottom: '1rem' }}>{post.title}</h1>
-                <div className="post-content">
-                    {post.content}
+                <h1 className="thread-title">{thread.title}</h1>
+
+                <div className="author-block">
+                    <div className="avatar-placeholder">{thread.author?.charAt(0)}</div>
+                    <div className="author-info">
+                        <span className="author-name">{thread.author}</span>
+                        <span className={`author-role role-${thread.authorRole?.toLowerCase()}`}>{thread.authorRole}</span>
+                    </div>
                 </div>
 
-                {post.courseName && (
-                    <div className="mt-3 text-muted">
-                        <small>Related to: {post.courseName}</small>
+                <div className="thread-content">
+                    {thread.content}
+                </div>
+
+                {thread.courseName && (
+                    <div className="related-course">
+                        <span>📚 Related to: <strong>{thread.courseName}</strong></span>
                     </div>
                 )}
             </div>
 
-            <div className="comments-section">
-                <h3 className="comments-header">
-                    Responses ({post.comments?.length || 0})
-                </h3>
+            {/* Only show replies section if NOT an announcement */}
+            {thread.boardId !== 'announcements' && (
+                <div className="replies-section">
+                    <h3 className="section-title">
+                        {thread.replies?.length || 0} Replies
+                    </h3>
 
-                {post.comments && post.comments.map((comment) => (
-                    <div
-                        key={comment.id}
-                        className={`comment-card ${['Instructor', 'Admin'].includes(comment.authorRole) ? 'instructor-response' : ''}`}
-                    >
-                        <div className="avatar-placeholder" style={{ width: 32, height: 32, fontSize: '0.9rem' }}>
-                            {comment.author.charAt(0)}
-                        </div>
-                        <div className="comment-content">
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                                <div className="d-flex align-items-center">
-                                    <span className="fw-bold me-2">{comment.author}</span>
-                                    <span className={`author-role role-${comment.authorRole?.toLowerCase()}`} style={{ fontSize: '0.7rem' }}>
-                                        {comment.authorRole}
-                                    </span>
+                    <div className="replies-list">
+                        {thread.replies && thread.replies.map((reply) => (
+                            <div
+                                key={reply.id}
+                                className={`reply-card ${reply.isAnswer ? 'accepted-answer' : ''} ${reply.isVerified ? 'verified-reply' : ''}`}
+                            >
+                                {reply.isAnswer && (
+                                    <div className="answer-badge">
+                                        <CheckCircle size={16} /> Accepted Answer
+                                    </div>
+                                )}
 
-                                    {/* Instructor Answer Badge */}
-                                    {['Instructor', 'Admin'].includes(comment.authorRole) && (
-                                        <span className="instructor-badge">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>
-                                            Instructor Answer
-                                        </span>
-                                    )}
+                                <div className="reply-header">
+                                    <div className="author-block sm">
+                                        <div className="avatar-placeholder sm">{reply.author.charAt(0)}</div>
+                                        <div className="author-info">
+                                            <span className="author-name">
+                                                {reply.author}
+                                                {reply.isVerified && <ShieldCheck size={14} className="verified-icon" title="Verified Instructor" />}
+                                            </span>
+                                            <span className={`author-role role-${reply.authorRole?.toLowerCase()}`}>{reply.authorRole}</span>
+                                        </div>
+                                    </div>
+                                    <span className="reply-date">{new Date(reply.timestamp).toLocaleDateString()}</span>
                                 </div>
-                                <small className="text-muted">{new Date(comment.timestamp).toLocaleDateString()}</small>
-                            </div>
-                            <p className="comment-text">{comment.content}</p>
-                        </div>
-                    </div>
-                ))}
 
-                <div className="add-comment-box mt-4">
-                    <form onSubmit={handleCommentSubmit} className="position-relative">
-                        <textarea
-                            className="form-control"
-                            placeholder="Write a helpful response..."
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            rows={3}
-                            style={{ paddingRight: '50px' }}
-                        />
-                        <button
-                            type="submit"
-                            className="btn btn-primary position-absolute bottom-0 end-0 m-2 rounded-circle p-2 d-flex align-items-center justify-content-center"
-                            style={{ width: 36, height: 36 }}
-                            disabled={submitting || !commentText.trim()}
-                        >
-                            <Send size={16} />
-                        </button>
-                    </form>
+                                <div className="reply-content">
+                                    {reply.content}
+                                </div>
+
+                                {/* Mark as Solution Button (Only for Instructors/Admins or Thread Author if open) */}
+                                {thread.status !== THREAD_STATUS.RESOLVED && (currentUserRole === 'Instructor' || currentUserRole === 'Admin') && (
+                                    <button
+                                        className="mark-solution-btn"
+                                        onClick={() => handleMarkResolved(reply.id)}
+                                    >
+                                        <CheckCircle size={14} /> Mark as Solution
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="reply-input-area">
+                        <form onSubmit={handleReplySubmit}>
+                            <textarea
+                                className="reply-textarea"
+                                placeholder="Type your reply here..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                rows={4}
+                            />
+                            <div className="form-actions">
+                                <button
+                                    type="submit"
+                                    className="submit-reply-btn"
+                                    disabled={submitting || !replyText.trim()}
+                                >
+                                    <Send size={16} /> Post Reply
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
 
-export default PostDetail;
+export default ThreadDetail;

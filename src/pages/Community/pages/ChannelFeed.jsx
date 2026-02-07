@@ -1,161 +1,293 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import communityService from '../../../services/communityService';
-import CreatePostModal from '../components/CreatePostModal';
-import { mockChannels } from '../constants';
-import { Search, Plus, MessageSquare } from 'lucide-react';
+import CreateThreadModal from '../components/CreatePostModal';
+import { TOPIC_BOARDS, THREAD_STATUS } from '../constants';
+import { Search, Plus, MessageSquare, AlertCircle, CheckCircle, Clock, ArrowLeft, BookOpen } from 'lucide-react';
 
-const ChannelFeed = () => {
-    const { channelId } = useParams();
+const TopicBoard = () => {
+    const { boardId } = useParams();
     const navigate = useNavigate();
-    const [posts, setPosts] = useState([]);
+    const [threads, setThreads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [showUnanswered, setShowUnanswered] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all'); // all, open, resolved, needs_attention
+    const [courseFilter, setCourseFilter] = useState('all'); // For filtering by course
+    const [courseStatusFilter, setCourseStatusFilter] = useState({}); // For per-course status filtering
+    const [selectedCourse, setSelectedCourse] = useState(null); // For course-based view in doubts
 
-    const currentChannel = mockChannels.find(c => c.id === channelId) || mockChannels[0];
+    // Mock current user role - in real app, get from AuthContext
+    const currentUserRole = "Admin"; // Change to "Student", "Instructor", or "Admin" to test
+
+    const currentBoard = TOPIC_BOARDS.find(b => b.id === boardId) || TOPIC_BOARDS[0];
+
+    // Extract unique courses from threads for filter dropdown
+    const availableCourses = [...new Set(threads.map(t => t.courseName).filter(Boolean))];
+
+    // Check if current user can post to this board
+    const canPost = () => {
+        const { allowedPosters } = currentBoard;
+        if (allowedPosters.includes('all')) return true;
+        if (allowedPosters.includes(currentUserRole.toLowerCase())) return true;
+        return false;
+    };
 
     useEffect(() => {
-        loadPosts();
-        // Reset filter when changing channel
-        setShowUnanswered(false);
-    }, [channelId]);
+        loadThreads();
+    }, [boardId, statusFilter, courseFilter]);
 
-    const loadPosts = async () => {
+    const loadThreads = async () => {
         setLoading(true);
         try {
-            const data = await communityService.getPosts(channelId, { search: searchQuery });
-            setPosts(data);
+            const filters = { search: searchQuery };
+            if (statusFilter !== 'all') filters.status = statusFilter;
+            if (courseFilter !== 'all') filters.courseName = courseFilter;
+
+            const data = await communityService.getThreads(boardId || currentBoard.id, filters);
+            setThreads(data);
         } catch (error) {
-            console.error("Failed to load posts", error);
+            console.error("Failed to load threads", error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Re-fetch when search changes (debounce could be added for better perf)
+    // Re-fetch when search changes
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadPosts();
+            loadThreads();
         }, 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const handleCreatePost = async (postData) => {
+    const handleCreateThread = async (threadData) => {
         try {
-            const newPost = await communityService.createPost(postData);
-            setPosts([newPost, ...posts]);
+            const newThread = await communityService.createThread({
+                ...threadData,
+                boardId: boardId || currentBoard.id
+            });
+            setThreads([newThread, ...threads]);
             setShowModal(false);
         } catch (error) {
-            console.error("Failed to create post", error);
+            console.error("Failed to create thread", error);
         }
     };
 
-    // Derived state for filtered posts
-    const displayedPosts = showUnanswered
-        ? posts.filter(post => !post.comments || post.comments.length === 0)
-        : posts;
+    const getStatusBadge = (status) => {
+        // Announcements should not have a status badge
+        if (boardId === 'announcements') return null;
 
-    if (loading && posts.length === 0) {
-        return <div className="p-5 text-center">Loading discussions...</div>;
-    }
+        switch (status) {
+            case THREAD_STATUS.RESOLVED:
+                return (
+                    <span className="status-badge resolved">
+                        <CheckCircle size={14} /> Resolved
+                    </span>
+                );
+            case THREAD_STATUS.NEEDS_ATTENTION:
+                return (
+                    <span className="status-badge attention">
+                        <AlertCircle size={14} /> Needs Attention
+                    </span>
+                );
+            default:
+                return (
+                    <span className="status-badge open">
+                        <Clock size={14} /> Open
+                    </span>
+                );
+        }
+    };
+
+    if (!currentBoard) return <div>Board not found</div>;
 
     return (
-        <>
-            <div className="feed-header">
-                <div className="feed-title">
-                    <h2>{currentChannel.name}</h2>
-                    <p>{currentChannel.description}</p>
+        <div className="board-container">
+            <div className="board-header">
+                <div className="board-title-section">
+                    <h2>{currentBoard.name}</h2>
+                    <p>{currentBoard.description}</p>
                 </div>
 
-                <div className="feed-filters">
-                    {/* Unanswered Filter Toggle */}
-                    <button
-                        className={`filter-toggle-btn ${showUnanswered ? 'active' : ''}`}
-                        onClick={() => setShowUnanswered(!showUnanswered)}
-                        title="Show questions with zero responses"
-                    >
-                        <MessageSquare size={16} />
-                        {showUnanswered ? 'All Posts' : 'Unanswered Only'}
-                    </button>
-
-                    <div className="position-relative">
-                        {/* Simple search input wrapper */}
+                <div className="board-actions">
+                    <div className="search-wrapper">
                         <input
                             type="text"
-                            className="search-input"
-                            placeholder="Search posts..."
+                            placeholder="Search discussions..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        <Search size={18} className="search-icon" />
                     </div>
 
-                    <button className="create-post-btn" onClick={() => setShowModal(true)}>
-                        <Plus size={18} /> New Post
-                    </button>
+                    {/* Course Filter - Don't show in doubts board (uses course cards instead) */}
+                    {boardId !== 'doubts' && boardId === 'doubts' && availableCourses.length > 0 && (
+                        <select
+                            className="course-filter-dropdown"
+                            value={courseFilter}
+                            onChange={(e) => setCourseFilter(e.target.value)}
+                        >
+                            <option value="all">All Courses</option>
+                            {availableCourses.map(course => (
+                                <option key={course} value={course}>{course}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* Show 'New Question' button only when inside a course in doubts board */}
+                    {canPost() && (boardId !== 'doubts' || (boardId === 'doubts' && selectedCourse)) && (
+                        <button className="create-thread-btn" onClick={() => setShowModal(true)}>
+                            <Plus size={18} />
+                            {boardId === 'doubts' ? 'New Question' : boardId === 'announcements' ? 'New Announcement' : 'New Discussion'}
+                        </button>
+                    )}
                 </div>
             </div>
 
-            <div className="feed-content">
-                {displayedPosts.length === 0 ? (
-                    <div className="text-center text-muted mt-5">
-                        <MessageSquare size={48} className="mb-3 opacity-25" />
-                        <p>
-                            {showUnanswered
-                                ? "Great job! All questions have been answered."
-                                : "No posts yet. Be the first to start the conversation!"}
-                        </p>
+            {/* Filter Buttons - Only show for boards that use status filtering */}
+            {boardId !== 'announcements' && boardId !== 'doubts' && (
+                <div className="board-filters">
+                    <button
+                        className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('all')}
+                    >
+                        All
+                    </button>
+                    <button
+                        className={`filter-tab ${statusFilter === THREAD_STATUS.OPEN ? 'active' : ''}`}
+                        onClick={() => setStatusFilter(THREAD_STATUS.OPEN)}
+                    >
+                        Open
+                    </button>
+                    <button
+                        className={`filter-tab ${statusFilter === THREAD_STATUS.RESOLVED ? 'active' : ''}`}
+                        onClick={() => setStatusFilter(THREAD_STATUS.RESOLVED)}
+                    >
+                        Resolved
+                    </button>
+                </div>
+            )}
+
+
+            <div className="threads-list">
+                {loading ? (
+                    <div className="loading-state">Loading discussions...</div>
+                ) : boardId === 'doubts' ? (
+                    // Course-based view for Questions & Doubts
+                    selectedCourse ? (
+                        // Inside a course - show questions for that course
+                        <div className="course-discussion-view">
+                            <button className="back-to-courses-btn" onClick={() => setSelectedCourse(null)}>
+                                <ArrowLeft size={18} /> Back to Courses
+                            </button>
+                            <div className="course-header-box">
+                                <BookOpen size={32} />
+                                <div>
+                                    <h2>{selectedCourse}</h2>
+                                    <p>Ask questions and discuss topics related to this course</p>
+                                </div>
+                            </div>
+                            <div className="course-questions-list">
+                                {threads.filter(t => t.courseName === selectedCourse).length === 0 ? (
+                                    <div className="empty-state">
+                                        <MessageSquare size={48} />
+                                        <p>No questions yet. Be the first to ask!</p>
+                                    </div>
+                                ) : (
+                                    threads.filter(t => t.courseName === selectedCourse).map(thread => (
+                                        <div key={thread.id} className={`thread-row-simple ${thread.isPinned ? 'pinned' : ''}`} onClick={() => navigate(`/community/thread/${thread.id}`)}>
+                                            <div className="thread-simple-content">
+                                                <h3 className="thread-title-simple">
+                                                    {thread.isPinned && <span className="pinned-icon">📌</span>}
+                                                    {thread.title}
+                                                </h3>
+                                                <p className="thread-description">{thread.content.substring(0, 150)}...</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        // Course selection view
+                        availableCourses.length === 0 ? (
+                            <div className="empty-state">
+                                <BookOpen size={48} />
+                                <p>No courses available yet.</p>
+                            </div>
+                        ) : (
+                            <div className="courses-grid">
+                                {availableCourses.map(course => {
+                                    const courseThreadsCount = threads.filter(t => t.courseName === course).length;
+                                    return (
+                                        <div key={course} className="course-card" onClick={() => setSelectedCourse(course)}>
+                                            <div className="course-card-icon">
+                                                <BookOpen size={32} />
+                                            </div>
+                                            <div className="course-card-content">
+                                                <h3>{course}</h3>
+                                                <p className="course-stats">
+                                                    <MessageSquare size={16} />
+                                                    {courseThreadsCount} {courseThreadsCount === 1 ? 'question' : 'questions'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )
+                    )
+                ) : threads.length === 0 ? (
+                    <div className="empty-state">
+                        <MessageSquare size={48} />
+                        <p>No discussions found in this board.</p>
+                        {statusFilter !== 'all' && <button className="btn-link" onClick={() => setStatusFilter('all')}>Clear Filters</button>}
                     </div>
                 ) : (
-                    displayedPosts.map(post => (
-                        <div key={post.id} className="post-card" onClick={() => navigate(`../post/${post.id}`)}>
-                            <div className="post-header">
-                                <div className="post-meta">
-                                    <div className="avatar-placeholder">
-                                        {post.author.charAt(0)}
-                                    </div>
-                                    <div className="author-info">
-                                        <span className="author-name">{post.author}</span>
-                                        <span className={`author-role role-${post.authorRole.toLowerCase()}`}>
-                                            {post.authorRole}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span className="post-time">
-                                    {new Date(post.timestamp).toLocaleDateString()}
-                                </span>
+                    threads.map(thread => (
+                        <div key={thread.id} className={`thread-row ${thread.isPinned ? 'pinned' : ''}`} onClick={() => navigate(`/community/thread/${thread.id}`)}>
+                            <div className="thread-status">
+                                {getStatusBadge(thread.status)}
                             </div>
-
-                            <h3 className="post-title">{post.title}</h3>
-                            <p className="post-preview">{post.content}</p>
-
-                            <div className="post-footer">
-                                <div className="post-stat">
-                                    <MessageSquare size={16} className={(!post.comments || post.comments.length === 0) ? "text-danger" : ""} />
-                                    <span className={(!post.comments || post.comments.length === 0) ? "text-danger fw-medium" : ""}>
-                                        {post.comments ? post.comments.length : 0} Comments
-                                    </span>
+                            <div className="thread-main">
+                                <h3 className="thread-title">
+                                    {thread.isPinned && <span className="pinned-badge">Pinned</span>}
+                                    {thread.title}
+                                </h3>
+                                <p className="thread-preview">{thread.content.substring(0, 120)}...</p>
+                                <div className="thread-meta">
+                                    <span className="author">By {thread.author}</span>
+                                    <span className="separator">•</span>
+                                    <span className="date">{new Date(thread.timestamp).toLocaleDateString()}</span>
+                                    {thread.courseName && (
+                                        <>
+                                            <span className="separator">•</span>
+                                            <span className="course-tag">{thread.courseName}</span>
+                                        </>
+                                    )}
                                 </div>
-                                {post.courseName && (
-                                    <div className="post-stat">
-                                        <span>📚 {post.courseName}</span>
-                                    </div>
-                                )}
+                            </div>
+                            <div className="thread-stats">
+                                <div className="stat-item">
+                                    <MessageSquare size={16} />
+                                    <span>{thread.replies ? thread.replies.length : 0}</span>
+                                </div>
                             </div>
                         </div>
                     ))
                 )}
             </div>
 
-            <CreatePostModal
+            <CreateThreadModal
                 isOpen={showModal}
                 onClose={() => setShowModal(false)}
-                onSubmit={handleCreatePost}
-                channelId={channelId}
+                onSubmit={handleCreateThread}
+                boardId={boardId}
+                defaultCourse={selectedCourse}
             />
-        </>
+        </div>
     );
 };
 
-export default ChannelFeed;
+export default TopicBoard;
