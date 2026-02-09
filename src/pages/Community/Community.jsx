@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Hash, ChevronDown, ChevronRight, Settings, Search, Send, Edit2, X } from 'lucide-react';
+import { Hash, ChevronDown, ChevronRight, Settings, Search, Send, Edit2, X, Plus } from 'lucide-react';
 import './Community.css';
 
 const Community = () => {
@@ -20,6 +21,25 @@ const Community = () => {
     const [editChannelName, setEditChannelName] = useState('');
     const [editChannelDescription, setEditChannelDescription] = useState('');
     const [channelAdminOnly, setChannelAdminOnly] = useState(false);
+
+    // Group/Course creation state
+    const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+    const [newGroupName, setNewGroupName] = useState('');
+
+    const handleCreateGroup = () => {
+        if (newGroupName.trim()) {
+            const newId = newGroupName.toLowerCase().replace(/\s+/g, '-');
+            setCourses([...courses, {
+                id: newId,
+                name: newGroupName.trim(),
+                channels: [
+                    { id: 'general', name: 'general', description: 'General discussion' }
+                ]
+            }]);
+            setNewGroupName('');
+            setShowCreateGroupModal(false);
+        }
+    };
 
     // Mock data - courses as "clubs" with channels
     const [courses, setCourses] = useState([
@@ -157,18 +177,42 @@ const Community = () => {
         setShowEditChannelModal(true);
     };
 
+    const handleCreateChannel = (courseId) => {
+        setEditingChannel({ courseId, channelId: null }); // null indicates new channel
+        setEditChannelName('');
+        setEditChannelDescription('');
+        setChannelAdminOnly(false);
+        setShowEditChannelModal(true);
+    };
+
     const handleSaveChannel = () => {
         if (editChannelName.trim()) {
             setCourses(courses.map(course => {
                 if (course.id === editingChannel.courseId) {
-                    return {
-                        ...course,
-                        channels: course.channels.map(ch =>
-                            ch.id === editingChannel.channelId
-                                ? { ...ch, name: editChannelName.trim(), description: editChannelDescription.trim() }
-                                : ch
-                        )
-                    };
+                    // Update existing channel
+                    if (editingChannel.channelId) {
+                        return {
+                            ...course,
+                            channels: course.channels.map(ch =>
+                                ch.id === editingChannel.channelId
+                                    ? { ...ch, name: editChannelName.trim(), description: editChannelDescription.trim() }
+                                    : ch
+                            )
+                        };
+                    } else {
+                        // Create NEW channel
+                        const newChannel = {
+                            id: `ch_${Date.now()}`,
+                            name: editChannelName.trim(),
+                            type: 'text',
+                            description: editChannelDescription.trim(),
+                            courseId: course.id
+                        };
+                        return {
+                            ...course,
+                            channels: [...course.channels, newChannel]
+                        };
+                    }
                 }
                 return course;
             }));
@@ -190,13 +234,21 @@ const Community = () => {
             <div className="chat-sidebar">
                 <div className="chat-sidebar-header">
                     <h2>Community</h2>
-                    <Settings size={20} className="settings-icon" onClick={() => setShowSettings(!showSettings)} />
+                    <Settings size={40} className="settings-icon" onClick={() => setShowSettings(!showSettings)} />
                 </div>
 
                 <div className="chat-sidebar-content">
                     {/* All Channels Section */}
                     <div className="sidebar-section">
-                        <div className="section-title">All channels</div>
+                        <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            All Channels
+                            <Plus
+                                size={16}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => setShowCreateGroupModal(true)}
+                                title="Add New Course Group"
+                            />
+                        </div>
 
                         {courses.map(course => (
                             <div key={course.id} className="course-group">
@@ -224,6 +276,16 @@ const Community = () => {
                                                 <span>{channel.name}</span>
                                             </div>
                                         ))}
+                                        {/* Add Channel Button in Sidebar */}
+                                        <div
+                                            className="add-channel-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCreateChannel(course.id);
+                                            }}
+                                        >
+                                            <Plus size={14} /> Add new channel
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -320,8 +382,8 @@ const Community = () => {
                                                         />
                                                     </div>
                                                 ))}
-                                                <div className="new-channel-btn">
-                                                    <span>+ New channel</span>
+                                                <div className="new-channel-btn" onClick={() => handleCreateChannel(course.id)}>
+                                                    <span><Plus size={16} /> New channel</span>
                                                 </div>
                                             </div>
                                         )}
@@ -346,20 +408,28 @@ const Community = () => {
 
                         {/* Messages Area */}
                         <div className="messages-area">
-                            {messages.filter(msg => msg.channelId === selectedChannel.id && msg.courseId === selectedChannel.courseId).map(msg => (
-                                <div key={msg.id} className={`message-item ${msg.title ? 'announcement-message' : ''}`}>
-                                    <div className="message-avatar">{msg.title ? '📢' : msg.avatar}</div>
-                                    <div className="message-content">
-                                        <div className="message-header">
-                                            <span className="message-author">{msg.author}</span>
-                                            <span className="message-role">{msg.role}</span>
-                                            <span className="message-time">{msg.timestamp}</span>
+                            <AnimatePresence>
+                                {messages.filter(msg => msg.channelId === selectedChannel.id && msg.courseId === selectedChannel.courseId).map(msg => (
+                                    <motion.div
+                                        key={msg.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className={`message-item ${msg.title ? 'announcement-message' : ''} ${msg.author === 'John Doe' ? 'my-message' : ''}`}
+                                    >
+                                        <div className="message-avatar">{msg.title ? '📢' : msg.avatar}</div>
+                                        <div className="message-content">
+                                            <div className="message-header">
+                                                <span className="message-author">{msg.author}</span>
+                                                <span className="message-role">{msg.role}</span>
+                                                <span className="message-time">{msg.timestamp}</span>
+                                            </div>
+                                            {msg.title && <div className="announcement-title">{msg.title}</div>}
+                                            <div className="message-text">{msg.content}</div>
                                         </div>
-                                        {msg.title && <div className="announcement-title">{msg.title}</div>}
-                                        <div className="message-text">{msg.content}</div>
-                                    </div>
-                                </div>
-                            ))}
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
                         </div>
 
                         {/* Message Input */}
@@ -397,7 +467,7 @@ const Community = () => {
                 <div className="modal-overlay" onClick={handleCloseChannelModal}>
                     <div className="modal-content edit-channel-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>Edit #{editChannelName}</h2>
+                            <h2>{editingChannel?.channelId ? `Edit #${editChannelName}` : 'Create New Channel'}</h2>
                             <X size={24} className="close-icon" onClick={handleCloseChannelModal} />
                         </div>
 
@@ -487,6 +557,44 @@ const Community = () => {
                             </button>
                             <button className="modal-save-btn" onClick={handleCreateAnnouncement}>
                                 Post Announcement
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Group Modal */}
+            {showCreateGroupModal && (
+                <div className="modal-overlay" onClick={() => setShowCreateGroupModal(false)}>
+                    <div className="modal-content channel-settings-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Create New Community Group</h2>
+                            <X size={24} className="close-icon" onClick={() => setShowCreateGroupModal(false)} />
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Group Name</label>
+                                <input
+                                    type="text"
+                                    className="channel-name-input-modal"
+                                    value={newGroupName}
+                                    onChange={(e) => setNewGroupName(e.target.value)}
+                                    placeholder="e.g. React Users, Python Club"
+                                    autoFocus
+                                />
+                            </div>
+                            <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 8 }}>
+                                A default #general channel will be created automatically.
+                            </p>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="modal-cancel-btn" onClick={() => setShowCreateGroupModal(false)}>
+                                Cancel
+                            </button>
+                            <button className="modal-save-btn" onClick={handleCreateGroup}>
+                                Create Group
                             </button>
                         </div>
                     </div>

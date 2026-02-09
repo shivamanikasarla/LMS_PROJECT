@@ -19,12 +19,86 @@ import { FaRupeeSign } from 'react-icons/fa';
 import { batchService } from '../Batches/services/batchService';
 import { courseService } from '../Courses/services/courseService';
 import { enrollmentService } from '../Batches/services/enrollmentService';
+import { createFeeDiscount, getFeeDiscounts, deleteFeeDiscount } from '../../services/feeService';
 
 // --- Student Detail View Component ---
 const StudentFeeDetailView = ({ student, onBack }) => {
     const total = Number(student.totalFee || 0);
     const paid = Number(student.paidAmount || 0);
     const pending = Math.max(0, total - paid);
+
+    const [discounts, setDiscounts] = useState([]);
+    const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+    const [showDiscountForm, setShowDiscountForm] = useState(false);
+    const [newDiscount, setNewDiscount] = useState({
+        name: '', type: 'FLAT', value: '', reason: ''
+    });
+
+    // Fetch Discounts (Student & Batch)
+    const fetchDiscounts = async () => {
+        setLoadingDiscounts(true);
+        try {
+            // Concurrent fetch for Student and Batch discounts
+            const [studentDiscounts, batchDiscounts] = await Promise.all([
+                getFeeDiscounts({ scopeId: student.id, discountScope: 'STUDENT' }),
+                student.batchId ? getFeeDiscounts({ scopeId: student.batchId, discountScope: 'BATCH' }) : []
+            ]);
+
+            // Combine and tag
+            const combined = [
+                ...(studentDiscounts || []).map(d => ({ ...d, source: 'STUDENT' })),
+                ...(batchDiscounts || []).map(d => ({ ...d, source: 'BATCH' }))
+            ];
+            setDiscounts(combined);
+        } catch (err) {
+            console.error("Failed to load discounts", err);
+        } finally {
+            setLoadingDiscounts(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchDiscounts();
+    }, [student.id, student.batchId]);
+
+    const handleAddDiscount = async () => {
+        if (!newDiscount.value || !newDiscount.name) return alert("Please fill details");
+
+        // Infer ID from existing discounts (Batch/Student) or default to 1. 
+        // Ideally, we should fetch active Fee Structures for this student's batch to select from.
+        const inferredId = discounts.length > 0 ? discounts[0].feeStructureId : 1;
+        console.log("Inferred Fee Structure ID:", inferredId);
+
+        try {
+            await createFeeDiscount({
+                feeStructureId: inferredId,
+                discountScope: 'STUDENT',
+                scopeId: student.id,
+                discountName: newDiscount.name,
+                discountType: newDiscount.type,
+                discountValue: Number(newDiscount.value),
+                admissionFee: 0,
+                reason: newDiscount.reason
+            });
+            alert("Discount Override Added!");
+            setShowDiscountForm(false);
+            setNewDiscount({ name: '', type: 'FLAT', value: '', reason: '' });
+            fetchDiscounts(); // Refresh
+        } catch (err) {
+            console.error(err);
+            alert("Failed to add discount. " + (err.response?.data?.message || ""));
+        }
+    };
+
+    const handleDeleteDiscount = async (id) => {
+        if (!window.confirm("Remove this discount override?")) return;
+        try {
+            await deleteFeeDiscount(id);
+            fetchDiscounts();
+        } catch (err) {
+            alert("Failed to delete");
+        }
+    };
 
     return (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -66,6 +140,88 @@ const StudentFeeDetailView = ({ student, onBack }) => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Discounts Section */}
+            <div className="glass-card" style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FiLayers /> Fee Discounts & Overrides
+                    </h3>
+                    <button className="btn-primary" onClick={() => setShowDiscountForm(!showDiscountForm)} style={{ padding: '8px 16px', fontSize: 13 }}>
+                        {showDiscountForm ? 'Cancel' : '+ Add Override'}
+                    </button>
+                </div>
+
+                {showDiscountForm && (
+                    <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, marginBottom: 20, border: '1px solid #e2e8f0' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: 14 }}>Add Student Override Discount</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 1fr auto', gap: 12, alignItems: 'end' }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Name</label>
+                                <input type="text" className="form-input" placeholder="e.g. Special Approval" value={newDiscount.name} onChange={e => setNewDiscount({ ...newDiscount, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Type</label>
+                                <select className="form-select" value={newDiscount.type} onChange={e => setNewDiscount({ ...newDiscount, type: e.target.value })}>
+                                    <option value="FLAT">Flat (₹)</option>
+                                    <option value="PERCENTAGE">% Off</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Value</label>
+                                <input type="number" className="form-input" placeholder="0" value={newDiscount.value} onChange={e => setNewDiscount({ ...newDiscount, value: e.target.value })} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Reason</label>
+                                <input type="text" className="form-input" placeholder="Optional" value={newDiscount.reason} onChange={e => setNewDiscount({ ...newDiscount, reason: e.target.value })} />
+                            </div>
+                            <button className="btn-primary" onClick={handleAddDiscount} style={{ height: 42 }}>Save</button>
+                        </div>
+                    </div>
+                )}
+
+                {loadingDiscounts ? <div style={{ padding: 20, textAlign: 'center' }}>Loading discounts...</div> : (
+                    <table className="premium-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Discount Name</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {discounts.length > 0 ? discounts.map((d, i) => (
+                                <tr key={i} style={{ opacity: d.source === 'BATCH' ? 0.7 : 1 }}>
+                                    <td>
+                                        <span className={`status-badge ${d.source === 'STUDENT' ? 'paid' : 'pending'}`}>
+                                            {d.source === 'STUDENT' ? 'Override (Student)' : 'Batch Default'}
+                                        </span>
+                                    </td>
+                                    <td style={{ fontWeight: 500 }}>{d.discountName}</td>
+                                    <td>{d.discountType}</td>
+                                    <td>{d.discountType === 'FLAT' ? `₹${d.discountValue}` : `${d.discountValue}%`}</td>
+                                    <td>
+                                        {d.source === 'STUDENT' && (
+                                            <button className="btn-icon" onClick={() => handleDeleteDiscount(d.id)} style={{ color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}>
+                                                <FiMoreVertical style={{ transform: 'rotate(90deg)' }} />
+                                            </button>
+                                        )}
+                                        {d.source === 'BATCH' && <span style={{ fontSize: 11, color: '#94a3b8' }}>Inherited</span>}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>
+                                        No active discounts. Add an override to reduce fees for this student.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             <div className="glass-card">
@@ -238,6 +394,7 @@ const FeeDashboard = () => {
                         paidAmount: s.paidAmount || 0,
                         status: s.status || 'PENDING',
                         batchName: batch.batchName,
+                        batchId: batch.batchId,
                         courseName: courseName
                     }));
 
@@ -301,10 +458,10 @@ const FeeDashboard = () => {
                     value={batchFilter}
                     onChange={(e) => setBatchFilter(e.target.value)}
                 >
-                    <option key="all">All Batches</option>
+                    <option key="all" value="All Batches">All Batches</option>
                     {availableBatches
                         .filter(b => courseFilter === 'All Courses' || b.course === courseFilter)
-                        .map(b => <option key={b.id} value={b.name}>{b.name}</option>)
+                        .map((b, idx) => <option key={b.id || idx} value={b.name}>{b.name}</option>)
                     }
                 </select>
                 <div className="glass-card" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 300, position: 'relative', zIndex: 100 }}>

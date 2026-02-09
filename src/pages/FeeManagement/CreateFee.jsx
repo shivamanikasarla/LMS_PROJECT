@@ -10,7 +10,7 @@ import { batchService } from '../Batches/services/batchService';
 import { courseService } from '../Courses/services/courseService';
 import { userService } from '../Users/services/userService';
 import { enrollmentService } from '../Batches/services/enrollmentService';
-import { createFeeAllocation, createBatchFee, createFee, getStudentById } from '../../services/feeService';
+import { createFeeAllocation, createBatchFee, createFee, getStudentById, getActiveFeeTypes, createFeeDiscount, getFeeDiscounts, deleteFeeDiscount } from '../../services/feeService';
 
 // --- Sub-Components ---
 
@@ -26,7 +26,7 @@ const SectionHeader = ({ icon: Icon, title, description }) => (
     </div>
 );
 
-const BasicDetails = ({ data, onChange }) => (
+const BasicDetails = ({ data, onChange, feeTypes = [] }) => (
     <motion.div className="glass-card form-section" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
         <SectionHeader icon={FiLayers} title="Basic Details" description="Set the core information for this fee structure" />
         <div className="form-grid">
@@ -49,12 +49,14 @@ const BasicDetails = ({ data, onChange }) => (
                     value={data.type} // This keeps the string value for the UI state
                     onChange={onChange}
                 >
-                    <option value="Tuition Fee">Tuition Fee</option>
-                    <option value="Admission Fee">Admission Fee</option>
-                    <option value="Exam Fee">Exam Fee</option>
-                    <option value="Library Fee">Library Fee</option>
-                    <option value="Custom Fee">Custom Fee</option>
-                    <option value="Course Fee">Course Fee</option>
+                    <option value="">Select Fee Type</option>
+                    {feeTypes.length > 0 ? (
+                        feeTypes.map(ft => (
+                            <option key={ft.id} value={ft.name}>{ft.name}</option>
+                        ))
+                    ) : (
+                        <option disabled>Loading types...</option>
+                    )}
                 </select>
             </div>
             <div className="form-group">
@@ -65,12 +67,16 @@ const BasicDetails = ({ data, onChange }) => (
                         type="number"
                         name="amount"
                         className="form-input"
-                        style={{ paddingLeft: 38, cursor: data.type === 'Course Fee' ? 'not-allowed' : 'text', background: data.type === 'Course Fee' ? '#f1f5f9' : 'white' }}
+                        style={{
+                            paddingLeft: 38,
+                            cursor: (data.type?.toLowerCase() === 'course fee' && Number(data.amount) > 0) ? 'not-allowed' : 'text',
+                            background: (data.type?.toLowerCase() === 'course fee' && Number(data.amount) > 0) ? '#f1f5f9' : 'white'
+                        }}
                         placeholder="0.00"
                         value={data.amount}
                         onChange={onChange}
-                        disabled={data.type === 'Course Fee'}
-                        title={data.type === 'Course Fee' ? "Amount is auto-fetched from Batch/Course settings" : ""}
+                        disabled={data.type?.toLowerCase() === 'course fee' && Number(data.amount) > 0}
+                        title={data.type?.toLowerCase() === 'course fee' ? "Auto-fetched. If 0, you can edit manually." : ""}
                     />
                 </div>
             </div>
@@ -440,7 +446,23 @@ const DiscountSettings = ({ data, setData }) => (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
                     <div className="form-grid" style={{ paddingTop: 12, borderTop: '1px solid var(--glass-border)' }}>
                         <div className="form-group">
-                            <label className="form-label">Discount Category</label>
+                            <label className="form-label">Admission Fee (Non-Refundable)</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                placeholder="e.g. 2000"
+                                value={data.admissionFee}
+                                onChange={(e) => setData({ ...data, admissionFee: e.target.value })}
+                            />
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>This amount will be deducted before applying discount</div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">
+                                Discount Category
+                                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary-color)', marginLeft: 8, background: '#e0f2fe', padding: '2px 8px', borderRadius: 4 }}>
+                                    {data.targetType === 'batch' ? 'Applies to Full Batch' : 'Applies to Selected Students Only'}
+                                </span>
+                            </label>
                             <div style={{ display: 'flex', gap: 12 }}>
                                 {['Scholarship', 'Discount'].map(cat => (
                                     <button
@@ -518,6 +540,7 @@ const CreateFee = () => {
         category: 'Scholarship',
         type: 'flat',
         value: '',
+        admissionFee: '',
         reason: ''
     });
 
@@ -563,11 +586,20 @@ const CreateFee = () => {
     const [availableBatches, setAvailableBatches] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
     const [searchableStudents, setSearchableStudents] = useState([]);
+    const [feeTypes, setFeeTypes] = useState([]);
 
     // 1. Load Data on Mount (From Backend)
     useEffect(() => {
         const loadData = async () => {
             try {
+                // Fetch Fee Types
+                try {
+                    const ftData = await getActiveFeeTypes();
+                    setFeeTypes(ftData || []);
+                } catch (err) {
+                    console.warn("Could not fetch fee types, using defaults");
+                }
+
                 // Fetch Courses
                 const coursesData = await courseService.getCourses();
                 setAvailableCourses(coursesData || []);
@@ -688,45 +720,50 @@ const CreateFee = () => {
     // Auto-Populate Amount for Course Fee
     useEffect(() => {
         const fetchDynamicFee = async () => {
-            if (basicDetails.type !== 'Course Fee') return;
+            // Case-insensitive check
+            if (!basicDetails.type || basicDetails.type.toLowerCase() !== 'course fee') return;
 
             let autoFee = 0;
+            console.log("🔄 Calculating Dynamic Fee...", { assignment, basicDetails });
 
             try {
-                // Determine Authority Context
                 let relevantBatchId = null;
 
-                // Priority 1: Batch Filter (Strongest Intent)
+                // Priority 1: Batch Filter (Explicit Selection)
                 if (assignment.batch) {
                     relevantBatchId = assignment.batch;
                 }
-                // Priority 2: Student's Batch
+                // Priority 2: Student's Batch (Implicit Scope)
                 else if (assignment.targetType === 'student' && assignment.selectedStudents.length > 0) {
                     const stu = assignment.selectedStudents[0];
                     const cachedStu = searchableStudents.find(s => s.id === stu.id);
 
-                    if (cachedStu && cachedStu.totalFee > 0) {
-                        autoFee = Number(cachedStu.totalFee);
-                    }
-                    if (!autoFee) {
-                        relevantBatchId = cachedStu?.batchId || cachedStu?.batch?.id;
+                    if (cachedStu) {
+                        if (Number(cachedStu.totalFee) > 0) {
+                            autoFee = Number(cachedStu.totalFee);
+                            console.log("Found fee from Student Cache:", autoFee);
+                        }
+                        if (!autoFee) {
+                            relevantBatchId = cachedStu.batchId || cachedStu.batch?.id;
+                        }
                     }
                 }
 
-                // If we found a Batch Context, resolve the Course Fee
+                // If Batch Context Found
                 if (!autoFee && relevantBatchId) {
                     const batch = availableBatches.find(b => String(b.batchId || b.id) === String(relevantBatchId));
                     if (batch) {
+                        console.log("Found Batch Context:", batch);
                         // 1. Check Batch Fee
                         if (batch.fee || batch.amount) {
                             autoFee = Number(batch.fee || batch.amount);
                         }
-                        // 2. Check Cached Course Fee (Enriched on Load - Logic from FeeInstallments)
+                        // 2. Check Cached Course Fee (from enrichment)
                         else if (batch.cachedFee) {
                             autoFee = Number(batch.cachedFee);
                         }
 
-                        // 3. Last Resort Fallback
+                        // 3. Fallback to Course via Batch
                         if (!autoFee) {
                             const cId = batch.courseId || batch.course?.courseId;
                             if (cId) {
@@ -738,14 +775,29 @@ const CreateFee = () => {
                         }
                     }
                 }
+
+                // Priority 3: Course Filter (If no Batch selected but Course is)
+                if (!autoFee && !relevantBatchId && assignment.course) {
+                    const course = availableCourses.find(c => String(c.courseId || c.id) === String(assignment.course));
+                    if (course) {
+                        console.log("Found Course Context (No Batch):", course);
+                        autoFee = Number(course.fee || course.price || course.amount || course.totalFee || course.courseFee || 0);
+                    }
+                }
+
             } catch (err) {
                 console.error("Error calculating dynamic fee:", err);
             }
 
+            console.log("✅ Final AutoFee:", autoFee);
+
             // Update State
             if (autoFee > 0) {
                 setBasicDetails(prev => {
-                    if (prev.amount !== autoFee) return { ...prev, amount: autoFee };
+                    // Only update if changed to avoid loops
+                    if (Number(prev.amount) !== autoFee) {
+                        return { ...prev, amount: autoFee };
+                    }
                     return prev;
                 });
             }
@@ -802,32 +854,34 @@ const CreateFee = () => {
 
             // 2. CREATE FEE STRUCTURE (Master Record)
 
-            // Map String Type to ID (Temporary Hardcoded Mapping based on your backend)
-            const feeTypeMap = {
-                'Tuition Fee': 1,
-                'Admission Fee': 2,
-                'Exam Fee': 3,
-                'Library Fee': 4,
-                'Custom Fee': 5,
-                'Course Fee': 6
-            };
-            const selectedFeeTypeId = feeTypeMap[basicDetails.type] || 1; // Default to 1 if not found
+            // Dynamic Fee Type Mapping
+            const selectedFeeTypeObj = feeTypes.find(ft => ft.name === basicDetails.type);
+            const selectedFeeTypeId = selectedFeeTypeObj ? selectedFeeTypeObj.id : (feeTypes.length > 0 ? feeTypes[0].id : null);
+
+            if (!selectedFeeTypeId) {
+                alert("Error: Invalid Fee Type selected. Please refresh and try again.");
+                setSaving(false);
+                return;
+            }
 
             const structurePayload = {
                 name: basicDetails.name,
-                totalAmount: finalAmount,         // Calculated Total
                 currency: 'INR',
-                academicYear: '2024-25',          // Ideally dynamic or from settings
+                academicYear: '2024-25',
                 courseId: Number(assignment.course),
-
-                // If a batch is selected (even in 'student' mode to filter), use it.
-                // Otherwise only use it if strictly in 'batch' mode. 
-                // Updating logic: If assignment.batch has a value, send it.
                 batchId: assignment.batch ? Number(assignment.batch) : null,
                 isActive: true,
                 feeTypeId: selectedFeeTypeId,
-                triggerOnCreation: true, // Explicitly setting this flag as requested
-                description: feeDescription
+                triggerOnCreation: true,
+                description: feeDescription,
+                // New Backend Requirement: Components list
+                components: [
+                    {
+                        name: basicDetails.name || selectedFeeTypeObj?.name || 'Main Fee',
+                        amount: finalAmount,
+                        feeTypeId: selectedFeeTypeId // Fix: Essential field for backend
+                    }
+                ]
             };
 
             console.log("Creating Fee Structure:", structurePayload);
@@ -864,21 +918,48 @@ const CreateFee = () => {
                 return;
             }
 
-            // 4. CREATE ALLOCATIONS (Link Students to Structure)
-            // 4. CREATE ALLOCATIONS (Link Students to Structure)
+            // 3.5 CREATE FEE DISCOUNT RULE (Scoped)
+            // Implementation of the new backend design: Create Scope-Based Discount Rules
+            if (discount.enabled && discount.value) {
+                console.log("Creating Scoped Fee Discount Rules...");
 
-            // Calculate Discount Amount (if enabled and applicable)
-            let discountAmount = 0;
-            if (basicDetails.type === 'Course Fee' && discount.enabled && discount.value) {
-                const discVal = Number(discount.value);
-                if (discount.type === 'flat') {
-                    discountAmount = discVal;
-                } else {
-                    discountAmount = (finalAmount * discVal) / 100;
+                const createDiscountRule = async (scope, scopeId) => {
+                    const discountPayload = {
+                        feeStructureId: feeStructureId,
+                        discountScope: scope,
+                        scopeId: Number(scopeId),
+                        discountName: (discount.reason || 'Fee Discount'),
+                        discountType: discount.type === 'flat' ? 'FLAT' : 'PERCENTAGE',
+                        discountValue: Number(discount.value),
+                        admissionFee: Number(discount.admissionFee) || 0,
+                        isActive: true
+                    };
+                    return createFeeDiscount(discountPayload);
+                };
+
+                try {
+                    if (assignment.targetType === 'batch' && assignment.batch) {
+                        // Create ONE rule for the Batch
+                        await createDiscountRule('BATCH', assignment.batch);
+                    }
+                    else if (assignment.targetType === 'student') {
+                        // Create rule for EACH selected student
+                        // Note: If you select 50 students, this creates 50 rules.
+                        // This matches the requirement "Student-level discount applies only to student 123"
+                        const promises = targetStudents.map(s => createDiscountRule('STUDENT', s.id));
+                        await Promise.all(promises);
+                    }
+                } catch (err) {
+                    console.error("Failed to create discount rules:", err);
+                    // Non-blocking error for User flow, but logged.
                 }
             }
-            // Round discount to 2 decimals
-            discountAmount = Math.round(discountAmount * 100) / 100;
+
+            // 4. CREATE ALLOCATIONS (Link Students to Structure)
+
+            // New Logic: Discount applies to (Total - AdmissionFee). Admission Fee is non-discountable.
+            // Discount calculation is now handled DYNAMICALLY by the Backend using the Rules created in Step 3.5.
+            // We do NOT hardcode the discount into the allocation record to avoid data duplication and allow future rule edits.
 
             const allocationPromises = targetStudents.map(student => {
                 const allocationPayload = {
@@ -887,7 +968,7 @@ const CreateFee = () => {
                     studentEmail: student.email, // For notification
                     status: 'ACTIVE',
                     originalAmount: finalAmount, // Send Base Amount
-                    totalDiscount: discountAmount // Send Only Calculated Discount (Backend calculates Payable)
+                    totalDiscount: 0 // Discount is derived from FeeDiscount Rules (Scoped)
                 };
                 return createFeeAllocation(allocationPayload);
             });
@@ -941,10 +1022,10 @@ const CreateFee = () => {
 
             {/* Main Form Content */}
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                <BasicDetails data={basicDetails} onChange={handleBasicChange} />
+                <BasicDetails data={basicDetails} onChange={handleBasicChange} feeTypes={feeTypes} />
 
                 {basicDetails.type === 'Course Fee' && (
-                    <DiscountSettings data={discount} setData={setDiscount} />
+                    <DiscountSettings data={{ ...discount, targetType: assignment.targetType }} setData={setDiscount} />
                 )}
 
                 <FeeAssignment

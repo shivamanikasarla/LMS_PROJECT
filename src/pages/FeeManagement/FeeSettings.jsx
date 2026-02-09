@@ -8,6 +8,7 @@ import {
 import './FeeManagement.css';
 import { getFeeSettings, saveFeeSettings } from '../../services/feeService';
 import useAuditLog from '../../hooks/useAuditLog';
+import FeeTypesSettings from './FeeTypesSettings';
 
 // --- Extracted Component to prevent re-renders ---
 const NotificationCard = ({ notifType, data, onToggle, onConfigChange, onTest }) => (
@@ -557,6 +558,11 @@ const FeeSettings = () => {
                                 )}
                             </AnimatePresence>
                         </div>
+                    </section>
+
+                    {/* Fee Types Section */}
+                    <section className="form-section">
+                        <FeeTypesSettings />
                     </section>
 
                     {/* Notification Section */}

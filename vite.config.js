@@ -7,17 +7,27 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/student-batches': {
-        target: 'http://localhost:5151', // Corrected: StudentBatchController is in Main LMS (5151)
+        target: 'http://192.168.1.17:5151', // Corrected: StudentBatchController is in Main LMS (5151)
         changeOrigin: true,
         secure: false,
       },
       '/api/fee-management': {
-        target: 'http://localhost:3130', // Fee Management Backend (Settings)
+        target: 'http://192.168.1.6:3130', // Fee Management Backend (Settings)
         changeOrigin: true,
         secure: false,
       },
-      '/api/fee-management/master-settings': {
-        target: 'http://192.168.1.21:3130', // Fee Management Backend (Settings)
+      '/api/fee-types': {
+        target: 'http://192.168.1.6:3130', // Fee Management Backend (Fee Types)
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/fee-structures': {
+        target: 'http://192.168.1.6:3130',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/fee-allocations': {
+        target: 'http://192.168.1.6:3130',
         changeOrigin: true,
         secure: false,
       },
@@ -28,27 +38,27 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api': {
-        target: 'http://192.168.1.18:5151', // Gateway / Other Modules
+        target: 'http://192.168.1.17:5151', // Gateway / Other Modules
         changeOrigin: true,
         secure: false,
       },
       '/admin': {
-        target: 'http://192.168.1.34:8081',
+        target: 'http://192.168.1.16:8081',
         changeOrigin: true,
         secure: false,
       },
       '/student': {
-        target: 'http://192.168.1.34:8081',
+        target: 'http://192.168.1.16:8081',
         changeOrigin: true,
         secure: false,
       },
       '/auth': {
-        target: 'http://192.168.1.34:8081',
+        target: 'http://192.168.1.16:8081',
         changeOrigin: true,
         secure: false,
       },
       '/users': {
-        target: 'http://192.168.1.34:8081',
+        target: 'http://192.168.1.16:8081',
         changeOrigin: true,
         secure: false,
       },

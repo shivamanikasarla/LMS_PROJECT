@@ -7,7 +7,7 @@ const VALID_TOKEN = "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBnbW
 
 // Get auth token from localStorage
 const getAuthToken = () => {
-    return localStorage.getItem('authToken') || import.meta.env.VITE_DEV_AUTH_TOKEN || VALID_TOKEN;
+    return localStorage.getItem('authToken') || import.meta.env.VITE_DEV_AUTH_TOKEN;
 };
 
 // Create axios instance with interceptors
@@ -40,6 +40,96 @@ apiClient.interceptors.request.use(
     },
     (error) => Promise.reject(error)
 );
+
+// ============================================
+// FEE TYPE API
+// ============================================
+
+export const getAllFeeTypes = async () => {
+    try {
+        const response = await apiClient.get('/fee-types', { baseURL: '/api' });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all fee types:', error);
+        throw error;
+    }
+};
+
+export const getActiveFeeTypes = async () => {
+    try {
+        const response = await apiClient.get('/fee-types/active', { baseURL: '/api' });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching active fee types:', error);
+        throw error;
+    }
+};
+
+export const createFeeType = async (feeTypeData) => {
+    try {
+        const response = await apiClient.post('/fee-types', feeTypeData, { baseURL: '/api' });
+        return response.data;
+    } catch (error) {
+        console.error('Error creating fee type:', error);
+        throw error;
+    }
+};
+
+export const updateFeeType = async (id, feeTypeData) => {
+    try {
+        const response = await apiClient.put(`/fee-types/${id}`, feeTypeData, { baseURL: '/api' });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating fee type:', error);
+        throw error;
+    }
+};
+
+export const deleteFeeType = async (id) => {
+    try {
+        await apiClient.delete(`/fee-types/${id}`, { baseURL: '/api' });
+    } catch (error) {
+        console.error('Error deleting fee type:', error);
+        throw error;
+    }
+};
+
+
+// ============================================
+// FEE DISCOUNT API
+// ============================================
+
+export const createFeeDiscount = async (discountData) => {
+    try {
+        // Matches FeeDiscountController: /fee-management/fee-discounts
+        const response = await apiClient.post('/fee-discounts', discountData);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating fee discount:', error);
+        throw error;
+    }
+};
+
+export const getFeeDiscounts = async (params = {}) => {
+    try {
+        // Matches FeeDiscountController: GET /fee-management/fee-discounts
+        const response = await apiClient.get('/fee-discounts', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching fee discounts:', error);
+        throw error;
+    }
+};
+
+export const deleteFeeDiscount = async (discountId) => {
+    try {
+        await apiClient.delete(`/fee-discounts/${discountId}`);
+    } catch (error) {
+        console.error('Error deleting fee discount:', error);
+        throw error;
+    }
+};
+
 
 // ============================================
 // FEE SETTINGS API
@@ -166,7 +256,7 @@ export const createBatchFee = async (batchId, feeData) => {
 export const getBatchFees = async (batchId) => {
     try {
         // Updated to match FeeController: /fee-structures/batch/{batchId}
-        const response = await apiClient.get(`/fee-structures/batch/${batchId}`);
+        const response = await apiClient.get(`/fee-structures/batch/${batchId}`, { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error fetching batch fees:', error);
@@ -328,7 +418,7 @@ export const createInstallmentPlan = async (studentId, planData) => {
 export const createFee = async (feeData) => {
     try {
         // Updated to match FeeController: /fee-structures
-        const response = await apiClient.post('/fee-structures', feeData);
+        const response = await apiClient.post('/fee-structures', feeData, { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error creating fee structure:', error);
@@ -350,7 +440,7 @@ export const createFeeAllocation = async (allocationData) => {
 export const getStudentFee = async (userId) => {
     try {
         // Updated to match FeeController: /fee-allocations/user/{userId}
-        const response = await apiClient.get(`/fee-allocations/user/${userId}`);
+        const response = await apiClient.get(`/fee-allocations/user/${userId}`, { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error fetching student fee allocations:', error);
@@ -360,7 +450,7 @@ export const getStudentFee = async (userId) => {
 
 export const getAllFeeStructures = async () => {
     try {
-        const response = await apiClient.get('/fee-structures');
+        const response = await apiClient.get('/fee-structures', { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error fetching all fee structures:', error);
@@ -396,6 +486,13 @@ export default {
     // Settings
     getFeeSettings,
     saveFeeSettings,
+
+    // Fee Types
+    getAllFeeTypes,
+    getActiveFeeTypes,
+    createFeeType,
+    updateFeeType,
+    deleteFeeType,
 
     // Audit Logs
     getAuditLogs,
