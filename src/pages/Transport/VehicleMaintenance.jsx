@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiTool, FiPlus, FiSearch, FiEdit2, FiTrash2,
-    FiCalendar, FiDollarSign, FiAlertCircle, FiCheckCircle, FiX
+    FiCalendar, FiAlertCircle, FiCheckCircle, FiX
 } from 'react-icons/fi';
 import TransportService from '../../services/transportService';
 
@@ -27,7 +27,7 @@ const VehicleMaintenance = () => {
         setLoading(true);
         try {
             const [recordsData, vehiclesData] = await Promise.all([
-                TransportService.Maintenance.getMaintenanceLogs().catch(() => []),
+                TransportService.Maintenance.getAllMaintenance().catch(() => []),
                 TransportService.Vehicle.getAllVehicles()
             ]);
             setRecords(recordsData || []);
@@ -43,7 +43,17 @@ const VehicleMaintenance = () => {
     const handleOpenModal = (record = null) => {
         if (record) {
             setEditingRecord(record);
-            setFormData(record);
+            // Ensure we map back to the ID for the dropdown
+            const v = vehicles.find(v => v.vehicleNumber === record.vehicleId);
+            // Note: If backend sends ID in vehicleId field, this is easy. If it sends Number, we might need to find ID.
+            // Based on Fuel Log, we are sending ID. Let's assume we send/receive ID or consistent string.
+            // For now, let's trust the record.vehicleId matches the Select value logic.
+
+            setFormData({
+                ...record,
+                // Status mapping if needed (backend: InProgress -> frontend display: "In Progress"?) 
+                // We will use raw enums for simplicity to ensure match.
+            });
         } else {
             setEditingRecord(null);
             setFormData({ vehicleId: '', type: 'Service', date: '', cost: '', description: '', status: 'Pending', nextDue: '' });
@@ -56,8 +66,18 @@ const VehicleMaintenance = () => {
         setEditingRecord(null);
     };
 
-    const handleDelete = (id) => {
-        alert("Delete not supported via API yet.");
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this record?")) return;
+        setLoading(true);
+        try {
+            await TransportService.Maintenance.deleteMaintenance(id);
+            setRecords(records.filter(r => r.id !== id));
+        } catch (error) {
+            console.error("Failed to delete", error);
+            alert("Failed to delete record");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -65,12 +85,13 @@ const VehicleMaintenance = () => {
         setLoading(true);
         try {
             if (editingRecord) {
-                alert("Update not supported via API yet.");
+                const updated = await TransportService.Maintenance.updateMaintenance(editingRecord.id, formData);
+                setRecords(records.map(r => r.id === editingRecord.id ? updated : r));
             } else {
-                const newRecord = await TransportService.Maintenance.addMaintenanceLog(formData);
+                const newRecord = await TransportService.Maintenance.addMaintenance(formData);
                 setRecords([...records, newRecord]);
-                handleCloseModal();
             }
+            handleCloseModal();
         } catch (error) {
             console.error("Failed to save", error);
             alert("Failed to save record");
@@ -80,11 +101,17 @@ const VehicleMaintenance = () => {
     };
 
     const filteredRecords = records.filter(r =>
-        r.vehicleId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.type.toLowerCase().includes(searchTerm.toLowerCase())
+        (r.vehicleId && r.vehicleId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (r.type && r.type.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const getTotalCost = () => filteredRecords.reduce((acc, curr) => acc + (parseInt(curr.cost) || 0), 0);
+
+    // Helper to display vehicle number if ID is stored
+    const getVehicleDisplay = (idStr) => {
+        const v = vehicles.find(veh => veh.id.toString() === idStr.toString() || veh.vehicleNumber === idStr);
+        return v ? v.vehicleNumber : idStr;
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -139,7 +166,7 @@ const VehicleMaintenance = () => {
                                     style={{ borderBottom: '1px solid #f1f5f9' }}
                                 >
                                     <td style={{ padding: '16px', fontWeight: '600', color: '#1e293b' }}>
-                                        {record.vehicleId}
+                                        {getVehicleDisplay(record.vehicleId)}
                                     </td>
                                     <td style={{ padding: '16px' }}>
                                         <div style={{ fontWeight: '500', color: '#334155' }}>{record.type}</div>
@@ -152,7 +179,7 @@ const VehicleMaintenance = () => {
                                         {record.nextDue && <div style={{ fontSize: '11px', color: '#6366f1', marginTop: '4px' }}>Next Due: {record.nextDue}</div>}
                                     </td>
                                     <td style={{ padding: '16px', fontWeight: '600', color: '#334155' }}>
-                                        ₹{parseInt(record.cost).toLocaleString()}
+                                        ₹{parseInt(record.cost || 0).toLocaleString()}
                                     </td>
                                     <td style={{ padding: '16px' }}>
                                         <span style={{
@@ -162,7 +189,7 @@ const VehicleMaintenance = () => {
                                             display: 'inline-flex', alignItems: 'center', gap: 6
                                         }}>
                                             {record.status === 'Completed' ? <FiCheckCircle size={12} /> : <FiAlertCircle size={12} />}
-                                            {record.status}
+                                            {record.status === 'InProgress' ? 'In Progress' : record.status}
                                         </span>
                                     </td>
                                     <td style={{ padding: '16px', textAlign: 'right' }}>
@@ -201,7 +228,7 @@ const VehicleMaintenance = () => {
                                 position: 'sticky', top: '-24px', background: 'white', zIndex: 10,
                                 paddingTop: '0', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9'
                             }}>
-                                <h3 style={{ margin: 0 }}>Log Maintenance</h3>
+                                <h3 style={{ margin: 0 }}>{editingRecord ? 'Edit Maintenance' : 'Log Maintenance'}</h3>
                                 <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><FiX size={20} /></button>
                             </div>
                             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -209,24 +236,24 @@ const VehicleMaintenance = () => {
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Vehicle</label>
                                     <select className="form-select" value={formData.vehicleId} onChange={e => setFormData({ ...formData, vehicleId: e.target.value })} required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                         <option value="">-- Select Vehicle --</option>
-                                        {vehicles.map(v => <option key={v.id} value={v.number}>{v.number} ({v.type})</option>)}
+                                        {vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicleNumber} ({v.vehicletype})</option>)}
                                     </select>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Type</label>
                                         <select className="form-select" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                            <option>Service</option>
-                                            <option>Repair</option>
-                                            <option>Inspection</option>
+                                            <option value="Service">Service</option>
+                                            <option value="Repair">Repair</option>
+                                            <option value="Inspection">Inspection</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Status</label>
                                         <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                            <option>Pending</option>
-                                            <option>In Progress</option>
-                                            <option>Completed</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="InProgress">In Progress</option>
+                                            <option value="Completed">Completed</option>
                                         </select>
                                     </div>
                                 </div>
@@ -249,7 +276,7 @@ const VehicleMaintenance = () => {
                                     <input type="date" value={formData.nextDue} onChange={e => setFormData({ ...formData, nextDue: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                                 </div>
                                 <button type="submit" className="btn-primary" style={{ padding: '12px', borderRadius: '8px', background: '#4f46e5', color: 'white', border: 'none', fontWeight: '600', cursor: 'pointer' }}>
-                                    Save Record
+                                    {editingRecord ? 'Update Record' : 'Save Record'}
                                 </button>
                             </form>
                         </motion.div>

@@ -64,80 +64,79 @@ const TransportAttendance = () => {
         setLoading(true);
         setError(null);
         try {
-            // Fetch students from backend instead of localStorage
-            const studentsData = await TransportService.Student.getAllStudents();
-            const allStudents = (studentsData || []).map(s => {
+            // Fetch everything needed to build the correct list
+            const [studentsData, assignmentsData, allAttendance] = await Promise.all([
+                TransportService.Student.getAllStudents(),             // Admin: Student Names
+                TransportService.Student.getStudentTransportMappings(), // Transport: Bus Assignments
+                TransportService.Attendance.getAttendance()            // Transport: Today's Attendance
+            ]);
+
+            // 1. Process Students (Admin)
+            // Create a Map for quick lookup: ID -> Name/Details
+            const studentDetailsMap = {};
+            (studentsData || []).forEach(s => {
                 const user = s.user || {};
-                return {
-                    id: user.userId || s.id,
+                const id = user.userId || s.id;
+                studentDetailsMap[id] = {
                     name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || s.name || 'Unknown',
-                    routeId: user.routeId || s.routeId || null,
-                    pickup: s.pickupPoint || '',
+                    originalId: id // Keep the original ID
                 };
             });
 
-            let studentsToDisplay = [];
+            // 2. Process Assignments (Transport)
+            // Filter assignments for the SELECTED VEHICLE and SHIFT
+            let relevantAssignments = [];
+            if (selectedVehicle && Array.isArray(assignmentsData)) {
+                relevantAssignments = assignmentsData.filter(assignment => {
+                    // Check Vehicle
+                    const assignedVehicleId = assignment.vehicle?.id || assignment.vehicleId;
+                    const matchesVehicle = parseInt(assignedVehicleId) === parseInt(selectedVehicle);
 
-            if (selectedVehicle) {
-                // 1. Identify Route from Vehicle
-                const currentVehicle = vehicles.find(v => v.id === parseInt(selectedVehicle) || v.vehicleNumber === selectedVehicle);
+                    if (!matchesVehicle) return false;
 
-                let routeId = null;
-                if (currentVehicle && currentVehicle.route) {
-                    routeId = currentVehicle.route.id || currentVehicle.route.routeCode;
-                }
+                    // Check Shift
+                    // If selectedType is 'pickup' (Morning), allow 'Morning' or 'Both'
+                    // If selectedType is 'drop' (Evening), allow 'Evening' or 'Both'
+                    const studentShift = assignment.shift; // Morning, Evening, Both
+                    if (!studentShift) return true; // Fallback if missing
 
-                if (routeId) {
-                    studentsToDisplay = allStudents.filter(s => parseInt(s.routeId) === parseInt(routeId) || (currentVehicle.route?.routeCode && parseInt(s.routeId) === parseInt(currentVehicle.route.routeCode)));
-                } else {
-                    studentsToDisplay = [];
-                }
-            } else {
-                // No vehicle selected: Show ALL students
-                studentsToDisplay = allStudents;
+                    if (selectedType === 'pickup') {
+                        return studentShift === 'Morning' || studentShift === 'Both';
+                    } else if (selectedType === 'drop') {
+                        return studentShift === 'Evening' || studentShift === 'Both';
+                    }
+                    return true;
+                });
             }
+
+            // 3. Build Display List
+            // Only show students who have a valid assignment for this bus/shift
+            const studentsToDisplay = relevantAssignments.map(assignment => {
+                const details = studentDetailsMap[assignment.studentId] || { name: 'Unknown Student' };
+                return {
+                    id: assignment.studentId,
+                    name: details.name,
+                    pickup: assignment.pickupPoint,
+                    drop: assignment.dropPoint,
+                    routeId: assignment.route?.id // If available
+                };
+            });
 
             setStudents(studentsToDisplay);
 
-            // 2. Fetch Attendance
-            // Logic: If vehicle selected, fetch for that route. If not, try to fetch for all known routes (or valid ones from vehicles list)
+            // 4. Process Attendance
+            const dateFiltered = Array.isArray(allAttendance)
+                ? allAttendance.filter(r => r.attendanceDate === selectedDate)
+                : [];
 
-            try {
-                let attendanceRecords = [];
-
-                if (selectedVehicle) {
-                    const currentVehicle = vehicles.find(v => v.id === parseInt(selectedVehicle) || v.vehicleNumber === selectedVehicle);
-                    const routeId = currentVehicle?.route?.id || currentVehicle?.route?.routeCode;
-                    if (routeId) {
-                        attendanceRecords = await TransportService.Attendance.getAttendance(selectedDate, routeId);
-                    }
-                } else {
-                    // Fetch for ALL routes associated with active vehicles to populate the big list
-                    // Get unique route IDs from vehicles
-                    const routeIds = [...new Set(vehicles.map(v => v.route?.id || v.route?.routeCode).filter(Boolean))];
-
-                    if (routeIds.length > 0) {
-                        const promises = routeIds.map(rid => TransportService.Attendance.getAttendance(selectedDate, rid).catch(e => []));
-                        const results = await Promise.all(promises);
-                        attendanceRecords = results.flat();
-                    }
-                }
-
-                const newMap = {};
-                if (Array.isArray(attendanceRecords)) {
-                    attendanceRecords.forEach(record => {
-                        if (record) newMap[record.studentId] = record;
-                    });
-                }
-                setAttendanceMap(newMap);
-
-            } catch (err) {
-                console.warn("Backend attendance fetch failed", err);
-                setAttendanceMap({});
-            }
+            const newMap = {};
+            dateFiltered.forEach(record => {
+                if (record) newMap[record.studentId] = record;
+            });
+            setAttendanceMap(newMap);
 
         } catch (err) {
-            console.error(err);
+            console.error("Failed to load data", err);
             setError("Failed to load data");
         } finally {
             setLoading(false);

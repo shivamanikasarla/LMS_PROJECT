@@ -1,85 +1,123 @@
-import { defineConfig } from 'vite'
+// Load env vars
+// Note: Vite uses import.meta.env in client code, but in vite.config.js we use process.env via loadEnv, 
+// OR we can just use process.env if we load dotenv. However, standard Vite way is:
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      '/api/student-batches': {
-        target: 'http://192.168.1.17:5151', // Corrected: StudentBatchController is in Main LMS (5151)
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/fee-management': {
-        target: 'http://192.168.1.6:3130', // Fee Management Backend (Settings)
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/fee-types': {
-        target: 'http://192.168.1.6:3130', // Fee Management Backend (Fee Types)
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/fee-structures': {
-        target: 'http://192.168.1.6:3130',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/fee-allocations': {
-        target: 'http://192.168.1.6:3130',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api/transport': {
-        target: 'http://192.168.1.4:9191', // Transport Management Backend
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api': {
-        target: 'http://192.168.1.17:5151', // Gateway / Other Modules
-        changeOrigin: true,
-        secure: false,
-      },
-      '/admin': {
-        target: 'http://192.168.1.16:8081',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/student': {
-        target: 'http://192.168.1.16:8081',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/auth': {
-        target: 'http://192.168.1.16:8081',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/users': {
-        target: 'http://192.168.1.16:8081',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/uploads': {
-        target: 'http://localhost:5151',
-        changeOrigin: true,
-        secure: false,
-        configure: (proxy, _options) => {
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
-            delete proxyRes.headers['x-frame-options'];
-          });
-        }
-      },
-      '/library': {
-        target: 'http://localhost:9191', // Library backend on local laptop
-        changeOrigin: true,
-        secure: false,
-        bypass: (req, res, options) => {
-          if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
-            console.log('Skipping proxy for browser request.');
-            return '/index.html';
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), '')
+
+  const TARGET_MAIN = env.VITE_API_TARGET_MAIN || 'http://192.168.1.17:5151'
+  const TARGET_FEE = env.VITE_API_TARGET_FEE || 'http://192.168.1.6:3130'
+  const TARGET_TRANSPORT = env.VITE_API_TARGET_TRANSPORT || 'http://192.168.1.20:9191'
+  const TARGET_ADMIN = env.VITE_API_TARGET_ADMIN || 'http://192.168.1.16:8081'
+  const TARGET_LIBRARY = env.VITE_API_TARGET_LIBRARY || 'http://localhost:9191'
+  const TARGET_UPLOADS = env.VITE_API_TARGET_UPLOADS || 'http://localhost:5151'
+
+  console.log('-----------------------------------------------------')
+  console.log('  Vite Proxy Configuration')
+  console.log('-----------------------------------------------------')
+  console.log(`  Main LMS Backend:      ${TARGET_MAIN}`)
+  console.log(`  Fee Management:        ${TARGET_FEE}`)
+  console.log(`  Transport Management:  ${TARGET_TRANSPORT}`)
+  console.log(`  Admin & Auth Backend:  ${TARGET_ADMIN}`)
+  console.log(`  Library Backend:       ${TARGET_LIBRARY}`)
+  console.log(`  Uploads Backend:       ${TARGET_UPLOADS}`)
+  console.log('-----------------------------------------------------')
+
+  return {
+    plugins: [react()],
+    server: {
+      proxy: {
+        '/api/student-batches': {
+          target: TARGET_MAIN, // StudentBatchController
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/fee-management': {
+          target: TARGET_FEE, // Fee Management Backend (Settings)
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/fee-types': {
+          target: TARGET_FEE, // Fee Management Backend (Fee Types)
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/fee-structures': {
+          target: TARGET_FEE,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/fee-allocations': {
+          target: TARGET_FEE,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/master-settings': {
+          target: TARGET_FEE, // Fee Settings Backend Route
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/transport': {
+          target: TARGET_TRANSPORT, // Transport Management Backend
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+        '/gps-websocket': {
+          target: TARGET_TRANSPORT,
+          ws: true,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api': {
+          target: TARGET_MAIN, // Gateway / Other Modules
+          changeOrigin: true,
+          secure: false,
+        },
+        '/admin': {
+          target: TARGET_ADMIN,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/student': {
+          target: TARGET_ADMIN,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/auth': {
+          target: TARGET_ADMIN,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/users': {
+          target: TARGET_ADMIN,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/uploads': {
+          target: TARGET_UPLOADS,
+          changeOrigin: true,
+          secure: false,
+          configure: (proxy, _options) => {
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              delete proxyRes.headers['x-frame-options'];
+            });
+          }
+        },
+        '/library': {
+          target: TARGET_LIBRARY, // Library backend
+          changeOrigin: true,
+          secure: false,
+          bypass: (req, res, options) => {
+            if (req.headers.accept && req.headers.accept.indexOf('html') !== -1) {
+              console.log('Skipping proxy for browser request.');
+              return '/index.html';
+            }
           }
         }
       }

@@ -137,7 +137,7 @@ export const deleteFeeDiscount = async (discountId) => {
 
 export const getFeeSettings = async () => {
     try {
-        const response = await apiClient.get('/master-settings');
+        const response = await apiClient.get('/master-settings', { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error fetching fee settings:', error);
@@ -147,7 +147,7 @@ export const getFeeSettings = async () => {
 
 export const saveFeeSettings = async (settings) => {
     try {
-        const response = await apiClient.post('/master-settings', settings);
+        const response = await apiClient.post('/master-settings', settings, { baseURL: '/api' });
         return response.data;
     } catch (error) {
         console.error('Error saving fee settings:', error);

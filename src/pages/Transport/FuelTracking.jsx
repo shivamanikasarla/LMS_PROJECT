@@ -157,7 +157,11 @@ const FuelTracking = () => {
                                 >
                                     <td style={{ padding: '16px', fontWeight: 'bold', color: '#1e293b' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <FiTruck color="#64748b" /> {log.vehicleId}
+                                            <FiTruck color="#64748b" />
+                                            {(() => {
+                                                const v = vehicles.find(veh => veh.id.toString() === log.vehicleId.toString() || veh.vehicleNumber === log.vehicleId);
+                                                return v ? v.vehicleNumber : log.vehicleId;
+                                            })()}
                                         </div>
                                     </td>
                                     <td style={{ padding: '16px', color: '#334155' }}>
@@ -215,7 +219,7 @@ const FuelTracking = () => {
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#475569', marginBottom: '4px' }}>Vehicle</label>
                                     <select className="form-select" value={formData.vehicleId} onChange={e => setFormData({ ...formData, vehicleId: e.target.value })} required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                         <option value="">-- Select Vehicle --</option>
-                                        {vehicles.map(v => <option key={v.id} value={v.number}>{v.number} ({v.type})</option>)}
+                                        {vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicleNumber} ({v.vehicletype})</option>)}
                                     </select>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

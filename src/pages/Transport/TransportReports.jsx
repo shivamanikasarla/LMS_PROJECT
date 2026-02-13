@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiFileText, FiDownload, FiBarChart, FiPieChart,
-    FiTruck, FiUsers, FiMapPin, FiTool, FiDollarSign, FiDroplet,
+    FiTruck, FiUsers, FiMapPin, FiTool, FiDroplet,
     FiX, FiEye
 } from 'react-icons/fi';
+import { FaRupeeSign } from 'react-icons/fa';
 import { useTransportTheme } from './TransportContext';
 import TransportService from '../../services/transportService';
 
@@ -219,7 +220,7 @@ const TransportReports = () => {
         { id: 'driver-details', title: 'Driver Details & Status', icon: FiUsers, color: '#10b981', generator: generateDriverReport },
         { id: 'route-capacity', title: 'Route Capacity Analysis', icon: FiMapPin, color: '#f59e0b', generator: generateRouteCapacityReport },
         { id: 'maintenance-expense', title: 'Maintenance Expense History', icon: FiTool, color: '#ef4444', generator: generateMaintenanceExpenseReport },
-        { id: 'fee-status', title: 'Student Transport Fee Status', icon: FiDollarSign, color: '#8b5cf6', generator: generateFeeStatusReport },
+        { id: 'fee-status', title: 'Student Transport Fee Status', icon: FaRupeeSign, color: '#8b5cf6', generator: generateFeeStatusReport },
         { id: 'fuel-consumption', title: 'Fuel Consumption Report', icon: FiDroplet, color: '#06b6d4', generator: generateFuelConsumptionReport }
     ];
 

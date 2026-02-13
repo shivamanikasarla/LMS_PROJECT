@@ -18,6 +18,13 @@ const getHeaders = () => {
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        // Debug Log to check which token is being used (first 10 chars)
+        if (!window.hasLoggedToken) {
+            console.log('CourseService using token:', token.substring(0, 15) + '...');
+            window.hasLoggedToken = true;
+        }
+    } else {
+        console.warn('CourseService: No token found!');
     }
 
     return headers;

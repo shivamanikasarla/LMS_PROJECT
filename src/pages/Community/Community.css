@@ -55,6 +55,37 @@
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
 }
 
+.sidebar-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--comm-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding-left: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-title svg {
+    color: var(--comm-text-secondary);
+    transition: all 0.2s;
+    opacity: 0.7;
+}
+
+.section-title svg:hover {
+    color: var(--comm-accent);
+    transform: scale(1.1);
+    opacity: 1;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 4px;
+}
+
 .chat-sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--comm-border);
@@ -513,17 +544,43 @@
     align-items: center;
     gap: 0.75rem;
     background: #ffffff;
-    border: 1px solid var(--comm-border);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
+    border: 2px solid transparent;
+    /* Prepare for gradient border or focus state */
+    border-radius: 16px;
+    padding: 0.85rem 1.25rem;
     margin-bottom: 2rem;
-    box-shadow: var(--comm-shadow);
-    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .settings-search:focus-within {
     border-color: var(--comm-accent);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
+}
+
+.settings-search svg {
+    color: var(--comm-text-secondary);
+    transition: color 0.3s;
+}
+
+.settings-search:focus-within svg {
+    color: var(--comm-accent);
+}
+
+.settings-search input {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--comm-text-primary);
+    font-weight: 500;
+}
+
+.settings-search input::placeholder {
+    color: #94a3b8;
 }
 
 .settings-courses-list {
@@ -594,12 +651,25 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.6);
+    /* Darker overlay */
+    backdrop-filter: blur(8px);
+    /* Increased blur */
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .modal-content {
@@ -625,12 +695,20 @@
 
 .modal-header {
     background: #f8fafc;
-    padding: 1.5rem 2rem;
+    padding: 1.25rem 2rem;
     border-bottom: 1px solid var(--comm-border);
     border-radius: 16px 16px 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--comm-text-primary);
+    margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .modal-body {
@@ -793,4 +871,146 @@
     background: var(--comm-accent-soft);
     padding-left: 3.5rem;
     /* Slide effect */
+}
+
+/* ============================================
+   MODAL FORM STYLES (NEW)
+   ============================================ */
+
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--comm-text-primary);
+    margin-left: 0.25rem;
+    letter-spacing: -0.01em;
+}
+
+.channel-name-input-modal,
+.channel-description-textarea {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--comm-text-primary);
+    background: #f8fafc;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.channel-name-input-modal:hover,
+.channel-description-textarea:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+}
+
+.channel-name-input-modal:focus,
+.channel-description-textarea:focus {
+    background: #ffffff;
+    border-color: var(--comm-accent);
+    box-shadow: 0 0 0 4px var(--comm-accent-soft);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.channel-description-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.close-icon {
+    color: var(--comm-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 6px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.close-icon:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: rotate(90deg);
+}
+
+/* Toggle Switch */
+.form-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    margin-top: 1rem;
+    transition: all 0.2s;
+}
+
+.form-group-toggle:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+}
+
+.form-group-toggle span {
+    font-weight: 600;
+    color: var(--comm-text-primary);
+    font-size: 0.95rem;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+input:checked+.toggle-slider {
+    background: var(--comm-gradient);
+}
+
+input:focus+.toggle-slider {
+    box-shadow: 0 0 1px var(--comm-accent);
+}
+
+input:checked+.toggle-slider:before {
+    transform: translateX(24px);
 }
