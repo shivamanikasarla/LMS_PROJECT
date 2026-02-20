@@ -1,0 +1,28 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    background-color: var(--slate-50);
+    min-width: 0;
+    /* Prevent flex blowout */
+}
+
+.page-container {
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+@media (max-width: 767.98px) {
+    .main-content {
+        margin-left: 0;
+    }
+
+    .page-container {
+        padding: 1rem;
+    }
+}

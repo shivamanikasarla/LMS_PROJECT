@@ -1,0 +1,46 @@
+/* Global Overrides and Utilities */
+
+:root {
+    --header-height: 64px;
+    --sidebar-width: 260px;
+}
+
+body {
+    background-color: #f8f9fa;
+    /* Bootstrap's bg-light equivalent */
+    color: #212529;
+}
+
+/* Ensure icons align well in buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Responsive sidebar adjustments */
+@media (max-width: 767.98px) {
+    :root {
+        --sidebar-width: 0px;
+    }
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

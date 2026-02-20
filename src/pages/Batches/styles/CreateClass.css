@@ -1,0 +1,200 @@
+/* CreateClass.css */
+/* Styles for the Create Class page */
+
+.classes-page {
+    /* Main page container */
+    background: #f8fafc;
+    /* Light soothing background */
+    min-height: 100vh;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.classes-header {
+    /* Header with back button and title */
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    /* Slight spacing below header */
+}
+
+.classes-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f172a;
+    /* Dark slate text */
+    margin: 0;
+}
+
+.link-back {
+    /* Back button style */
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    color: #64748b;
+    /* Muted icon color */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.link-back:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.create-class-split-layout {
+    /* Two-column layout for form and preview/list */
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+}
+
+.form-column {
+    flex: 1;
+    /* Form takes up available space */
+    max-width: 500px;
+    /* But don't let it get too wide */
+    background: #fff;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.class-form {
+    /* Form container */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.class-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.class-form input,
+.class-form textarea,
+.class-form select {
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #0f172a;
+    transition: all 0.2s;
+    background: #fff;
+}
+
+.class-form input:focus,
+.class-form textarea:focus,
+.class-form select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    /* Focus color */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.class-form textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.duration-row {
+    /* Layout for hours/minutes fields */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.duration-row input {
+    width: 60px;
+    text-align: center;
+}
+
+.duration-row span {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.btn {
+    /* General button styles */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn.primary {
+    /* Primary action button */
+    background: #0f172a;
+    color: #fff;
+    margin-top: 12px;
+    /* Spacing above submit button */
+}
+
+.btn.primary:hover {
+    background: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.list-column {
+    flex: 2;
+    /* List area takes more space */
+    width: 100%;
+}
+
+.class-grid {
+    /* Grid for displaying created classes */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.empty-preview {
+    /* State when no classes are added yet */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    color: #94a3b8;
+    text-align: center;
+    gap: 16px;
+    min-height: 300px;
+}
+
+.empty-preview svg {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.empty-preview h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #64748b;
+}

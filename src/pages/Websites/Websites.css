@@ -1,0 +1,553 @@
+/* Websites.css - Neo-Modern Clean Theme */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Brand Colors - Shifted to Deep Slate/Black for Premium Feel */
+    --primary: #0f172a;
+    /* Slate 900 - Strong, confident */
+    --primary-hover: #1e293b;
+    /* Slate 800 */
+    --accent: #6366f1;
+    /* Indigo - Subtle highlights */
+
+    /* Backgrounds */
+    --bg-body: #f3f4f6;
+    /* Cool Gray 100 - Slightly darker than white */
+    --bg-card: #ffffff;
+    --bg-surface: #ffffff;
+
+    /* Borders & Shadows */
+    --border-color: transparent;
+    /* Relying on shadows */
+    --border-light: #f1f5f9;
+
+    /* Text */
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+
+    /* Shadows - Soft, diffused "Floating" look */
+    --shadow-sm: 0 2px 4px rgba(148, 163, 184, 0.05);
+    --shadow-card: 0 10px 40px -10px rgba(148, 163, 184, 0.15);
+    /* Soft, deep shadow */
+    --shadow-hover: 0 20px 40px -10px rgba(148, 163, 184, 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    --gradient-accent: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    /* Larger, friendlier corners */
+    --radius-pill: 9999px;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+}
+
+.website-builder-container {
+    min-height: 100vh;
+    padding: 2rem 3rem;
+    width: 100%;
+    /* Ensure full width */
+    max-width: 1600px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    /* Explicitly set box-sizing */
+}
+
+/* --- Header & Tabs --- */
+
+.wb-header {
+    margin-bottom: 2rem;
+    position: relative;
+    padding-left: 1rem;
+}
+
+.wb-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 5px;
+    bottom: 5px;
+    width: 4px;
+    background: var(--primary);
+    border-radius: var(--radius-pill);
+}
+
+.wb-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.03em;
+    /* Reset gradient from previous theme */
+    background: none;
+    -webkit-text-fill-color: initial;
+}
+
+.wb-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Floating Tab Bar */
+.wb-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: var(--radius-pill);
+    margin-bottom: 2.5rem;
+    width: fit-content;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    /* Floating effect */
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    /* Reset from previous theme */
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+}
+
+.wb-tab-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    position: relative;
+    overflow: visible;
+    /* For active indicator */
+    flex-shrink: 0;
+}
+
+.wb-tab-btn:hover {
+    color: var(--primary);
+    background: rgba(15, 23, 42, 0.03);
+}
+
+.wb-tab-btn.active {
+    background: var(--primary);
+    /* Solid dark pill for active */
+    color: white;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    /* Reset gradient */
+    border: none;
+}
+
+/* Override the previous "border" indicator if present in JSX, keeping CSS robust */
+.wb-tab-btn.active .position-absolute {
+    display: none;
+    /* Hide the border indicator from previous step if we prefer solid pill */
+}
+
+/* --- Appearance Tab (Tall Cards) --- */
+
+.theme-showcase-grid {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 0 2rem 0;
+    /* Space for shadows */
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+}
+
+.theme-card-visual {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: white;
+    min-width: 320px;
+    border: none;
+    /* No border */
+    scroll-snap-align: center;
+}
+
+.theme-card-visual:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: var(--shadow-hover);
+}
+
+.theme-card-visual.active {
+    /* Glowing ring instead of border */
+    box-shadow: 0 0 0 3px var(--accent), var(--shadow-card);
+    border-color: transparent;
+}
+
+.theme-image-container {
+    height: 220px;
+    width: 100%;
+    background: #e2e8f0;
+    position: relative;
+}
+
+.theme-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.theme-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    /* Darker elegant overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.theme-card-visual:hover .theme-overlay {
+    opacity: 1;
+}
+
+.theme-info {
+    padding: 1.25rem 1.5rem;
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-light);
+}
+
+.theme-name {
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+}
+
+.active-indicator {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #d1fae5;
+}
+
+
+/* --- Common Layouts --- */
+
+.wb-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    /* Rounded cards */
+    padding: 2rem;
+    box-shadow: var(--shadow-card);
+    /* Floating look */
+    border: none;
+    /* Clean, no border */
+    margin-bottom: 24px;
+}
+
+/* Update header preview box to match */
+/* Update header preview box to match */
+.header-preview-box {
+    border: none;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    margin-bottom: 24px;
+}
+
+/* --- Buttons & Inputs --- */
+
+.btn-primary-action {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.75rem;
+    border-radius: var(--radius-pill);
+    /* Pill */
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.btn-primary-action:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px rgba(15, 23, 42, 0.3);
+}
+
+.btn-secondary-action {
+    background: white;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+
+.btn-secondary-action:hover {
+    background: var(--bg-body);
+    border-color: #cbd5e1;
+    color: var(--primary);
+}
+
+.wb-input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    /* Larger padding for better touch/click area */
+    background: #ffffff;
+    /* Pure white background for better visibility */
+    border: 2px solid #e2e8f0;
+    /* Visible soft border */
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-main);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    /* Subtle initial shadow */
+}
+
+.wb-input:hover {
+    border-color: #cbd5e1;
+    background: #fdfdfd;
+}
+
+.wb-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    /* Indigo active border */
+    background: white;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 4px 12px rgba(99, 102, 241, 0.1);
+    /* Glow effect */
+    transform: translateY(-1px);
+    /* Slight lift */
+}
+
+.wb-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    color: var(--primary);
+    /* Use primary dark color for clearer legibility */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Add a small indicator for the label to make it fancy */
+.wb-label::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+/* Form Color override */
+.form-control-color {
+    width: 54px;
+    /* Slightly larger */
+    height: 54px;
+    padding: 0;
+    border: 2px solid #e2e8f0;
+    background: white;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.form-control-color:hover {
+    transform: scale(1.05);
+    border-color: var(--accent);
+}
+
+/* --- Common Layouts --- */
+.wb-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    /* More rounded */
+    padding: 2.5rem;
+    /* More spacing */
+    box-shadow: var(--shadow-card);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    /* Glass edge */
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorate the card slightly */
+.wb-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, transparent 100%);
+    opacity: 0.5;
+}
+
+/* --- Tables (Inside Cards) --- */
+.table-responsive {
+    border-radius: var(--radius-md);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+thead th {
+    background: #f8fafc !important;
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-light) !important;
+    border-top: none !important;
+}
+
+tbody tr {
+    transition: background 0.2s;
+}
+
+tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+td {
+    border-bottom: 1px solid var(--border-light);
+    border-top: none !important;
+}
+
+/* --- Modal --- */
+.wb-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.3);
+    /* Dark blur */
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 1rem;
+}
+
+.wb-modal-content {
+    background: white;
+    padding: 2rem;
+    /* Restore padding */
+    border-radius: 24px;
+    width: 100%;
+    max-width: 550px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+}
+
+/* --- Utilities --- */
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.mb-5 {
+    margin-bottom: 2.5rem;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: 0.2s;
+    color: var(--text-light);
+    background: transparent;
+    border: none;
+}
+
+.btn-icon:hover {
+    background-color: #f1f5f9;
+    color: var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .website-builder-container {
+        padding: 1rem;
+    }
+
+    .wb-tabs {
+        width: 100%;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+
+    .d-none-mobile {
+        display: none !important;
+    }
+}

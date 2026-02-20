@@ -1,0 +1,6 @@
+services:
+  lmsprojectdemo:
+    image: lmsprojectdemo
+    build:
+      context: .
+      dockerfile: ./Dockerfile
