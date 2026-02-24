@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Layout, Globe, Search, Settings,
-  Plus, Edit2, Eye, Trash2, GripVertical,
-  Check, ChevronRight, Upload, Link, X, Monitor, Code, Maximize, Columns,
-  Facebook, Twitter, Instagram, Youtube, Linkedin, Send, Image as ImageIcon,
-  Home, ShoppingBag, BookOpen, Map, Bot, RotateCcw, Copy, Smartphone, Tablet, Undo, Redo
+  Monitor, Tablet, Smartphone, Check, ChevronRight, Undo, Redo, Code,
+  Type, ImageIcon, Box, Layout, MousePointer, X, GripVertical,
+  FileText, LogIn, ShoppingCart, Search, FormInput, List, MessageSquare, Tag,
+  Columns, Clock, Video, Map, Sliders, BookOpen, Library, LayoutTemplate,
+  Layers, Globe, CheckSquare, CircleDot, ChevronDown, ChevronUp, Quote,
+  Sparkles, Zap, PanelLeft, Eye, EyeOff, Plus, ListTree, Trash2, Edit2, Copy, RotateCcw,
+  Home, ShoppingBag, Bot, Upload, Settings, Maximize,
+  Facebook, Twitter, Instagram, Youtube, Linkedin, Send
 } from 'lucide-react';
+import PageBuilder from './PageBuilder';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './Websites.css';
@@ -18,18 +22,21 @@ const usePersistentState = (key, initialValue) => {
   const [state, setState] = useState(() => {
     try {
       const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
+      const val = item ? JSON.parse(item) : initialValue;
+      console.log(`📦 [PersistentState] Initializing ${key}:`, val);
+      return val;
     } catch (error) {
-      console.error("Error reading localStorage:", error);
+      console.error(`❌ [PersistentState] Error reading ${key}:`, error);
       return initialValue;
     }
   });
 
   useEffect(() => {
     try {
+      console.log(`💾 [PersistentState] Saving ${key}:`, state);
       localStorage.setItem(key, JSON.stringify(state));
     } catch (error) {
-      console.error("Error saving to localStorage:", error);
+      console.error(`❌ [PersistentState] Error saving ${key}:`, error);
     }
   }, [key, state]);
 
@@ -55,10 +62,14 @@ const useThemeManager = () => {
       setLoading(true);
       const templates = await websiteService.getAvailableThemes();
 
+      console.log('📡 [fetchThemes] Raw templates from backend:', JSON.stringify(templates));
+
       // Map backend data to frontend format
       const mappedThemes = templates.map(template => {
+        // Robust status check (case-insensitive)
+        const rawStatus = (template.status || '').toLowerCase();
+
         // Check if this theme is already "applied" / visible in tabs
-        // If backend returns tenant_theme_id, use it. Otherwise, use template ID as fallback key.
         const isVisible = visibleThemeIds.includes(`template-${template.theme_id}`);
 
         // Check if we have a locally stored tenantThemeId for this template
@@ -69,14 +80,14 @@ const useThemeManager = () => {
           themeTemplateId: template.theme_id,
           name: template.name,
           image: template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
-          color: '#8b5cf6', // Default color
-          status: isVisible ? 'draft' : 'draft', // If visible, it's effectively a draft we are working on
+          color: '#8b5cf6',
+          status: rawStatus || (isVisible ? 'draft' : 'draft'),
           isVisible: isVisible,
-          // Use backend provided ID if available, else fallback to local map
           tenantThemeId: template.tenant_theme_id || storedTenantThemeId || null
         };
       });
 
+      console.log('✅ Mapped Themes:', mappedThemes.map(t => ({ id: t.id, status: t.status, tenantId: t.tenantThemeId })));
       setThemes(mappedThemes);
     } catch (error) {
       console.error('Error fetching themes:', error);
@@ -101,7 +112,7 @@ const useThemeManager = () => {
     fetchThemes();
   }, [visibleThemeIds, appliedThemeIds]); // Refetch when IDs change
 
-  const liveTheme = themes.find(t => t.status === 'live') || themes[0];
+  const liveTheme = themes.find(t => t.status === 'live');
 
   const applyTheme = async (id) => {
     const theme = themes.find(t => t.id === id);
@@ -451,20 +462,7 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
 };
 
 // Default pages configuration for any new theme
-const DEFAULT_THEME_PAGES = [
-  { id: 1, title: 'Home', url: '/', type: 'Landing Page', status: 'Published' },
-  { id: 2, title: 'Course Landing Page', url: '', type: 'System', status: 'Published' },
-  { id: 3, title: 'Checkout Success Page', url: '', type: 'System', status: 'Published' },
-  { id: 4, title: 'Membership Page', url: '/membership', type: 'System', status: 'Published' },
-  { id: 5, title: 'Contact Us', url: '/contactus', type: 'System', status: 'Published' },
-  { id: 6, title: 'About Us', url: '/aboutus', type: 'System', status: 'Published' },
-  { id: 7, title: 'About Us iOS App', url: '/aboutus-ios', type: 'System', status: 'Published' },
-  { id: 8, title: 'FAQs', url: '/faqs', type: 'System', status: 'Published' },
-  { id: 9, title: 'FAQs iOS App', url: '/faqs-ios', type: 'System', status: 'Published' },
-  { id: 10, title: 'Terms of Use', url: '/termsofuse', type: 'System', status: 'Published' },
-  { id: 11, title: 'Privacy Policy', url: '/privacypolicy', type: 'System', status: 'Published' },
-  { id: 12, title: 'Refund Policy', url: '/refundpolicy', type: 'System', status: 'Published' },
-];
+const DEFAULT_THEME_PAGES = [];
 
 const ThemePagesOverview = ({ themeId, onViewBuilder }) => {
   const storageKey = `lms_wb_pages_v2_${themeId}`;
@@ -590,6 +588,7 @@ const WebsiteBuilderTab = ({ themeId }) => {
   const [pages, setPages] = usePersistentState(storageKey, DEFAULT_THEME_PAGES);
 
   const [editingPage, setEditingPage] = useState(null);
+  const [designingPage, setDesigningPage] = useState(null);
   const [previewingPage, setPreviewingPage] = useState(null);
 
   const handleSavePage = (pageData) => {
@@ -661,6 +660,7 @@ const WebsiteBuilderTab = ({ themeId }) => {
                 <th className="py-3 text-xs font-bold text-muted uppercase tracking-wider border-0">URL Slug</th>
                 <th className="py-3 text-xs font-bold text-muted uppercase tracking-wider border-0">Type</th>
                 <th className="py-3 text-xs font-bold text-muted uppercase tracking-wider border-0">Status</th>
+                <th className="py-3 text-xs font-bold text-muted uppercase tracking-wider border-0 text-center">Customise</th>
                 <th className="py-3 pe-4 text-end text-xs font-bold text-muted uppercase tracking-wider border-0">Actions</th>
               </tr>
             </thead>
@@ -700,6 +700,14 @@ const WebsiteBuilderTab = ({ themeId }) => {
                         {page.status}
                       </button>
                     </td>
+                    <td className="py-3 text-center">
+                      <button
+                        onClick={() => setDesigningPage(page)}
+                        className="btn btn-link p-0 text-indigo-600 text-sm hover:text-indigo-800 text-decoration-none"
+                      >
+                        Design
+                      </button>
+                    </td>
                     <td className="pe-4 py-3 text-end">
                       <div className="d-flex align-items-center justify-content-end gap-2">
                         <button className="btn-icon text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => setPreviewingPage(page)} title="Preview"><Eye size={18} /></button>
@@ -734,21 +742,30 @@ const WebsiteBuilderTab = ({ themeId }) => {
         onClose={() => setPreviewingPage(null)}
         page={previewingPage}
       />
+
+      <PageBuilder
+        isOpen={!!designingPage}
+        onClose={() => setDesigningPage(null)}
+        page={designingPage}
+        onSave={(html, css) => {
+          setPages(prev => prev.map(p =>
+            p.id === designingPage.id ? { ...p, html, css } : p
+          ));
+          setDesigningPage(null);
+        }}
+      />
     </motion.div >
   );
 };
 
-const AppearanceTab = () => {
-  const { themes, liveTheme, applyTheme, publishTheme, removeThemeFromTabs, loading } = useThemeManager();
+const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }) => {
+  const { themes, liveTheme, stagingTheme, applyTheme, publishTheme, removeThemeFromTabs, loading } = useThemeManager();
 
   // State for the Fullscreen Preview Modal
   const [previewTheme, setPreviewTheme] = useState(null);
 
   // View state: 'themes' or 'builder'
   const [view, setView] = useState('themes');
-
-  // Specific theme being edited (if selected from Tabs)
-  const [explicitlyEditingThemeId, setExplicitlyEditingThemeId] = useState(null);
 
   if (loading) {
     return <div className="p-5 text-center text-slate-500">Loading themes...</div>;
@@ -811,7 +828,13 @@ const AppearanceTab = () => {
                       <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
                         <button
                           className="btn btn-light fw-bold shadow-lg px-4 py-2 rounded-full transform hover:scale-105 transition-transform"
-                          onClick={() => applyTheme(theme.id)}
+                          onClick={async () => {
+                            console.log("🖱️ Applying theme:", theme.id);
+                            await applyTheme(theme.id);
+                            // Auto-select this theme so Navigation/SEO target it immediately
+                            setExplicitlyEditingThemeId(theme.id);
+                            console.log("🎯 Context auto-switched to:", theme.id);
+                          }}
                         >
                           Apply
                         </button>
@@ -927,9 +950,14 @@ const AppearanceTab = () => {
 
 
 
-const NavigationTab = () => {
-  // --- Header State ---
-  const [headerConfig, setHeaderConfig] = usePersistentState('lms_wb_header_config_v2', {
+const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
+  const { themes, liveTheme, loading: themesLoading } = useThemeManager();
+
+  // Use passed ID or fallback to the live theme's tenant ID
+  const activeId = tenantThemeId || liveTheme?.tenantThemeId;
+
+  // --- Header State (defaults used until backend loads) ---
+  const [headerConfig, setHeaderConfig] = useState({
     fixed: 'no',
     height: 80,
     bgColor: '#ffffff',
@@ -938,14 +966,14 @@ const NavigationTab = () => {
     showCart: 'yes'
   });
 
-  const [headerLinks, setHeaderLinks] = usePersistentState('lms_wb_header_links', [
+  const [headerLinks, setHeaderLinks] = useState([
     { id: 1, text: 'Store', url: '/store', newTab: false, visible: true },
     { id: 2, text: 'Blog', url: '/blog', newTab: false, visible: true },
     { id: 3, text: 'About', url: '/about', newTab: false, visible: true },
   ]);
 
   // --- Footer State ---
-  const [footerLinks, setFooterLinks] = usePersistentState('lms_wb_footer_links', {
+  const [footerLinks, setFooterLinks] = useState({
     facebook: '',
     twitter: '',
     instagram: '',
@@ -954,12 +982,60 @@ const NavigationTab = () => {
     telegram: ''
   });
 
-  const [footerConfig, setFooterConfig] = usePersistentState('lms_wb_footer_config_v2', {
+  const [footerConfig, setFooterConfig] = useState({
     bgColor: '#ffffff',
     textColor: '#000000',
     title: 'Launch your Academy',
     copyright: '© 2025 LMS Academy. All rights reserved.'
   });
+
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // --- Fetch from backend on mount ---
+  useEffect(() => {
+    if (!activeId) return;
+    const fetchConfigs = async () => {
+      setLoading(true);
+      try {
+        // Fetch header config
+        const headerStr = await websiteService.getHeader(activeId);
+        if (headerStr) {
+          try {
+            const parsed = typeof headerStr === 'string' ? JSON.parse(headerStr) : headerStr;
+            if (parsed) {
+              if (parsed.config) setHeaderConfig(prev => ({ ...prev, ...parsed.config }));
+              if (parsed.links) setHeaderLinks(parsed.links);
+            }
+          } catch (e) {
+            console.warn('Failed to parse header config:', e);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch header config:', err.message);
+      }
+
+      try {
+        // Fetch footer config
+        const footerStr = await websiteService.getFooter(tenantThemeId);
+        if (footerStr) {
+          try {
+            const parsed = typeof footerStr === 'string' ? JSON.parse(footerStr) : footerStr;
+            if (parsed) {
+              if (parsed.config) setFooterConfig(prev => ({ ...prev, ...parsed.config }));
+              if (parsed.links) setFooterLinks(prev => ({ ...prev, ...parsed.links }));
+            }
+          } catch (e) {
+            console.warn('Failed to parse footer config:', e);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch footer config:', err.message);
+      }
+      setLoading(false);
+    };
+    fetchConfigs();
+  }, [tenantThemeId]);
 
   // --- Handlers ---
   const updateHeaderConfig = (key, value) => {
@@ -985,6 +1061,46 @@ const NavigationTab = () => {
     }
   };
 
+  // --- Save All to Backend ---
+  const handleSaveAll = async () => {
+    console.log("🛠️ handleSaveAll triggered. tenantThemeId:", tenantThemeId);
+    if (!tenantThemeId) {
+      console.warn("❌ Aborting save: No tenantThemeId found.");
+      toast.error("No active theme found. Please apply a theme first.");
+      return;
+    }
+    setSaving(true);
+    try {
+      console.log("📦 Packaging Header Data...", { headerConfig, headerLinks });
+      const headerPayload = JSON.stringify({
+        config: headerConfig,
+        links: headerLinks
+      });
+
+      console.log("🚀 Calling websiteService.saveHeader...");
+      const headerRes = await websiteService.saveHeader(tenantThemeId, headerPayload);
+      console.log("✅ saveHeader response:", headerRes);
+
+      console.log("📦 Packaging Footer Data...", { footerConfig, footerLinks });
+      const footerPayload = JSON.stringify({
+        config: footerConfig,
+        links: footerLinks
+      });
+
+      console.log("🚀 Calling websiteService.saveFooter...");
+      const footerRes = await websiteService.saveFooter(tenantThemeId, footerPayload);
+      console.log("✅ saveFooter response:", footerRes);
+
+      console.log("🎉 All save operations completed successfully.");
+      toast.success("Configuration saved to server successfully!");
+    } catch (err) {
+      console.error('❌ Save process failed at some step:', err);
+      toast.error("Failed to save: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // --- Code Editor State ---
   const [isCodeEditorOpen, setCodeEditorOpen] = useState(false);
 
@@ -1005,6 +1121,39 @@ const NavigationTab = () => {
       transition: { type: 'spring', stiffness: 100 }
     }
   };
+
+  if (themesLoading) {
+    return <div className="p-5 text-center text-slate-500">Loading theme context...</div>;
+  }
+
+  if (!activeId) {
+    return (
+      <div className="p-5 text-center bg-white rounded-3 border shadow-sm mx-auto my-5" style={{ maxWidth: '600px' }}>
+        <div className="p-4 bg-amber-50 rounded-circle d-inline-block mb-4">
+          <Globe size={48} className="text-amber-500" />
+        </div>
+        <h3 className="font-bold text-slate-800 mb-2">No Active Context</h3>
+        <p className="text-slate-500 mb-4">Please apply a theme or select one from below to manage its navigation settings.</p>
+
+        <div className="list-group text-start">
+          {themes.map(t => (
+            <button key={t.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              onClick={() => {
+                setSelectedThemeId(t.id);
+                toast.success(`Context switched to ${t.name}`);
+              }}>
+              <span>{t.name}</span>
+              <span className={`badge ${t.status === 'live' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div className="p-5 text-center text-slate-500">Loading navigation config...</div>;
+  }
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
@@ -1172,12 +1321,10 @@ const NavigationTab = () => {
       {/* FOOTER SECTION */}
       <motion.div variants={itemVariants} className="mb-5">
         <h4 className="font-bold text-xl mb-4 text-slate-800">Footer Preview</h4>
-        {/* ... existing footer preview logic ... */}
         <div className="p-5 rounded-xl text-center transition-colors shadow-sm" style={{ backgroundColor: footerConfig.bgColor, color: footerConfig.textColor }}>
           <h4 className="mb-3 font-bold">{footerConfig.title}</h4>
 
           <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap" style={{ opacity: 0.9 }}>
-            {/* Social Icons Preview */}
             {footerLinks.facebook && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Facebook size={18} /></div>}
             {footerLinks.twitter && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Twitter size={18} /></div>}
             {footerLinks.instagram && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Instagram size={18} /></div>}
@@ -1272,16 +1419,6 @@ const NavigationTab = () => {
                   }}
                   style={{ width: '100%' }}
                 />
-                <input
-                  className="flex-grow-1 border-0 px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:outline-none"
-                  placeholder={`username`}
-                  value={footerLinks[social.key] || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFooterLinks(prev => ({ ...prev, [social.key]: val }));
-                  }}
-                  style={{ width: '100%' }}
-                />
               </div>
             </div>
           ))}
@@ -1290,9 +1427,11 @@ const NavigationTab = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="btn-primary-action px-4 py-2" onClick={() => toast.success("Configuration saved successfully!")}
+            className="btn-primary-action px-4 py-2"
+            onClick={handleSaveAll}
+            disabled={saving}
           >
-            <Check size={18} className="me-2" /> Save Changes
+            <Check size={18} className="me-2" /> {saving ? 'Saving...' : 'Save Changes'}
           </motion.button>
         </div>
       </motion.div >
@@ -1305,11 +1444,26 @@ const NavigationTab = () => {
             onClose={() => setCodeEditorOpen(false)}
             initialHtml={headerConfig.customHtml || '<!-- Default Header HTML -->\n<header class="custom-header">\n  <div class="logo">My Logo</div>\n  <nav>\n    <a href="/">Home</a>\n    <a href="/courses">Courses</a>\n  </nav>\n</header>'}
             initialCss={headerConfig.customCss || '/* Custom Header CSS */\n.custom-header {\n  display: flex;\n  justify-content: space-between;\n  padding: 20px;\n  background: #fff;\n  box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n}\n\n.logo {\n  font-weight: bold;\n  font-size: 24px;\n}'}
-            onSave={(html, css) => {
+            onSave={async (html, css) => {
               updateHeaderConfig('customHtml', html);
               updateHeaderConfig('customCss', css);
               setCodeEditorOpen(false);
-              toast.success("Custom Header Saved!");
+              // Also save to backend
+              if (tenantThemeId) {
+                try {
+                  const headerPayload = {
+                    config: { ...headerConfig, customHtml: html, customCss: css },
+                    links: headerLinks
+                  };
+                  await websiteService.saveHeader(tenantThemeId, JSON.stringify(headerPayload));
+                  toast.success("Custom Header saved to server!");
+                } catch (err) {
+                  console.error('Failed to save header to backend:', err);
+                  toast.warning("Header saved locally. Backend save failed: " + err.message);
+                }
+              } else {
+                toast.success("Custom Header Saved!");
+              }
             }}
             onUnpublish={() => {
               if (window.confirm("Are you sure you want to unpublish the custom header? This will revert to the default header.")) {
@@ -1325,215 +1479,157 @@ const NavigationTab = () => {
   );
 };
 
-const HeaderCodeEditorModal = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpublish }) => {
-  const [htmlCode, setHtmlCode] = useState(initialHtml);
-  const [cssCode, setCssCode] = useState(initialCss);
-  const [deviceMode, setDeviceMode] = useState('desktop'); // 'desktop', 'tablet', 'mobile'
 
-  if (!isOpen) return null;
 
-  // Generate preview content securely
-  const previewContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: #f8fafc; overflow-x: hidden; }
-          /* Reset for preview */
-          * { box-sizing: border-box; }
-          ${cssCode}
-        </style>
-      </head>
-      <body>
-        ${htmlCode}
-      </body>
-    </html>
-  `;
 
-  return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 z-50 d-flex flex-column bg-slate-900 text-white font-sans animate-in fade-in duration-200">
 
-      {/* PROFESSIONAL STUDIO HEADER */}
-      <div className="d-flex align-items-center justify-content-between px-4 py-3 bg-slate-900 border-bottom border-slate-700 shadow-sm" style={{ backdropFilter: 'blur(10px)' }}>
+const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
+  const { themes, liveTheme, loading: themesLoading } = useThemeManager();
 
-        {/* Left: Branding & Back */}
-        <div className="d-flex align-items-center gap-4">
-          <button
-            onClick={onClose}
-            className="d-flex align-items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <ChevronRight className="rotate-180" size={20} />
-            <span className="text-sm font-medium">Exit Builder</span>
-          </button>
-          <div className="h-6 w-px bg-slate-700"></div>
-          <div className="d-flex align-items-center gap-2">
-            <div className="p-1.5 bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20">
-              <Code size={18} className="text-white" />
-            </div>
-            <div>
-              <h5 className="m-0 text-sm font-bold text-white tracking-wide">Header Studio</h5>
-              <div className="text-xs text-slate-400">Custom Code Editor</div>
-            </div>
-          </div>
-        </div>
+  // Use passed ID or fallback to the live theme's tenant ID
+  const activeId = tenantThemeId || liveTheme?.tenantThemeId;
 
-        {/* Center: Device Toggles */}
-        <div className="d-flex bg-slate-800 p-1 rounded-lg border border-slate-700">
-          <button
-            className={`p-2 rounded-md transition-all ${deviceMode === 'desktop' ? 'bg-slate-700 text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-            onClick={() => setDeviceMode('desktop')}
-            title="Desktop View"
-          >
-            <Monitor size={18} />
-          </button>
-          <button
-            className={`p-2 rounded-md transition-all ${deviceMode === 'tablet' ? 'bg-slate-700 text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-            onClick={() => setDeviceMode('tablet')}
-            title="Tablet View"
-          >
-            <Tablet size={18} />
-          </button>
-          <button
-            className={`p-2 rounded-md transition-all ${deviceMode === 'mobile' ? 'bg-slate-700 text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-            onClick={() => setDeviceMode('mobile')}
-            title="Mobile View"
-          >
-            <Smartphone size={18} />
-          </button>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="d-flex align-items-center gap-3">
-          <div className="d-flex gap-1 me-2">
-            <button className="p-2 text-slate-500 hover:text-white transition-colors" title="Undo (Visual Only)"><Undo size={18} /></button>
-            <button className="p-2 text-slate-500 hover:text-white transition-colors" title="Redo (Visual Only)"><Redo size={18} /></button>
-          </div>
-          <button
-            className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-all uppercase tracking-wider"
-            onClick={onUnpublish}
-          >
-            Unpublish
-          </button>
-          <button
-            className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 d-flex align-items-center gap-2 border border-indigo-400/20"
-            onClick={() => onSave(htmlCode, cssCode)}
-          >
-            <Check size={16} /> Publish Changes
-          </button>
-        </div>
-      </div>
-
-      {/* MAIN WORKSPACE */}
-      <div className="flex-grow-1 d-flex overflow-hidden">
-
-        {/* LEFT: CODE EDITOR */}
-        <div className="w-50 d-flex flex-column border-end border-slate-700 bg-[#0d1117]">
-          {/* Tabs */}
-          <div className="d-flex border-bottom border-slate-800">
-            <div className="px-6 py-3 border-bottom border-indigo-500 text-indigo-400 text-xs font-bold uppercase tracking-wider bg-slate-800/50">
-              Source Code
-            </div>
-            <div className="flex-grow-1 bg-[#0d1117]"></div>
-          </div>
-
-          <div className="flex-grow-1 d-flex flex-column overflow-hidden">
-            <div className="h-50 d-flex flex-column border-bottom border-slate-800">
-              <div className="px-4 py-1 bg-slate-800/30 text-xs text-slate-500 font-mono border-bottom border-slate-800/50 d-flex justify-content-between">
-                <span>HTML Structure</span>
-                <span className="text-slate-600">index.html</span>
-              </div>
-              <CodeEditorArea code={htmlCode} setCode={setHtmlCode} language="html" theme="dark" />
-            </div>
-            <div className="h-50 d-flex flex-column">
-              <div className="px-4 py-1 bg-slate-800/30 text-xs text-slate-500 font-mono border-bottom border-slate-800/50 d-flex justify-content-between">
-                <span>CSS Styles</span>
-                <span className="text-slate-600">style.css</span>
-              </div>
-              <CodeEditorArea code={cssCode} setCode={setCssCode} language="css" theme="dark" />
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT: LIVE PREVIEW */}
-        <div className="w-50 bg-slate-950 d-flex flex-column align-items-center justify-content-center position-relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)',
-              backgroundSize: '20px 20px'
-            }}>
-          </div>
-
-          <div className="mb-3 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-slate-400 backdrop-blur-sm shadow-sm d-flex align-items-center gap-2">
-            <div className="w-2 h-2 rounded-circle bg-green-500 animate-pulse"></div>
-            Live Preview
-          </div>
-
-          <motion.div
-            layout
-            className="bg-white shadow-2xl overflow-hidden transition-all duration-300 relative"
-            style={{
-              width: deviceMode === 'mobile' ? '375px' : deviceMode === 'tablet' ? '768px' : '100%',
-              height: deviceMode === 'mobile' ? '667px' : deviceMode === 'tablet' ? '1024px' : '100%',
-              maxHeight: '100%',
-              maxWidth: '100%',
-              borderRadius: deviceMode === 'desktop' ? '0' : '12px',
-              border: deviceMode !== 'desktop' ? '8px solid #1e293b' : 'none'
-            }}
-          >
-            <iframe
-              title="Header Preview"
-              srcDoc={previewContent}
-              className="w-100 h-100 border-0 bg-white"
-              sandbox="allow-scripts"
-            />
-          </motion.div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-// Updated Editor Area for Dark Theme Support
-const CodeEditorArea = ({ code, setCode, language, theme = 'light' }) => (
-  <div className="w-100 h-100 position-relative d-flex">
-    {/* Line Numbers */}
-    <div className={`py-4 text-end font-monospace text-sm select-none d-flex flex-column align-items-end pe-3 border-end ${theme === 'dark' ? 'bg-[#0d1117] text-slate-600 border-slate-800' : 'bg-slate-50 text-slate-400 border-slate-200'}`} style={{ width: '48px', lineHeight: '1.6', minWidth: '48px' }}>
-      {Array.from({ length: 99 }).map((_, i) => <div key={i}>{i + 1}</div>)}
-    </div>
-
-    <textarea
-      className={`flex-grow-1 p-4 font-monospace text-sm border-0 focus:outline-none resize-none ${theme === 'dark' ? 'text-indigo-100' : 'text-slate-800'}`}
-      style={{
-        backgroundColor: 'transparent',
-        lineHeight: '1.6',
-        tabSize: 2,
-        caretColor: theme === 'dark' ? '#818cf8' : '#4f46e5'
-      }}
-      value={code}
-      onChange={(e) => setCode(e.target.value)}
-      spellCheck="false"
-      autoFocus={language === 'html'}
-    />
-  </div>
-);
-
-const SEOTab = () => {
-  const [seoPages, setSeoPages] = usePersistentState('lms_wb_seo_pages', [
-    { id: 'home', name: 'Home Page', title: 'Home Page Title', description: 'Home Page Description', keywords: 'Home Page Keywords' },
-    { id: 'store', name: 'Store', title: 'Store Title', description: 'Store Description', keywords: 'Store Keywords' },
-    { id: 'blog', name: 'Blog', title: 'Blog Title', description: 'Blog Description', keywords: 'Blog Keywords' },
+  const [seoPages, setSeoPages] = useState([
+    { id: 'home', name: 'Home Page', title: '', description: '', keywords: '' },
+    { id: 'courses', name: 'Course Catalog', title: '', description: '', keywords: '' },
+    { id: 'store', name: 'Store', title: '', description: '', keywords: '' },
+    { id: 'blog', name: 'Blog', title: '', description: '', keywords: '' },
   ]);
 
   const [sitemapFile, setSitemapFile] = useState(null);
-  const [robotsTxt, setRobotsTxt] = usePersistentState('lms_wb_robots', 'User-agent: *\nAllow: /');
+  const [robotsTxt, setRobotsTxt] = useState('User-agent: *\nAllow: /');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch SEO and Robots on mount
+  useEffect(() => {
+    if (!activeId) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch SEO Config
+        const seoData = await websiteService.getSeo(activeId);
+        if (seoData) {
+          try {
+            const parsed = typeof seoData === 'string' ? JSON.parse(seoData) : seoData;
+            if (Array.isArray(parsed)) {
+              setSeoPages(parsed);
+            } else if (parsed && typeof parsed === 'object') {
+              const newPages = seoPages.map(page => ({
+                ...page,
+                ...(parsed[page.id] || {})
+              }));
+              setSeoPages(newPages);
+            }
+          } catch (e) {
+            console.warn('Failed to parse SEO data:', e);
+          }
+        }
+
+        // Fetch Robots.txt
+        const robots = await websiteService.getRobots(activeId);
+        if (robots) setRobotsTxt(robots);
+
+        // Fetch Sitemap
+        const sitemap = await websiteService.getSitemap(activeId);
+        if (sitemap) setSitemapFile({ name: sitemap.split('/').pop(), path: sitemap });
+
+      } catch (err) {
+        console.warn('Failed to fetch SEO data:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeId) fetchData();
+  }, [activeId]);
 
   const updatePageSeo = (id, field, value) => {
     setSeoPages(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
-  const handleSave = (pageName) => {
-    toast.success(`${pageName} SEO settings saved!`);
+  // --- Actions ---
+  const handleSave = async () => {
+    if (!activeId) {
+      toast.error("No active theme found to save to.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Save header
+      await websiteService.saveHeader(activeId, JSON.stringify({
+        config: headerConfig,
+        links: headerLinks
+      }));
+
+      // Save footer
+      await websiteService.saveFooter(activeId, JSON.stringify({
+        config: footerConfig,
+        links: footerLinks
+      }));
+
+      toast.success("Navigation settings saved!");
+    } catch (err) {
+      toast.error("Failed to save: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSeo = async (pageId) => {
+    if (!activeId) {
+      toast.error("No active theme found.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await websiteService.saveSeo(activeId, JSON.stringify(seoPages));
+      toast.success("SEO settings saved!");
+    } catch (err) {
+      toast.error("Failed to save SEO: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveRobots = async () => {
+    if (!activeId) return;
+    try {
+      await websiteService.saveRobots(activeId, robotsTxt);
+      toast.success("robots.txt saved!");
+    } catch (err) {
+      toast.error("Failed to save robots.txt");
+    }
+  };
+
+  const handleSitemapUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeId) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      await websiteService.uploadSitemap(activeId, formData);
+      setSitemapFile({ name: file.name });
+      toast.success("Sitemap uploaded!");
+    } catch (err) {
+      toast.error("Sitemap upload failed");
+    }
+  };
+
+  const handleSitemapDelete = async () => {
+    if (!activeId) return;
+    try {
+      await websiteService.deleteSitemap(activeId);
+      setSitemapFile(null);
+      toast.success("Sitemap deleted");
+    } catch (err) {
+      toast.error("Failed to delete sitemap");
+    }
   };
 
   const getPageIcon = (id) => {
@@ -1595,38 +1691,70 @@ const SEOTab = () => {
     }
   };
 
+  if (themesLoading) {
+    return <div className="p-5 text-center text-slate-500">Loading theme context...</div>;
+  }
+
+  if (!activeId) {
+    return (
+      <div className="max-w-4xl mx-auto my-5 px-3">
+        <div className="p-5 text-center bg-white rounded-3 border shadow-sm mx-auto" style={{ maxWidth: '600px' }}>
+          <div className="p-4 bg-indigo-50 rounded-circle d-inline-block mb-4">
+            <Search size={48} className="text-indigo-500" />
+          </div>
+          <h3 className="font-bold text-slate-800 mb-2">No Active Context</h3>
+          <p className="text-slate-500 mb-4">Select a theme context from your workspace to manage SEO settings.</p>
+
+          <div className="list-group text-start">
+            {themes.map(t => (
+              <button key={t.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                onClick={() => {
+                  setSelectedThemeId(t.id);
+                  toast.success(`Managing SEO for ${t.name}`);
+                }}>
+                <span>{t.name}</span>
+                <span className={`badge ${t.status === 'live' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-7xl mx-auto px-2">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-7xl mx-auto px-2 pb-5">
       <motion.div variants={itemVariants} className="text-center mb-8">
         <h2 className="text-3xl font-extrabold text-slate-800 m-0 tracking-tight">SEO Configuration</h2>
         <p className="text-slate-500 mt-2 max-w-2xl mx-auto text-lg">
-          Optimize your academy's visibility across search engines with granular control over meta tags and indexing.
+          Optimize your academy's visibility across search engines with granular control over meta tags.
         </p>
       </motion.div>
 
-      <div className="row g-4">
-        {seoPages.map((page, index) => {
-          const icon = getPageIcon(page.id);
-          const colors = getPageColor(page.id);
+      {loading ? (
+        <div className="p-5 text-center text-slate-500">Loading SEO configurations...</div>
+      ) : (
+        <div className="row g-4">
+          {seoPages.map((page, index) => {
+            const icon = getPageIcon(page.id);
+            const colors = getPageColor(page.id);
 
-          const pageCard = (
-            <div className="col-lg-6" key={page.id}>
-              <motion.div
-                variants={itemVariants}
-                className="h-100"
-                whileHover={{ y: -5, transition: { type: 'spring', stiffness: 300 } }}
-              >
-                <div
-                  className="wb-card bg-white p-0 h-100 border shadow-sm overflow-hidden d-flex flex-column transition-all duration-300 hover:shadow-lg"
-                  style={{ borderColor: colors.borderColor }}
+            const pageCard = (
+              <div className="col-lg-6" key={page.id}>
+                <motion.div
+                  variants={itemVariants}
+                  className="h-100"
+                  whileHover={{ y: -5, transition: { type: 'spring', stiffness: 300 } }}
                 >
-
-                  {/* Compact Header with Gradient */}
                   <div
-                    className="p-3 border-bottom"
-                    style={{ background: colors.headerBg, borderColor: colors.borderColor }}
+                    className="wb-card bg-white p-0 h-100 border shadow-sm overflow-hidden d-flex flex-column transition-all duration-300 hover:shadow-lg"
+                    style={{ borderColor: colors.borderColor }}
                   >
-                    <div className="d-flex align-items-center justify-content-between">
+                    {/* Compact Header with Gradient */}
+                    <div
+                      className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                      style={{ background: colors.headerBg, borderColor: colors.borderColor }}
+                    >
                       <div className="d-flex align-items-center gap-3">
                         <motion.div
                           whileHover={{ rotate: 10, scale: 1.1 }}
@@ -1645,143 +1773,149 @@ const SEOTab = () => {
                         whileTap={{ scale: 0.95 }}
                         className="py-1 px-3 text-xs font-medium text-white rounded shadow-sm border-0 d-flex align-items-center gap-1"
                         style={{ backgroundColor: colors.btnBg }}
-                        onClick={() => handleSave(page.name)}
+                        onClick={() => handleSaveSeo(page.id)}
+                        disabled={saving}
                       >
-                        <Check size={14} /> Save
+                        <Check size={14} /> {saving ? 'Saving...' : 'Save'}
                       </motion.button>
                     </div>
-                  </div>
 
-                  {/* Compact Body */}
-                  <div className="p-3 flex-grow-1">
-                    <div className="row g-3 mb-3">
-                      <div className="col-md-7">
-                        <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Meta Title</label>
-                        <input
+                    {/* Compact Body */}
+                    <div className="p-3 flex-grow-1">
+                      <div className="row g-3 mb-3">
+                        <div className="col-md-7">
+                          <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Meta Title</label>
+                          <input
+                            className="wb-input py-2 text-sm form-control shadow-none"
+                            placeholder={`e.g. ${page.name} | Academy`}
+                            value={page.title || ''}
+                            onChange={(e) => updatePageSeo(page.id, 'title', e.target.value)}
+                            style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
+                          />
+                        </div>
+                        <div className="col-md-5">
+                          <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Keywords</label>
+                          <input
+                            className="wb-input py-2 text-sm form-control shadow-none"
+                            placeholder="learning, course"
+                            value={page.keywords || ''}
+                            onChange={(e) => updatePageSeo(page.id, 'keywords', e.target.value)}
+                            style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Description</label>
+                        <textarea
                           className="wb-input py-2 text-sm form-control shadow-none"
-                          placeholder={`e.g. ${page.name} | Academy`}
-                          value={page.title}
-                          onChange={(e) => updatePageSeo(page.id, 'title', e.target.value)}
-                          style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
+                          placeholder="Page summary..."
+                          rows={2}
+                          value={page.description || ''}
+                          onChange={(e) => updatePageSeo(page.id, 'description', e.target.value)}
+                          style={{ minHeight: '60px', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
                         />
                       </div>
-                      <div className="col-md-5">
-                        <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Keywords</label>
-                        <input
-                          className="wb-input py-2 text-sm form-control shadow-none"
-                          placeholder="learning, course"
-                          value={page.keywords}
-                          onChange={(e) => updatePageSeo(page.id, 'keywords', e.target.value)}
-                          style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="wb-label small text-uppercase fw-bold text-muted mb-1" style={{ fontSize: '10px' }}>Description</label>
-                      <textarea
-                        className="wb-input py-2 text-sm form-control shadow-none"
-                        placeholder="Page summary..."
-                        rows={2}
-                        value={page.description}
-                        onChange={(e) => updatePageSeo(page.id, 'description', e.target.value)}
-                        style={{ minHeight: '60px', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
-                      />
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            </div>
-          );
-
-          // Inject Tools Column at index 2 (swapped position with pageCard as requested previously: Page Left, Tools Right)
-          if (index === 2) {
-            return [
-              pageCard,
-              <div className="col-lg-6" key="seo-tools-combined">
-                <motion.div variants={itemVariants} className="d-flex flex-column gap-3 h-100">
-
-                  {/* Sitemap Card Compact */}
-                  <motion.div
-                    className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
-                    style={{ border: '1px solid #d1fae5' }}
-                    whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
-                  >
-                    <div
-                      className="p-3 border-bottom d-flex align-items-center justify-content-between"
-                      style={{ background: 'linear-gradient(to right, #ecfdf5, transparent)', borderColor: '#d1fae5' }}
-                    >
-                      <div className="d-flex align-items-center gap-2">
-                        <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
-                          <Map size={18} style={{ color: '#059669' }} />
-                        </motion.div>
-                        <h3 className="text-base font-bold m-0" style={{ color: '#065f46' }}>Sitemap.xml</h3>
-                      </div>
-                      {sitemapFile && (
-                        <button
-                          className="text-[10px] font-bold bg-white px-2 py-1 rounded border"
-                          style={{ color: '#059669', borderColor: '#a7f3d0' }}
-                          onClick={() => toast.success("Uploaded!")}
-                        >
-                          Uploaded
-                        </button>
-                      )}
-                    </div>
-                    <div className="p-3 d-flex align-items-center justify-content-between">
-                      <span className="text-muted small text-truncate" style={{ maxWidth: '150px' }}>{sitemapFile ? sitemapFile.name : 'No file selected'}</span>
-                      <label
-                        className="btn cursor-pointer py-1 px-3 text-xs fw-bold shadow-sm d-flex align-items-center"
-                        style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
-                      >
-                        Browse File
-                        <input type="file" className="d-none" accept=".xml" onChange={(e) => setSitemapFile(e.target.files[0])} />
-                      </label>
-                    </div>
-                  </motion.div>
-
-                  {/* Robots.txt Card Compact */}
-                  <motion.div
-                    className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
-                    style={{ border: '1px solid #e0e7ff' }}
-                    whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
-                  >
-                    <div
-                      className="p-3 border-bottom d-flex align-items-center justify-content-between"
-                      style={{ background: 'linear-gradient(to right, #eef2ff, transparent)', borderColor: '#e0e7ff' }}
-                    >
-                      <div className="d-flex align-items-center gap-2">
-                        <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
-                          <Bot size={18} style={{ color: '#4f46e5' }} />
-                        </motion.div>
-                        <h3 className="text-base font-bold m-0" style={{ color: '#3730a3' }}>Robots.txt</h3>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="py-1 px-3 text-xs text-white border-0 rounded shadow-sm"
-                        style={{ backgroundColor: '#4f46e5' }}
-                        onClick={() => toast.success("Updated!")}
-                      >
-                        Save
-                      </motion.button>
-                    </div>
-                    <div className="p-0">
-                      <textarea
-                        className="wb-input font-monospace text-xs border-0 rounded-0"
-                        rows={3}
-                        value={robotsTxt}
-                        onChange={(e) => setRobotsTxt(e.target.value)}
-                        style={{ resize: 'none', width: '100%', padding: '12px', backgroundColor: '#0f172a', color: '#e2e8f0' }}
-                      />
-                    </div>
-                  </motion.div>
                 </motion.div>
               </div>
-            ];
-          }
-          return pageCard;
-        })}
-      </div>
+            );
+
+            // Inject Tools Column at index 2
+            if (index === 2) {
+              return [
+                pageCard,
+                <div className="col-lg-6" key="seo-tools-combined">
+                  <motion.div variants={itemVariants} className="d-flex flex-column gap-3 h-100">
+
+                    {/* Sitemap Card Compact */}
+                    <motion.div
+                      className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
+                      style={{ border: '1px solid #d1fae5' }}
+                      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
+                    >
+                      <div
+                        className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                        style={{ background: 'linear-gradient(to right, #ecfdf5, transparent)', borderColor: '#d1fae5' }}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
+                            <Map size={18} style={{ color: '#059669' }} />
+                          </motion.div>
+                          <h3 className="text-base font-bold m-0" style={{ color: '#065f46' }}>Sitemap.xml</h3>
+                        </div>
+                        {sitemapFile && (
+                          <div className="d-flex gap-1">
+                            <button
+                              className="btn btn-icon text-danger p-1"
+                              onClick={handleSitemapDelete}
+                              title="Delete Sitemap"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <span className="text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border" style={{ color: '#059669', borderColor: '#a7f3d0' }}>
+                              Live
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 d-flex align-items-center justify-content-between">
+                        <span className="text-muted small text-truncate" style={{ maxWidth: '180px' }}>{sitemapFile ? sitemapFile.name : 'No file uploaded'}</span>
+                        <label
+                          className="btn cursor-pointer py-1 px-3 text-xs fw-bold shadow-sm d-flex align-items-center"
+                          style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
+                        >
+                          {sitemapFile ? 'Replace' : 'Upload'}
+                          <input type="file" className="d-none" accept=".xml" onChange={handleSitemapUpload} />
+                        </label>
+                      </div>
+                    </motion.div>
+
+                    {/* Robots.txt Card Compact */}
+                    <motion.div
+                      className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
+                      style={{ border: '1px solid #e0e7ff' }}
+                      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
+                    >
+                      <div
+                        className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                        style={{ background: 'linear-gradient(to right, #eef2ff, transparent)', borderColor: '#e0e7ff' }}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
+                            <Bot size={18} style={{ color: '#4f46e5' }} />
+                          </motion.div>
+                          <h3 className="text-base font-bold m-0" style={{ color: '#3730a3' }}>Robots.txt</h3>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="py-1 px-3 text-xs text-white border-0 rounded shadow-sm"
+                          style={{ backgroundColor: '#4f46e5' }}
+                          onClick={handleSaveRobots}
+                        >
+                          Save
+                        </motion.button>
+                      </div>
+                      <div className="p-0">
+                        <textarea
+                          className="wb-input font-monospace text-xs border-0 rounded-0"
+                          rows={3}
+                          value={robotsTxt}
+                          onChange={(e) => setRobotsTxt(e.target.value)}
+                          style={{ resize: 'none', width: '100%', padding: '12px', backgroundColor: '#0f172a', color: '#e2e8f0' }}
+                        />
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                </div>
+              ];
+            }
+            return pageCard;
+          })}
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -1996,18 +2130,42 @@ const SettingsTab = () => {
 
 
 const Websites = () => {
-  const [activeTab, setActiveTab] = useState('appearance'); // Default to appearance
+  const [activeTab, setActiveTab] = useState('appearance');
+  const { liveTheme, themes } = useThemeManager();
+
+  // Track which theme the user is currently "managing" across tabs
+  // PERSISTENT: Remembers your selection even after refresh
+  const [selectedThemeId, setSelectedThemeId] = usePersistentState('wb_active_editing_theme_id', null);
+
+  // Determine the backend ID (tenantThemeId) to work with
+  // Priority: 1. Theme matching selectedThemeId, 2. Live theme
+  const activeTheme = themes?.find(t => t.id === selectedThemeId) ||
+    themes?.find(t => t.status === 'live');
+
+  const activeTenantThemeId = activeTheme?.tenantThemeId;
+
+  // Debug log to trace context switches
+  useEffect(() => {
+    if (themes.length > 0) {
+      console.log("🧩 Theme Context Updated:", {
+        selectedFrontendId: selectedThemeId,
+        activeThemeName: activeTheme?.name,
+        activeTenantThemeId,
+        isLive: activeTheme?.status === 'live'
+      });
+    }
+  }, [selectedThemeId, activeTenantThemeId, themes]);
 
   const tabs = [
     { id: 'appearance', label: 'Appearance', icon: <Monitor size={18} /> },
-
     { id: 'navigation', label: 'Navigation', icon: <ChevronRight size={18} /> },
     { id: 'seo', label: 'SEO', icon: <Search size={18} /> },
+    { id: 'builder', label: 'Website Builder', icon: <Layout size={18} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
   ];
 
   return (
-    <div className="container-fluid p-0"> {/* Wrapper to contain layout */}
+    <div className="container-fluid p-0">
       <div className="website-builder-container">
         <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
@@ -2047,10 +2205,27 @@ const Websites = () => {
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'appearance' && <AppearanceTab />}
-
-            {activeTab === 'navigation' && <NavigationTab />}
-            {activeTab === 'seo' && <SEOTab />}
+            {activeTab === 'appearance' && (
+              <AppearanceTab
+                explicitlyEditingThemeId={selectedThemeId}
+                setExplicitlyEditingThemeId={setSelectedThemeId}
+              />
+            )}
+            {activeTab === 'navigation' && (
+              <NavigationTab
+                tenantThemeId={activeTenantThemeId}
+                setSelectedThemeId={setSelectedThemeId}
+              />
+            )}
+            {activeTab === 'seo' && (
+              <SEOTab
+                tenantThemeId={activeTenantThemeId}
+                setSelectedThemeId={setSelectedThemeId}
+              />
+            )}
+            {activeTab === 'builder' && (
+              <WebsiteBuilderTab themeId={activeTheme?.id} />
+            )}
             {activeTab === 'settings' && <SettingsTab />}
           </motion.div>
         </AnimatePresence>
