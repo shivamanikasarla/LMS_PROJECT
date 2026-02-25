@@ -113,6 +113,7 @@ const useThemeManager = () => {
   }, [visibleThemeIds, appliedThemeIds]); // Refetch when IDs change
 
   const liveTheme = themes.find(t => t.status === 'live');
+  const stagingTheme = themes.find(t => t.status === 'staging' || t.status === 'draft');
 
   const applyTheme = async (id) => {
     const theme = themes.find(t => t.id === id);
@@ -203,6 +204,7 @@ const useThemeManager = () => {
     themes,
     setThemes,
     liveTheme,
+    stagingTheme,
     applyTheme,
     publishTheme,
     removeThemeFromTabs,
@@ -743,17 +745,19 @@ const WebsiteBuilderTab = ({ themeId }) => {
         page={previewingPage}
       />
 
-      <PageBuilder
-        isOpen={!!designingPage}
-        onClose={() => setDesigningPage(null)}
-        page={designingPage}
-        onSave={(html, css) => {
-          setPages(prev => prev.map(p =>
-            p.id === designingPage.id ? { ...p, html, css } : p
-          ));
-          setDesigningPage(null);
-        }}
-      />
+      {designingPage && (
+        <PageBuilder
+          isOpen={!!designingPage}
+          onClose={() => setDesigningPage(null)}
+          page={designingPage}
+          onSave={(html, css) => {
+            setPages(prev => prev.map(p =>
+              p.id === designingPage.id ? { ...p, html, css } : p
+            ));
+            setDesigningPage(null);
+          }}
+        />
+      )}
     </motion.div >
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Monitor, Tablet, Smartphone, Undo, Redo, Code, Eye,
-    ChevronLeft, Plus, Settings, X, Trash2, Check, Send,
+    ChevronLeft, ChevronUp, ChevronDown, Plus, Settings, X, Trash2, Check, Send,
     RotateCcw, MousePointer, Image as ImageIcon, Type, Box,
     Layers, ChevronRight, GripVertical, Settings2, Globe,
     Video, List, FormInput, BookOpen, MessageSquare, Users,
@@ -9,7 +9,7 @@ import {
     Award, Clock, Phone, Info, Search, Layout, Star, Brain,
     Handshake, HelpCircle, FileWarning, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, Type as TextIcon, Palette, Link as LinkIcon,
-    MoreHorizontal
+    MoreHorizontal, Sparkles, Bot, PanelLeft, EyeOff, Maximize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -17,7 +17,7 @@ import { toast } from 'react-toastify';
 const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
     const [activeDevice, setActiveDevice] = useState('desktop'); // desktop, tablet, mobile
     const [htmlCode, setHtmlCode] = useState(page?.html || `
-        <header class="gy-header">
+        <header class="gy-header" data-section-id="header-default">
             <div class="gy-header-container">
                 <div class="gy-logo-box">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -38,12 +38,12 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
             </div>
         </header>
 
-        <section class="gp-hero">
+        <section class="gp-hero" data-section-id="hero-default">
             <h1>Welcome to Gyantrix Academy</h1>
             <p>Start building your amazing educational platform.</p>
         </section>
 
-        <footer class="gy-footer">
+        <footer class="gy-footer" data-section-id="footer-default">
             <div class="gy-footer-container">
                 <div class="gy-footer-cta">
                     <button class="gy-footer-btn">
@@ -72,21 +72,22 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
         </footer>
     `);
     const [cssCode, setCssCode] = useState(page?.css || `
-        .gy-header { background: #fff; border-bottom: 1px solid #eee; padding: 12px 24px; font-family: 'Inter', sans-serif; position: sticky; top: 0; z-index: 1000; }
-        .gy-header-container { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; gap: 32px; }
-        .gy-logo-box { background: #000; color: #fff; width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .gy-logo-box svg { width: 20px; height: 20px; fill: #fff; }
-        .gy-search-wrapper { flex: 1; max-width: 320px; position: relative; margin-left: auto; }
-        .gy-search-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; padding: 8px 16px 8px 40px; font-size: 14px; outline: none; transition: border-color 0.2s; }
-        .gy-search-input:focus { border-color: #76c3a7; }
-        .gy-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #9ca3af; }
-        .gy-nav { display: flex; align-items: center; gap: 24px; }
-        .gy-nav a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 500; transition: color 0.2s; }
-        .gy-nav a:hover { color: #111827; }
-        .gy-cart { color: #4b5563; cursor: pointer; }
-        .gy-cart svg { width: 20px; height: 20px; }
-        .gy-login-btn { background: #76c3a7; color: #fff; border: none; padding: 10px 28px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; }
-        .gy-login-btn:hover { background: #65b396; }
+        .gy-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.06); padding: 14px 40px; font-family: 'Outfit', 'Inter', sans-serif; position: sticky; top: 0; z-index: 1000; }
+        .gy-header-container { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .gy-logo-box { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .gy-logo-box svg { width: 18px; height: 18px; fill: #fff; }
+        .gy-search-wrapper { order: 2; width: 300px; position: relative; margin: 0 auto; }
+        .gy-search-input { width: 100%; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 7px 12px 7px 34px; font-size: 13px; outline: none; transition: all 0.2s; }
+        .gy-search-input:focus { border-color: #6366f1; background: #fff; box-shadow: 0 4px 12px rgba(99,102,241,0.1); }
+        .gy-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; }
+        .gy-nav { display: flex; align-items: center; gap: 32px; order: 3; }
+        .gy-nav a { text-decoration: none; color: #64748b; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+        .gy-nav a:hover { color: #1e293b; }
+        .gy-cart { color: #64748b; cursor: pointer; transition: color 0.2s; }
+        .gy-cart:hover { color: #1e293b; }
+        .gy-cart svg { width: 18px; height: 18px; }
+        .gy-login-btn { order: 4; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; padding: 8px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99,102,241,0.25); margin-left: 12px; }
+        .gy-login-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(99,102,241,0.3); }
 
         .gp-hero { padding: 100px 20px; text-align: center; background: #fff; font-family: 'Inter', sans-serif; }
         .gp-hero h1 { font-size: 48px; font-weight: 800; color: #1e293b; margin-bottom: 20px; }
@@ -111,9 +112,45 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
     const [selectedSectionId, setSelectedSectionId] = useState(null);
     const [isAddingSection, setIsAddingSection] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTemplateCategory, setActiveTemplateCategory] = useState(null);
-    const [addedSections, setAddedSections] = useState([]);
+    const [addedSections, setAddedSections] = useState([
+        { id: 'hero-default', category: 'hero', label: 'Hero', title: 'Default Hero' }
+    ]);
     const [selectedElement, setSelectedElement] = useState(null); // { tagName, rect, text, styles }
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [activeInsertTarget, setActiveInsertTarget] = useState(null); // { id, position: 'above' | 'below' }
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [activeTemplateCategory, setActiveTemplateCategory] = useState(null);
+    const sections = [
+        { id: 'basic', label: 'Basic', icon: <Layout size={24} /> },
+        { id: 'slider', label: 'Slider', icon: <Monitor size={24} /> },
+        { id: 'video', label: 'Video', icon: <Video size={24} /> },
+        { id: 'custom', label: 'Custom Design', icon: <Settings2 size={24} /> },
+        { id: 'placeholder', label: 'Placeholder', icon: <Box size={24} /> },
+        { id: 'courses', label: 'Courses List', icon: <List size={24} /> },
+        { id: 'forms', label: 'Forms', icon: <FormInput size={24} /> },
+        { id: 'curriculum', label: 'Curriculum', icon: <BookOpen size={24} /> },
+        { id: 'feedback', label: 'Course Feedback', icon: <Star size={24} /> },
+        { id: 'photos', label: 'Photos', icon: <ImageIcon size={24} /> },
+        { id: 'team', label: 'Team', icon: <Users size={24} /> },
+        { id: 'products', label: 'Products, Services', icon: <ShoppingBag size={24} /> },
+        { id: 'features', label: 'Features', icon: <CheckSquare size={24} /> },
+        { id: 'process', label: 'Process', icon: <Zap size={24} /> },
+        { id: 'pricing', label: 'Pricing', icon: <DollarSign size={24} /> },
+        { id: 'skills', label: 'Skills', icon: <Brain size={24} /> },
+        { id: 'achievements', label: 'Achievements', icon: <Trophy size={24} /> },
+        { id: 'testimonials', label: 'Testimonials', icon: <Quote size={24} /> },
+        { id: 'partners', label: 'Partners', icon: <Handshake size={24} /> },
+        { id: 'featured', label: 'As Featured On', icon: <Award size={24} /> },
+        { id: 'notfound', label: 'Page Not Found', icon: <FileWarning size={24} /> },
+        { id: 'comingsoon', label: 'Coming Soon', icon: <Clock size={24} /> },
+        { id: 'helpfaq', label: 'Help, FAQ', icon: <HelpCircle size={24} /> },
+        { id: 'contact', label: 'Contact', icon: <Phone size={24} /> },
+        { id: 'information', label: 'Information', icon: <Info size={24} /> },
+    ];
+
+    const filteredSections = sections.filter(s =>
+        s.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const templates = {
         header: [
@@ -142,12 +179,22 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                     </header>
                 `,
                 css: `
-                    .gy-header { background: #fff; border-bottom: 1px solid #eee; padding: 12px 24px; font-family: 'Inter', sans-serif; position: sticky; top: 0; z-index: 1000; }
-                    .gy-header-container { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; gap: 32px; }
-                    .gy-logo-box { background: #000; color: #fff; width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-                    .gy-logo-box svg { width: 20px; height: 20px; fill: #fff; }
-                    .gy-search-wrapper { flex: 1; max-width: 320px; position: relative; margin-left: auto; }
-                    .gy-search-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; padding: 8px 16px 8px 40px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+                    .gy-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.06); padding: 14px 40px; font-family: 'Outfit', 'Inter', sans-serif; position: sticky; top: 0; z-index: 1000; }
+                    .gy-header-container { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+                    .gy-logo-box { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                    .gy-logo-box svg { width: 18px; height: 18px; fill: #fff; }
+                    .gy-search-wrapper { order: 2; width: 300px; position: relative; margin: 0 auto; }
+                    .gy-search-input { width: 100%; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 7px 12px 7px 34px; font-size: 13px; outline: none; transition: all 0.2s; }
+                    .gy-search-input:focus { border-color: #6366f1; background: #fff; box-shadow: 0 4px 12px rgba(99,102,241,0.1); }
+                    .gy-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; }
+                    .gy-nav { display: flex; align-items: center; gap: 32px; order: 3; }
+                    .gy-nav a { text-decoration: none; color: #64748b; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+                    .gy-nav a:hover { color: #1e293b; }
+                    .gy-cart { color: #64748b; cursor: pointer; transition: color 0.2s; }
+                    .gy-cart:hover { color: #1e293b; }
+                    .gy-cart svg { width: 18px; height: 18px; }
+                    .gy-login-btn { order: 4; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; padding: 8px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99,102,241,0.25); margin-left: 12px; }
+                    .gy-login-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(99,102,241,0.3); }
                     .gy-search-input:focus { border-color: #76c3a7; }
                     .gy-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #9ca3af; }
                     .gy-nav { display: flex; align-items: center; gap: 24px; }
@@ -1292,110 +1339,142 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
     const handleApplyTemplate = (template) => {
         const isActualHeader = template.html.trim().startsWith('<header');
         const isActualFooter = template.html.trim().startsWith('<footer');
+        const sectionId = `sec-${Date.now()}`;
 
-        if (isActualHeader) {
-            // Only replace existing header if applying an actual <header> template
-            setHtmlCode(prev => {
+        // Inject section ID into the template HTML
+        const htmlWithId = template.html.replace(/<(section|header|footer)/i, `<$1 data-section-id="${sectionId}"`);
+
+        setHtmlCode(prev => {
+            if (isActualHeader) {
                 const hasHeader = prev.includes('<header');
                 if (hasHeader) {
-                    return prev.replace(/<header[\s\S]*?<\/header>/, template.html);
-                } else {
-                    return template.html + '\n' + prev;
+                    return prev.replace(/<header[\s\S]*?<\/header>/, htmlWithId);
                 }
-            });
-        } else if (isActualFooter) {
-            setHtmlCode(prev => {
+                return htmlWithId + '\n' + prev;
+            }
+
+            if (isActualFooter) {
                 const hasFooter = prev.includes('<footer');
                 if (hasFooter) {
-                    return prev.replace(/<footer[\s\S]*?<\/footer>/, template.html);
-                } else {
-                    return prev + '\n' + template.html;
+                    return prev.replace(/<footer[\s\S]*?<\/footer>/, htmlWithId);
                 }
-            });
-        } else {
-            setHtmlCode(prev => {
-                // For sections (hero, basic, etc.), insert before footer if exists
-                if (prev.includes('<footer')) {
-                    const parts = prev.split('<footer');
-                    // We want to replace only the first part before the footer
-                    // but if there are multiple sections, parts might have more than 2 elements
-                    // actually split('<footer') will give parts[0] as everything before the first footer
-                    return parts[0] + '\n\n' + template.html + '\n\n<footer' + parts.slice(1).join('<footer');
-                } else {
-                    return prev + '\n\n' + template.html;
+                return prev + '\n' + htmlWithId;
+            }
+
+            // Handle targeted insertion (Add Above)
+            if (activeInsertTarget && activeInsertTarget.position === 'above') {
+                const targetTagMatch = prev.match(new RegExp(`<[^>]*data-section-id="${activeInsertTarget.id}"[^>]*>`));
+                if (targetTagMatch) {
+                    const index = prev.indexOf(targetTagMatch[0]);
+                    return prev.slice(0, index) + htmlWithId + '\n\n' + prev.slice(index);
                 }
-            });
-        }
+            }
+
+            // Default behavior: insert before footer
+            if (prev.includes('<footer')) {
+                const parts = prev.split('<footer');
+                return parts[0] + '\n\n' + htmlWithId + '\n\n<footer' + parts.slice(1).join('<footer');
+            }
+            return prev + '\n\n' + htmlWithId;
+        });
+
         setCssCode(prev => prev + '\n\n' + template.css);
-        // Track added section with its category name
+
+        // Update sidebar list
         if (activeTemplateCategory && activeTemplateCategory !== 'header' && activeTemplateCategory !== 'footer') {
             const categoryLabel = sections.find(s => s.id === activeTemplateCategory)?.label || activeTemplateCategory;
-            setAddedSections(prev => [...prev, { id: Date.now(), category: activeTemplateCategory, label: categoryLabel, title: template.title }]);
+
+            setAddedSections(prev => {
+                const newSec = { id: sectionId, category: activeTemplateCategory, label: categoryLabel, title: template.title };
+                if (activeInsertTarget && activeInsertTarget.position === 'above') {
+                    const targetIndex = prev.findIndex(s => s.id === activeInsertTarget.id);
+                    if (targetIndex !== -1) {
+                        const next = [...prev];
+                        next.splice(targetIndex, 0, newSec);
+                        return next;
+                    }
+                }
+                return [...prev, newSec];
+            });
         }
+
+        setRefreshKey(prev => prev + 1);
         setActiveTemplateCategory(null);
+        setActiveInsertTarget(null);
         toast.success(`Applied ${template.title} template!`);
     };
 
-    const sections = [
-        { id: 'header', label: 'Header', icon: <Layers size={24} /> },
-        { id: 'basic', label: 'Basic', icon: <Layout size={24} /> },
-        { id: 'slider', label: 'Slider', icon: <Monitor size={24} /> },
-        { id: 'video', label: 'Video', icon: <Video size={24} /> },
-        { id: 'footer', label: 'Footer', icon: <Layers size={24} /> },
-        { id: 'custom', label: 'Custom Design', icon: <Settings2 size={24} /> },
-        { id: 'placeholder', label: 'Placeholder', icon: <Box size={24} /> },
-        { id: 'courses', label: 'Courses List', icon: <List size={24} /> },
-        { id: 'forms', label: 'Forms', icon: <FormInput size={24} /> },
-        { id: 'curriculum', label: 'Curriculum', icon: <BookOpen size={24} /> },
-        { id: 'feedback', label: 'Course Feedback', icon: <Star size={24} /> },
-        { id: 'photos', label: 'Photos', icon: <ImageIcon size={24} /> },
-        { id: 'team', label: 'Team', icon: <Users size={24} /> },
-        { id: 'products', label: 'Products, Services', icon: <ShoppingBag size={24} /> },
-        { id: 'features', label: 'Features', icon: <CheckSquare size={24} /> },
-        { id: 'process', label: 'Process', icon: <Zap size={24} /> },
-        { id: 'pricing', label: 'Pricing', icon: <DollarSign size={24} /> },
-        { id: 'skills', label: 'Skills', icon: <Brain size={24} /> },
-        { id: 'achievements', label: 'Achievements', icon: <Trophy size={24} /> },
-        { id: 'testimonials', label: 'Testimonials', icon: <Quote size={24} /> },
-        { id: 'partners', label: 'Partners', icon: <Handshake size={24} /> },
-        { id: 'featured', label: 'As Featured On', icon: <Award size={24} /> },
-        { id: 'notfound', label: 'Page Not Found', icon: <FileWarning size={24} /> },
-        { id: 'comingsoon', label: 'Coming Soon', icon: <Clock size={24} /> },
-        { id: 'helpfaq', label: 'Help, FAQ', icon: <HelpCircle size={24} /> },
-        { id: 'contact', label: 'Contact', icon: <Phone size={24} /> },
-        { id: 'information', label: 'Information', icon: <Info size={24} /> },
-    ];
+    const handleMoveSection = (sectionId, direction) => {
+        setHtmlCode(prev => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = prev;
+            const element = tempDiv.querySelector(`[data-section-id="${sectionId}"]`);
+            if (!element) return prev;
 
-    const filteredSections = sections.filter(s =>
-        s.label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const iframeRef = useRef(null);
-    const htmlCodeRef = useRef(htmlCode);
-
-    // Keep ref in sync with state
-    useEffect(() => {
-        htmlCodeRef.current = htmlCode;
-    }, [htmlCode]);
-
-    // Function to update iframe content directly without rewriting the whole doc
-    const updateIframeContent = (newHtml) => {
-        if (iframeRef.current) {
-            const doc = iframeRef.current.contentDocument;
-            if (doc) {
-                const wrapper = doc.getElementById('user-content');
-                if (wrapper) {
-                    wrapper.innerHTML = newHtml;
-                }
+            if (direction === 'up' && element.previousElementSibling) {
+                element.parentNode.insertBefore(element, element.previousElementSibling);
+            } else if (direction === 'down' && element.nextElementSibling) {
+                element.parentNode.insertBefore(element.nextElementSibling, element);
+            } else {
+                return prev;
             }
-        }
+            return tempDiv.innerHTML;
+        });
+
+        setAddedSections(prev => {
+            const index = prev.findIndex(s => s.id === sectionId);
+            if (index === -1) return prev;
+
+            const next = [...prev];
+            if (direction === 'up' && index > 0) {
+                [next[index - 1], next[index]] = [next[index], next[index - 1]];
+            } else if (direction === 'down' && index < next.length - 1) {
+                [next[index], next[index + 1]] = [next[index + 1], next[index]];
+            }
+            return next;
+        });
+
+        setRefreshKey(prev => prev + 1);
+        setSelectedElement(null);
     };
 
-    // Write iframe ONLY on mount/view changes - never on htmlCode changes
-    useEffect(() => {
-        if (!iframeRef.current || isCodeView) return;
-        const doc = iframeRef.current.contentDocument;
-        if (!doc) return;
+    const handleUpdateSectionStyles = (sectionId, newStyles) => {
+        setHtmlCode(prev => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = prev;
+            const element = tempDiv.querySelector(`[data-section-id="${sectionId}"]`);
+            if (element) {
+                Object.assign(element.style, newStyles);
+                return tempDiv.innerHTML;
+            }
+            return prev;
+        });
+        setRefreshKey(prev => prev + 1);
+    };
+
+    const handleRemoveSection = (sectionId) => {
+        setSelectedElement(null);
+        setHtmlCode(prev => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = prev;
+            const elementToRemove = tempDiv.querySelector(`[data-section-id="${sectionId}"]`);
+            if (elementToRemove) {
+                elementToRemove.remove();
+                return tempDiv.innerHTML;
+            }
+            return prev;
+        });
+        setAddedSections(prev => prev.filter(s => s.id !== sectionId));
+        setRefreshKey(prev => prev + 1);
+        toast.success('Section removed');
+    };
+
+
+    const iframeRef = useRef(null);
+
+    // Write iframe content using srcDoc for stability
+    const iframeContent = React.useMemo(() => {
+        if (!isOpen) return '';
 
         const injectionScript = `
                 <script>
@@ -1410,13 +1489,12 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                             allLinks[i].addEventListener('click', function(ev) { ev.preventDefault(); });
                         }
 
-                        // Hover highlight
                         document.addEventListener('mouseover', function(e) {
                             var t = e.target;
                             if (t === document.body || t === document.documentElement || t.id === 'user-content') return;
                             if (t !== selectedEl) {
-                                t.style.outline = '2px dashed rgba(79,70,229,0.5)';
-                                t.style.outlineOffset = '-2px';
+                                t.style.outline = '1px dashed rgba(79,70,229,0.3)';
+                                t.style.outlineOffset = '-1px';
                             }
                             t.style.cursor = 'pointer';
                         });
@@ -1449,25 +1527,41 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                             // Make text elements editable immediately
                             if (target.tagName !== 'IMG' && target.tagName !== 'SVG' && target.tagName !== 'path' && target.tagName !== 'VIDEO') {
                                 selectedEl.contentEditable = 'true';
-                                selectedEl.focus();
                             }
 
-                            var rect = selectedEl.getBoundingClientRect();
-                            var section = selectedEl.closest('section') || selectedEl.closest('header') || selectedEl.closest('footer');
-                            var sectionRect = null;
-                            if (section) {
-                                var sRect = section.getBoundingClientRect();
-                                sectionRect = { top: sRect.top, left: sRect.left, width: sRect.width, height: sRect.height };
+                            function updateElementData() {
+                                if (!selectedEl) return;
+                                var rect = selectedEl.getBoundingClientRect();
+                                var section = selectedEl.closest('section') || selectedEl.closest('header') || selectedEl.closest('footer');
+                                var sectionRect = null;
+                                var sectionId = null;
+                                if (section) {
+                                    var sRect = section.getBoundingClientRect();
+                                    sectionRect = { top: sRect.top, left: sRect.left, width: sRect.width, height: sRect.height };
+                                    sectionId = section.getAttribute('data-section-id');
+                                }
+
+                                window.parent.postMessage({
+                                    type: 'ELEMENT_SELECTED',
+                                    tagName: selectedEl.tagName,
+                                    text: selectedEl.innerText || '',
+                                    html: selectedEl.innerHTML || '',
+                                    src: selectedEl.tagName === 'IMG' ? selectedEl.src : '',
+                                    isImage: selectedEl.tagName === 'IMG',
+                                    rect: { 
+                                        top: rect.top, 
+                                        left: rect.left, 
+                                        width: rect.width, 
+                                        height: rect.height,
+                                        bottom: rect.bottom,
+                                        right: rect.right
+                                    },
+                                    sectionRect: sectionRect,
+                                    sectionId: sectionId
+                                }, '*');
                             }
 
-                            window.parent.postMessage({
-                                type: 'ELEMENT_SELECTED',
-                                tagName: selectedEl.tagName,
-                                text: selectedEl.innerText || '',
-                                isImage: selectedEl.tagName === 'IMG',
-                                rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-                                sectionRect: sectionRect
-                            }, '*');
+                            updateElementData();
                         });
 
                         // Sync edits back
@@ -1480,37 +1574,67 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                 }, '*');
                             }
                         });
+
+                        // Listen for image updates from parent
+                        window.addEventListener('message', function(e) {
+                            if (e.data.type === 'UPDATE_IMAGE' && selectedEl && selectedEl.tagName === 'IMG') {
+                                selectedEl.src = e.data.src;
+                                var wrapper = document.getElementById('user-content');
+                                if (wrapper) {
+                                    window.parent.postMessage({
+                                        type: 'CONTENT_UPDATED',
+                                        html: wrapper.innerHTML
+                                    }, '*');
+                                }
+                            }
+                        });
                     })();
                 </script>
             `;
 
-        const fullHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-            <style>
-              body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; min-height: 100vh; }
-              ${cssCode}
-              .builder-highlight { outline: 2px solid #4f46e5 !important; outline-offset: -2px; }
-            </style>
-          </head>
-          <body>
-            <div id="user-content">${htmlCodeRef.current}</div>
-            ${!isVisualPreview ? injectionScript : ''}
-          </body>
-        </html>
-      `;
-        doc.open();
-        doc.write(fullHtml);
-        doc.close();
-    }, [cssCode, isCodeView, isOpen, isVisualPreview]);
+        return `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                  body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; min-height: 100vh; }
+                  ${cssCode}
+                  .builder-highlight { outline: 2px solid #4f46e5 !important; outline-offset: -2px; }
+                  /* Selection highlight */
+                  [contenteditable="true"]:focus {
+                    outline: none;
+                  }
+                  /* Prevent links from working */
+                  a { cursor: pointer !important; text-decoration: none !important; }
+                </style>
+              </head>
+              <body>
+                <div id="user-content">${htmlCode}</div>
+                ${!isVisualPreview ? injectionScript : ''}
+              </body>
+            </html>
+        `;
+    }, [refreshKey, cssCode, isVisualPreview, isOpen, isCodeView]);
+
+    // Sync htmlCode state to iframe DOM without reload
+    useEffect(() => {
+        if (iframeRef.current && iframeRef.current.contentDocument) {
+            const wrapper = iframeRef.current.contentDocument.getElementById('user-content');
+            if (wrapper && wrapper.innerHTML !== htmlCode) {
+                wrapper.innerHTML = htmlCode;
+            }
+        }
+    }, [htmlCode]);
 
     useEffect(() => {
         const handleMessage = (e) => {
             if (e.data.type === 'ELEMENT_SELECTED') {
                 setSelectedElement(e.data);
             } else if (e.data.type === 'CONTENT_UPDATED') {
+                // When content is updated from inside the iframe, we update the state
+                // but we don't want the above useEffect to rewrite the DOM
+                // (though the identity check handler that)
                 setHtmlCode(e.data.html);
             }
         };
@@ -1535,13 +1659,14 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
 
     return (
         <div style={{
-            position: 'fixed', inset: 0, zIndex: 9999, background: '#f8fafc',
-            display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif'
+            position: 'fixed', inset: 0, zIndex: 9999, background: 'linear-gradient(135deg, #0f0c29 0%, #1a1a3e 50%, #24243e 100%)',
+            display: 'flex', flexDirection: 'column', fontFamily: "'Inter', 'Segoe UI', sans-serif"
         }}>
             {/* Top Bar */}
             <div style={{
-                height: '60px', background: '#fff', borderBottom: '1px solid #e2e8f0',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px',
+                height: '64px', background: 'rgba(15, 12, 41, 0.85)', backdropFilter: 'blur(20px)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
                 flexShrink: 0
             }}>
                 {/* Top Left */}
@@ -1549,86 +1674,94 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                     <button
                         onClick={onClose}
                         style={{
-                            display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-                            color: '#64748b', fontSize: '14px', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px'
+                            display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                            color: '#a5b4fc', fontSize: '13px', cursor: 'pointer', padding: '7px 14px', borderRadius: '10px',
+                            transition: 'all 0.2s ease'
                         }}
-                        className="hover:bg-slate-100"
+                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#c7d2fe'; }}
+                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#a5b4fc'; }}
                     >
-                        <ChevronLeft size={16} /> <span style={{ fontWeight: 500 }}>Back</span>
+                        <ChevronLeft size={16} /> <span style={{ fontWeight: 600 }}>Back</span>
                     </button>
-                    <div style={{ width: '1px', height: '24px', background: '#e2e8f0' }} />
+                    <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.08)' }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            Unpublished
+                        <span style={{ fontSize: '10px', color: '#818cf8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
+                            ● Unpublished
                         </span>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#e0e7ff', letterSpacing: '-0.01em' }}>
                             {page?.title || 'New Page'}
                         </span>
                     </div>
                 </div>
 
                 {/* Top Center: Device & Undo/Redo & View Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', padding: '4px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ display: 'flex', gap: '2px' }}>
                         <button
                             onClick={() => setActiveDevice('desktop')}
-                            style={{ padding: '6px', borderRadius: '6px', background: activeDevice === 'desktop' ? '#fff' : 'transparent', border: 'none', color: activeDevice === 'desktop' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: activeDevice === 'desktop' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                        ><Monitor size={18} /></button>
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: activeDevice === 'desktop' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent', border: 'none', color: activeDevice === 'desktop' ? '#fff' : '#94a3b8', cursor: 'pointer', boxShadow: activeDevice === 'desktop' ? '0 2px 8px rgba(99,102,241,0.4)' : 'none', transition: 'all 0.25s ease' }}
+                        ><Monitor size={17} /></button>
                         <button
                             onClick={() => setActiveDevice('tablet')}
-                            style={{ padding: '6px', borderRadius: '6px', background: activeDevice === 'tablet' ? '#fff' : 'transparent', border: 'none', color: activeDevice === 'tablet' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: activeDevice === 'tablet' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                        ><Tablet size={18} /></button>
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: activeDevice === 'tablet' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent', border: 'none', color: activeDevice === 'tablet' ? '#fff' : '#94a3b8', cursor: 'pointer', boxShadow: activeDevice === 'tablet' ? '0 2px 8px rgba(99,102,241,0.4)' : 'none', transition: 'all 0.25s ease' }}
+                        ><Tablet size={17} /></button>
                         <button
                             onClick={() => setActiveDevice('mobile')}
-                            style={{ padding: '6px', borderRadius: '6px', background: activeDevice === 'mobile' ? '#fff' : 'transparent', border: 'none', color: activeDevice === 'mobile' ? '#4f46e5' : '#64748b', cursor: 'pointer', boxShadow: activeDevice === 'mobile' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                        ><Smartphone size={18} /></button>
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: activeDevice === 'mobile' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent', border: 'none', color: activeDevice === 'mobile' ? '#fff' : '#94a3b8', cursor: 'pointer', boxShadow: activeDevice === 'mobile' ? '0 2px 8px rgba(99,102,241,0.4)' : 'none', transition: 'all 0.25s ease' }}
+                        ><Smartphone size={17} /></button>
                     </div>
-                    <div style={{ width: '1px', height: '20px', background: '#cbd5e1' }} />
+                    <div style={{ width: '1px', height: '22px', background: 'rgba(255,255,255,0.08)' }} />
                     <div style={{ display: 'flex', gap: '2px' }}>
-                        <button style={{ padding: '6px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'not-allowed' }}><RotateCcw size={18} /></button>
-                        <button style={{ padding: '6px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'not-allowed' }}><RotateCcw size={18} style={{ transform: 'scaleX(-1)' }} /></button>
+                        <button style={{ padding: '7px', color: '#4b5563', background: 'none', border: 'none', cursor: 'not-allowed', borderRadius: '8px' }}><RotateCcw size={17} /></button>
+                        <button style={{ padding: '7px', color: '#4b5563', background: 'none', border: 'none', cursor: 'not-allowed', borderRadius: '8px' }}><RotateCcw size={17} style={{ transform: 'scaleX(-1)' }} /></button>
                     </div>
-                    <div style={{ width: '1px', height: '20px', background: '#cbd5e1' }} />
+                    <div style={{ width: '1px', height: '22px', background: 'rgba(255,255,255,0.08)' }} />
                     <div style={{ display: 'flex', gap: '2px' }}>
                         <button
                             onClick={() => setIsCodeView(!isCodeView)}
-                            style={{ padding: '6px', borderRadius: '6px', background: isCodeView ? '#fff' : 'transparent', border: 'none', color: isCodeView ? '#4f46e5' : '#64748b', cursor: 'pointer' }}
-                        ><Code size={18} /></button>
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: isCodeView ? 'rgba(34,211,238,0.15)' : 'transparent', border: 'none', color: isCodeView ? '#22d3ee' : '#94a3b8', cursor: 'pointer', transition: 'all 0.25s ease' }}
+                        ><Code size={17} /></button>
                         <button
                             onClick={() => setIsVisualPreview(!isVisualPreview)}
-                            style={{ padding: '6px', borderRadius: '6px', background: isVisualPreview ? '#fff' : 'transparent', border: 'none', color: isVisualPreview ? '#4f46e5' : '#64748b', cursor: 'pointer' }}
-                        ><Eye size={18} /></button>
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: isVisualPreview ? 'rgba(34,211,238,0.15)' : 'transparent', border: 'none', color: isVisualPreview ? '#22d3ee' : '#94a3b8', cursor: 'pointer', transition: 'all 0.25s ease' }}
+                        ><Eye size={17} /></button>
                     </div>
                 </div>
 
                 {/* Top Right */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'right' }}>
-                        Last Edited: <strong>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ fontSize: '11px', color: '#6366f1', textAlign: 'right', fontWeight: 500 }}>
+                        Last Edited: <strong style={{ color: '#a5b4fc' }}>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</strong>
                     </div>
                     <button
                         style={{
-                            background: '#4f46e5', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '6px',
-                            fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', border: 'none', padding: '9px 22px', borderRadius: '12px',
+                            fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                            boxShadow: '0 4px 15px rgba(99,102,241,0.35)', transition: 'all 0.25s ease', letterSpacing: '0.02em'
                         }}
                         onClick={() => { onSave(htmlCode, cssCode); toast.success('Saved successfully!'); }}
+                        onMouseOver={e => { e.currentTarget.style.boxShadow = '0 6px 25px rgba(99,102,241,0.5)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseOut={e => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(99,102,241,0.35)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                        <Check size={18} /> Save
+                        <Check size={16} /> Save
                     </button>
                     <button
                         style={{
-                            background: '#fff', color: '#4f46e5', border: '1px solid #e2e8f0', padding: '8px 20px', borderRadius: '6px',
-                            fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                            background: 'rgba(255,255,255,0.06)', color: '#c7d2fe', border: '1px solid rgba(139,92,246,0.3)', padding: '9px 22px', borderRadius: '12px',
+                            fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                            transition: 'all 0.25s ease', letterSpacing: '0.02em'
                         }}
+                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.5)'; }}
+                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)'; }}
                     >
-                        <Send size={18} /> Publish
+                        <Send size={16} /> Publish
                     </button>
                 </div>
             </div>
 
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
                 <div style={{
-                    width: '300px', background: '#fff', borderRight: '1px solid #e2e8f0',
+                    width: '280px', background: 'rgba(15, 12, 41, 0.95)', borderRight: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative'
                 }}>
                     <AnimatePresence mode="wait">
@@ -1642,39 +1775,59 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                 style={{ padding: '20px', flex: 1, overflowY: 'auto' }}
                             >
                                 <div style={{ marginBottom: '24px' }}>
-                                    <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.05em' }}>
-                                        Section
+                                    <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', marginBottom: '14px', letterSpacing: '0.12em' }}>
+                                        ✦ Section
                                     </h4>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         <div style={{
-                                            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px',
-                                            borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer',
-                                            fontSize: '14px', color: '#475569'
-                                        }} className="hover:bg-slate-50">
-                                            <Layers size={16} /> <span>Header</span>
+                                            display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px',
+                                            borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer',
+                                            fontSize: '13px', color: '#c7d2fe', background: 'rgba(255,255,255,0.03)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                            onClick={() => setActiveTemplateCategory('header')}
+                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                        >
+                                            <Layers size={16} style={{ color: '#818cf8' }} /> <span>Header</span>
                                         </div>
 
-                                        <div style={{ margin: '12px 0', borderTop: '1px solid #f1f5f9' }} />
+                                        <div style={{ margin: '10px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }} />
 
-                                        {addedSections.map((sec) => (
+                                        {addedSections.map((sec, index) => (
                                             <div key={sec.id} style={{
                                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                padding: '10px', borderRadius: '6px', background: '#f8fafc',
-                                                fontSize: '14px', color: '#1e293b', fontWeight: 500
+                                                padding: '9px 12px', borderRadius: '10px', background: 'rgba(99,102,241,0.08)',
+                                                border: '1px solid rgba(99,102,241,0.12)',
+                                                fontSize: '12px', color: '#e0e7ff', fontWeight: 500
                                             }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    {sections.find(s => s.id === sec.category)?.icon || <Box size={16} />}
-                                                    <span>{sec.label}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                                    <span style={{ color: '#818cf8', flexShrink: 0 }}>{sections.find(s => s.id === sec.category)?.icon || <Box size={14} />}</span>
+                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sec.label}</span>
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                                                     <button
-                                                        onClick={() => setAddedSections(prev => prev.filter(s => s.id !== sec.id))}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px' }}
+                                                        onClick={() => handleMoveSection(sec.id, 'up')}
+                                                        disabled={index === 0}
+                                                        style={{ background: 'none', border: 'none', cursor: index === 0 ? 'not-allowed' : 'pointer', color: index === 0 ? '#4b5563' : '#94a3b8', padding: '2px', transition: 'color 0.2s' }}
+                                                        title="Move Up"
+                                                    ><ChevronUp size={14} /></button>
+                                                    <button
+                                                        onClick={() => handleMoveSection(sec.id, 'down')}
+                                                        disabled={index === addedSections.length - 1}
+                                                        style={{ background: 'none', border: 'none', cursor: index === addedSections.length - 1 ? 'not-allowed' : 'pointer', color: index === addedSections.length - 1 ? '#4b5563' : '#94a3b8', padding: '2px', transition: 'color 0.2s' }}
+                                                        title="Move Down"
+                                                    ><ChevronDown size={14} /></button>
+                                                    <button
+                                                        onClick={() => handleRemoveSection(sec.id)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6366f1', padding: '2px', transition: 'color 0.2s' }}
                                                         title="Remove section"
+                                                        onMouseOver={e => e.currentTarget.style.color = '#f43f5e'}
+                                                        onMouseOut={e => e.currentTarget.style.color = '#6366f1'}
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
-                                                    <GripVertical size={14} className="text-slate-300" />
+                                                    <GripVertical size={14} style={{ color: '#4b5563' }} />
                                                 </div>
                                             </div>
                                         ))}
@@ -1682,24 +1835,30 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                         <button
                                             onClick={() => setIsAddingSection(true)}
                                             style={{
-                                                width: '100%', padding: '10px', borderRadius: '6px', border: '1px dashed #cbd5e1',
-                                                background: 'none', color: '#4f46e5', fontSize: '14px', fontWeight: 500,
+                                                width: '100%', padding: '11px', borderRadius: '10px', border: '1px dashed rgba(99,102,241,0.4)',
+                                                background: 'rgba(99,102,241,0.06)', color: '#a5b4fc', fontSize: '13px', fontWeight: 600,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                                cursor: 'pointer', marginTop: '12px'
+                                                cursor: 'pointer', marginTop: '12px', transition: 'all 0.25s ease'
                                             }}
-                                            className="hover:bg-slate-50"
+                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.6)'; e.currentTarget.style.color = '#c7d2fe'; }}
+                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)'; e.currentTarget.style.color = '#a5b4fc'; }}
                                         >
-                                            <Plus size={18} /> Add Sections
+                                            <Plus size={17} /> Add Sections
                                         </button>
 
-                                        <div style={{ margin: '12px 0', borderTop: '1px solid #f1f5f9' }} />
+                                        <div style={{ margin: '10px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }} />
 
                                         <div style={{
-                                            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px',
-                                            borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer',
-                                            fontSize: '14px', color: '#475569'
-                                        }} className="hover:bg-slate-50">
-                                            <Layers size={16} /> <span>Footer</span>
+                                            display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px',
+                                            borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer',
+                                            fontSize: '13px', color: '#c7d2fe', background: 'rgba(255,255,255,0.03)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                            onClick={() => setActiveTemplateCategory('footer')}
+                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                        >
+                                            <Layers size={16} style={{ color: '#818cf8' }} /> <span>Footer</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1714,36 +1873,45 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                 style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
                             >
                                 {/* Add Section Header */}
-                                <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0' }}>
+                                <div style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                     <button
                                         onClick={() => setIsAddingSection(false)}
                                         style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px', background: 'none',
-                                            border: 'none', color: '#1e293b', fontSize: '16px', fontWeight: 600,
-                                            cursor: 'pointer', padding: '4px 0', marginBottom: '12px'
+                                            display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)',
+                                            border: '1px solid rgba(255,255,255,0.08)', color: '#a5b4fc', fontSize: '14px', fontWeight: 600,
+                                            cursor: 'pointer', padding: '6px 12px', marginBottom: '12px', borderRadius: '10px',
+                                            transition: 'all 0.2s ease'
                                         }}
+                                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+                                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
                                     >
-                                        <ChevronLeft size={20} /> Back
+                                        <ChevronLeft size={18} /> Back
                                     </button>
-                                    <div style={{ position: 'relative' }}>
-                                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                                        <input
-                                            type="text"
-                                            placeholder="Search..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            style={{
-                                                width: '100%', padding: '10px 12px 10px 36px', borderRadius: '6px',
-                                                border: '1px solid #e2e8f0', fontSize: '14px', outline: 'none',
-                                                background: '#f8fafc'
-                                            }}
-                                        />
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                        <div style={{ position: 'relative', width: '75%', margin: '0' }}>
+                                            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#818cf8', opacity: 0.7 }} />
+                                            <input
+                                                type="text"
+                                                placeholder="Find sections..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                style={{
+                                                    width: '100%', padding: '9px 12px 9px 32px', borderRadius: '12px',
+                                                    border: '1px solid rgba(99,102,241,0.2)', fontSize: '12.5px', outline: 'none',
+                                                    background: 'rgba(99,102,241,0.05)', color: '#e0e7ff',
+                                                    transition: 'all 0.3s ease', boxSizing: 'border-box',
+                                                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                                                }}
+                                                onFocus={e => { e.target.style.borderColor = '#6366f1'; e.target.style.boxShadow = '0 0 12px rgba(99,102,241,0.25), inset 0 2px 4px rgba(0,0,0,0.1)'; e.target.style.background = 'rgba(99,102,241,0.08)'; }}
+                                                onBlur={e => { e.target.style.borderColor = 'rgba(99,102,241,0.2)'; e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)'; e.target.style.background = 'rgba(99,102,241,0.05)'; }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                                    <div style={{ padding: '12px', background: '#f0f4f8', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#475569' }}>
-                                        Add Section
+                                    <div style={{ padding: '10px', background: 'rgba(99,102,241,0.08)', textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                        ✦ Add Section
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                                         {filteredSections.map(section => (
@@ -1758,14 +1926,16 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                                 }}
                                                 style={{
                                                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                                                    justifyContent: 'center', padding: '24px 12px', gap: '12px',
-                                                    borderBottom: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9',
-                                                    cursor: 'pointer', textAlign: 'center', transition: 'background 0.2s'
+                                                    justifyContent: 'center', padding: '22px 12px', gap: '10px',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.04)', borderRight: '1px solid rgba(255,255,255,0.04)',
+                                                    cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s ease',
+                                                    background: 'transparent'
                                                 }}
-                                                className="hover:bg-slate-50"
+                                                onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; }}
+                                                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; }}
                                             >
-                                                <div style={{ color: '#475569' }}>{section.icon}</div>
-                                                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{section.label}</span>
+                                                <div style={{ color: '#818cf8' }}>{section.icon}</div>
+                                                <span style={{ fontSize: '12px', color: '#c7d2fe', fontWeight: 500 }}>{section.label}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -1773,13 +1943,17 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <button style={{
-                            width: '100%', padding: '10px', borderRadius: '6px', background: '#f1f5f9',
-                            border: 'none', color: '#475569', fontSize: '13px', fontWeight: 600,
-                            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
-                        }}>
-                            <Settings size={16} /> Page Settings
+                            width: '100%', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)', color: '#a5b4fc', fontSize: '12px', fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                        }}
+                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                        >
+                            <Settings size={15} style={{ color: '#818cf8' }} /> Page Settings
                         </button>
                     </div>
                 </div>
@@ -1787,109 +1961,131 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                 {/* Main Canvas Area */}
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-                    {/* Graphy-Style Editing Toolbar */}
+                    {/* Floating Editing Toolbar */}
                     <AnimatePresence>
                         {selectedElement && !isCodeView && !isVisualPreview && (
                             <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{
+                                    opacity: 1,
+                                    scale: 1,
+                                    top: Math.max(70, selectedElement.rect.top - 50 + (iframeRef.current?.getBoundingClientRect().top || 0)),
+                                    left: selectedElement.rect.left + (iframeRef.current?.getBoundingClientRect().left || 0)
+                                }}
+                                exit={{ opacity: 0, scale: 0.95 }}
                                 style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    zIndex: 50,
-                                    background: '#fff',
-                                    borderBottom: '1px solid #e2e8f0',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                    position: 'fixed',
+                                    zIndex: 10000,
+                                    background: 'rgba(15, 12, 41, 0.92)',
+                                    backdropFilter: 'blur(20px)',
+                                    borderRadius: '14px',
+                                    boxShadow: '0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0.2)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    padding: '6px 16px',
-                                    gap: '2px'
+                                    padding: '6px 8px',
+                                    gap: '2px',
+                                    border: '1px solid rgba(255,255,255,0.08)'
                                 }}
                             >
                                 {/* Bold / Italic / Underline */}
-                                <button onClick={() => applyFormatting('bold')} title="Bold" style={{ padding: '7px 10px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '15px', color: '#1e293b' }}>B</button>
-                                <button onClick={() => applyFormatting('italic')} title="Italic" style={{ padding: '7px 10px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer', fontStyle: 'italic', fontSize: '15px', color: '#1e293b' }}>I</button>
-                                <button onClick={() => applyFormatting('underline')} title="Underline" style={{ padding: '7px 10px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '15px', color: '#1e293b' }}>U</button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => applyFormatting('bold')}
+                                    title="Bold"
+                                    style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '13px', color: '#c7d2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                >B</button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => applyFormatting('italic')}
+                                    title="Italic"
+                                    style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', fontStyle: 'italic', fontSize: '13px', color: '#c7d2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                >I</button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => applyFormatting('underline')}
+                                    title="Underline"
+                                    style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '13px', color: '#c7d2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                >U</button>
 
-                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 6px' }} />
+                                <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
 
-                                {/* Text Color */}
                                 <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <button title="Text Color" style={{ padding: '7px 10px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '15px', fontWeight: 700, color: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
-                                        A
-                                        <span style={{ width: '14px', height: '3px', background: '#ef4444', borderRadius: '1px', marginTop: '2px' }} />
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        title="Text Color"
+                                        style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#c7d2fe', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s ease' }}
+                                        onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'}
+                                        onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                        <span style={{ marginBottom: '-2px' }}>A</span>
+                                        <span style={{ width: '14px', height: '3px', background: 'linear-gradient(90deg, #ef4444, #f97316)', borderRadius: '2px' }} />
                                     </button>
                                     <input type="color" onChange={(e) => applyFormatting('foreColor', e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} title="Pick text color" />
                                 </div>
 
-                                {/* Background Color */}
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <button title="Highlight Color" style={{ padding: '7px 10px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                        <Palette size={16} color="#475569" />
-                                    </button>
-                                    <input type="color" onChange={(e) => applyFormatting('hiliteColor', e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} title="Pick highlight color" />
-                                </div>
-
-                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 6px' }} />
+                                <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
 
                                 {/* Heading Selector */}
                                 <select
-                                    onChange={(e) => {
-                                        if (e.target.value === 'p') {
-                                            applyFormatting('formatBlock', 'p');
-                                        } else {
-                                            applyFormatting('formatBlock', e.target.value);
-                                        }
-                                    }}
-                                    style={{ padding: '5px 8px', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#1e293b', cursor: 'pointer', fontWeight: 500, outline: 'none' }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onChange={(e) => applyFormatting('formatBlock', e.target.value)}
+                                    style={{ padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', fontSize: '11px', color: '#c7d2fe', cursor: 'pointer', fontWeight: 600, outline: 'none' }}
                                     defaultValue="p"
                                 >
-                                    <option value="p">Paragraph</option>
-                                    <option value="h1">Heading 1</option>
-                                    <option value="h2">Heading 2</option>
-                                    <option value="h3">Heading 3</option>
-                                    <option value="h4">Heading 4</option>
+                                    <option value="p">Text</option>
+                                    <option value="h1">H1</option>
+                                    <option value="h2">H2</option>
+                                    <option value="h3">H3</option>
                                 </select>
 
-                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 6px' }} />
+                                <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
 
                                 {/* Alignment */}
-                                <button onClick={() => applyFormatting('justifyLeft')} title="Align Left" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><AlignLeft size={16} color="#475569" /></button>
-                                <button onClick={() => applyFormatting('justifyCenter')} title="Align Center" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><AlignCenter size={16} color="#475569" /></button>
-                                <button onClick={() => applyFormatting('justifyRight')} title="Align Right" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><AlignRight size={16} color="#475569" /></button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormatting('justifyLeft')} title="Align Left" style={{ padding: '5px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'none'}><AlignLeft size={15} color="#a5b4fc" /></button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormatting('justifyCenter')} title="Align Center" style={{ padding: '5px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'none'}><AlignCenter size={15} color="#a5b4fc" /></button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={() => applyFormatting('justifyRight')} title="Align Right" style={{ padding: '5px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'none'}><AlignRight size={15} color="#a5b4fc" /></button>
 
-                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 6px' }} />
+                                <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
 
-                                {/* Link */}
-                                <button onClick={() => {
-                                    const url = prompt('Enter URL:');
-                                    if (url) applyFormatting('createLink', url);
-                                }} title="Insert Link" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><LinkIcon size={16} color="#475569" /></button>
-
-                                {/* More Options */}
-                                <button onClick={() => applyFormatting('removeFormat')} title="Clear Formatting" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><MoreHorizontal size={16} color="#475569" /></button>
-
-                                <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 6px' }} />
-
-                                {/* Undo / Redo */}
-                                <button onClick={() => applyFormatting('undo')} title="Undo" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><RotateCcw size={16} color="#475569" /></button>
-                                <button onClick={() => applyFormatting('redo')} title="Redo" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><RotateCcw size={16} color="#475569" style={{ transform: 'scaleX(-1)' }} /></button>
-
-                                {/* Spacer */}
-                                <div style={{ flex: 1 }} />
-
-                                {/* Image Change (conditional) */}
+                                {/* Image Change */}
                                 {selectedElement.isImage && (
-                                    <button onClick={() => toast.info('Image uploader coming soon!')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', border: 'none', background: '#4f46e5', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                        <ImageIcon size={14} /> Change Image
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            const newSrc = prompt('Enter new image URL:', selectedElement.src);
+                                            if (newSrc && iframeRef.current) {
+                                                iframeRef.current.contentWindow.postMessage({ type: 'UPDATE_IMAGE', src: newSrc }, '*');
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(99,102,241,0.4)' }}
+                                    >
+                                        <ImageIcon size={14} /> Replace
                                     </button>
                                 )}
 
+                                {!selectedElement.isImage && (
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            const url = prompt('Link URL:');
+                                            if (url) applyFormatting('createLink', url);
+                                        }}
+                                        style={{ padding: '5px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', transition: 'all 0.15s ease' }}
+                                        onMouseOver={e => e.currentTarget.style.background = 'rgba(99,102,241,0.2)'}
+                                        onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                    ><LinkIcon size={15} color="#a5b4fc" /></button>
+                                )}
+
+                                <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
+
                                 {/* Close */}
-                                <button onClick={() => setSelectedElement(null)} title="Close Toolbar" style={{ padding: '7px', borderRadius: '4px', border: 'none', background: 'none', cursor: 'pointer' }}><X size={16} color="#94a3b8" /></button>
+                                <button onClick={() => setSelectedElement(null)} title="Close" style={{ padding: '5px', borderRadius: '8px', border: 'none', background: 'none', cursor: 'pointer', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'} onMouseOut={e => e.currentTarget.style.background = 'none'}><X size={15} color="#f87171" /></button>
                             </motion.div>
                         )}
 
@@ -1908,67 +2104,138 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                 }}
                             >
                                 <div style={{
-                                    background: '#4f46e5', borderRadius: '4px', display: 'flex',
-                                    flexDirection: 'column', padding: '2px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                                    background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)', borderRadius: '12px', display: 'flex',
+                                    flexDirection: 'column', padding: '3px', boxShadow: '0 8px 20px rgba(99,102,241,0.35)'
                                 }}>
-                                    <button title="Move Up" onClick={() => toast.info('Move Up coming soon!')} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="hover:bg-indigo-600">
+                                    <button title="Move Up" onClick={() => selectedElement.sectionId && handleMoveSection(selectedElement.sectionId, 'up')} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.9)', borderRadius: '8px', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseOut={e => e.currentTarget.style.background = 'none'}>
                                         <ChevronUp size={14} />
                                     </button>
-                                    <button title="Move Down" onClick={() => toast.info('Move Down coming soon!')} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="hover:bg-indigo-600">
+                                    <button title="Move Down" onClick={() => selectedElement.sectionId && handleMoveSection(selectedElement.sectionId, 'down')} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.9)', borderRadius: '8px', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseOut={e => e.currentTarget.style.background = 'none'}>
                                         <ChevronDown size={14} />
                                     </button>
                                     <div style={{ height: '1px', background: 'rgba(255,255,255,0.2)', margin: '2px 0' }} />
-                                    <button title="Add Above" style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="hover:bg-indigo-600">
+                                    <button title="Add Above" onClick={() => { setActiveInsertTarget({ id: selectedElement.sectionId, position: 'above' }); setIsAddingSection(true); }} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.9)', borderRadius: '8px', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseOut={e => e.currentTarget.style.background = 'none'}>
                                         <Plus size={14} />
                                     </button>
-                                    <button title="Settings" style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="hover:bg-indigo-600">
+                                    <button title="Settings" onClick={() => setIsSettingsOpen(true)} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.9)', borderRadius: '8px', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseOut={e => e.currentTarget.style.background = 'none'}>
                                         <Settings size={14} />
                                     </button>
-                                    <button title="Delete" onClick={() => toast.info('Delete functionality coming soon!')} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="hover:bg-red-500">
+                                    <button title="Delete" onClick={() => selectedElement.sectionId && handleRemoveSection(selectedElement.sectionId)} style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', borderRadius: '8px', transition: 'all 0.15s ease' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'none'}>
                                         <Trash2 size={14} />
                                     </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {isSettingsOpen && selectedElement?.sectionId && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, x: 20 }}
+                                style={{
+                                    position: 'absolute', right: '20px', top: '20px', width: '280px',
+                                    background: 'rgba(15, 12, 41, 0.98)', backdropFilter: 'blur(16px)',
+                                    borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)',
+                                    boxShadow: '0 20px 50px rgba(0,0,0,0.5)', zIndex: 60,
+                                    padding: '20px', color: '#fff'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                                    <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Section Settings</h3>
+                                    <button onClick={() => setIsSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'block' }}>Background Color</label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                                            {['#ffffff', '#f8fafc', '#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#000000', 'transparent'].map(color => (
+                                                <button
+                                                    key={color}
+                                                    onClick={() => handleUpdateSectionStyles(selectedElement.sectionId, { backgroundColor: color })}
+                                                    style={{
+                                                        width: '100%', height: '30px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)',
+                                                        background: color === 'transparent' ? 'linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)' : color,
+                                                        backgroundSize: '10px 10px', backgroundPosition: '0 0, 5px 5px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                />
+                                            ))}
+                                            <input
+                                                type="color"
+                                                onChange={(e) => handleUpdateSectionStyles(selectedElement.sectionId, { backgroundColor: e.target.value })}
+                                                style={{ width: '100%', height: '30px', borderRadius: '6px', border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'block' }}>Vertical Padding</label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            {[0, 40, 80, 120, 160].map(p => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => handleUpdateSectionStyles(selectedElement.sectionId, { paddingTop: `${p}px`, paddingBottom: `${p}px` })}
+                                                    style={{ flex: 1, padding: '6px 0', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', cursor: 'pointer' }}
+                                                >{p}px</button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '10px', padding: '12px', background: 'rgba(99,102,241,0.05)', borderRadius: '12px', border: '1px dashed rgba(99,102,241,0.2)' }}>
+                                        <p style={{ fontSize: '11px', color: '#a5b4fc', margin: 0, textAlign: 'center' }}>Professional themes unlock advanced grid & layout settings</p>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
 
                     {isCodeView ? (
-                        <div style={{ flex: 1, display: 'flex', background: '#0f172a' }}>
-                            <textarea
-                                value={htmlCode}
-                                onChange={(e) => setHtmlCode(e.target.value)}
-                                style={{
-                                    flex: 1, background: 'transparent', color: '#e2e8f0', padding: '24px',
-                                    fontFamily: 'JetBrains Mono, Menlo, monospace', fontSize: '14px',
-                                    border: 'none', outline: 'none', resize: 'none', borderRight: '1px solid #1e293b'
-                                }}
-                                spellCheck="false"
-                            />
-                            <textarea
-                                value={cssCode}
-                                onChange={(e) => setCssCode(e.target.value)}
-                                style={{
-                                    flex: 1, background: 'transparent', color: '#e2e8f0', padding: '24px',
-                                    fontFamily: 'JetBrains Mono, Menlo, monospace', fontSize: '14px',
-                                    border: 'none', outline: 'none', resize: 'none'
-                                }}
-                                spellCheck="false"
-                            />
+                        <div style={{ flex: 1, display: 'flex', background: 'rgba(10,8,30,0.95)' }}>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                                <div style={{ position: 'absolute', top: '8px', left: '12px', fontSize: '10px', fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.7 }}>HTML</div>
+                                <textarea
+                                    value={htmlCode}
+                                    onChange={(e) => setHtmlCode(e.target.value)}
+                                    style={{
+                                        width: '100%', height: '100%', background: 'transparent', color: '#c7d2fe', padding: '32px 24px 24px',
+                                        fontFamily: 'JetBrains Mono, Fira Code, Menlo, monospace', fontSize: '13px',
+                                        border: 'none', outline: 'none', resize: 'none', borderRight: '1px solid rgba(255,255,255,0.06)'
+                                    }}
+                                    spellCheck="false"
+                                />
+                            </div>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                                <div style={{ position: 'absolute', top: '8px', left: '12px', fontSize: '10px', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.7 }}>CSS</div>
+                                <textarea
+                                    value={cssCode}
+                                    onChange={(e) => setCssCode(e.target.value)}
+                                    style={{
+                                        width: '100%', height: '100%', background: 'transparent', color: '#a5f3fc', padding: '32px 24px 24px',
+                                        fontFamily: 'JetBrains Mono, Fira Code, Menlo, monospace', fontSize: '13px',
+                                        border: 'none', outline: 'none', resize: 'none'
+                                    }}
+                                    spellCheck="false"
+                                />
+                            </div>
                         </div>
                     ) : (
                         <div style={{
-                            flex: 1, padding: '40px', overflow: 'auto', display: 'flex', justifyContent: 'center',
-                            background: '#f1f5f9'
+                            flex: 1, padding: '30px', overflow: 'auto', display: 'flex', justifyContent: 'center',
+                            background: 'linear-gradient(180deg, rgba(15,12,41,0.3) 0%, rgba(26,26,62,0.5) 100%)',
+                            backgroundImage: 'radial-gradient(rgba(99,102,241,0.03) 1px, transparent 1px)',
+                            backgroundSize: '20px 20px'
                         }}>
                             <div style={{
                                 width: deviceWidths[activeDevice], height: 'fit-content', minHeight: '100%',
-                                background: '#fff', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-                                borderRadius: activeDevice === 'desktop' ? '0' : '12px',
-                                transition: 'width 0.3s ease', position: 'relative', overflow: 'hidden'
+                                background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
+                                borderRadius: activeDevice === 'desktop' ? '8px' : '16px',
+                                transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)', position: 'relative', overflow: 'hidden'
                             }}>
                                 <iframe
                                     ref={iframeRef}
                                     style={{ width: '100%', height: '100%', border: 'none', minHeight: '800px' }}
+                                    srcDoc={iframeContent}
                                     title="Page Preview"
                                 />
 
@@ -1976,18 +2243,24 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                                 {!isVisualPreview && (
                                     <div style={{ position: 'absolute', top: '100px', right: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         <button style={{
-                                            width: '40px', height: '40px', borderRadius: '4px', background: '#0ea5e9',
+                                            width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #06b6d4, #0284c7)',
                                             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
-                                            cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
-                                        }}>
-                                            <Settings2 size={20} />
+                                            cursor: 'pointer', boxShadow: '0 4px 12px rgba(6,182,212,0.35)', transition: 'all 0.2s ease'
+                                        }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                        >
+                                            <Settings2 size={18} />
                                         </button>
                                         <button style={{
-                                            width: '40px', height: '40px', borderRadius: '4px', background: '#f43f5e',
+                                            width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #f43f5e, #e11d48)',
                                             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
-                                            cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
-                                        }}>
-                                            <X size={20} />
+                                            cursor: 'pointer', boxShadow: '0 4px 12px rgba(244,63,94,0.35)', transition: 'all 0.2s ease'
+                                        }}
+                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                        >
+                                            <X size={18} />
                                         </button>
                                     </div>
                                 )}
@@ -1997,95 +2270,106 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                 </div>
 
                 {/* Template Gallery Overlay */}
-                <AnimatePresence>
+                <AnimatePresence mode="wait">
                     {activeTemplateCategory && (
                         <motion.div
+                            key={activeTemplateCategory}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             style={{
-                                position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.4)',
-                                backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex',
+                                position: 'absolute', inset: 0, background: 'rgba(5, 3, 20, 0.6)',
+                                backdropFilter: 'blur(12px)', zIndex: 100, display: 'flex',
                                 alignItems: 'center', justifyContent: 'center', padding: '40px'
                             }}
                             onClick={() => setActiveTemplateCategory(null)}
                         >
                             <motion.div
-                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                initial={{ scale: 0.92, opacity: 0, y: 30 }}
                                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                exit={{ scale: 0.92, opacity: 0, y: 30 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
-                                    width: '100%', maxWidth: '1000px', height: '85vh', background: '#fff',
-                                    borderRadius: '16px', display: 'flex', flexDirection: 'column',
-                                    overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                                    width: '100%', maxWidth: '1000px', height: '85vh', background: 'rgba(15, 12, 41, 0.95)',
+                                    borderRadius: '20px', display: 'flex', flexDirection: 'column',
+                                    overflow: 'hidden', boxShadow: '0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.15)',
+                                    border: '1px solid rgba(255,255,255,0.06)'
                                 }}
                             >
                                 <div style={{
-                                    padding: '24px 32px', borderBottom: '1px solid #e2e8f0',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                                    padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.05) 100%)'
                                 }}>
                                     <div>
-                                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                                            Choose a {activeTemplateCategory.charAt(0).toUpperCase() + activeTemplateCategory.slice(1)} Template
+                                        <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#e0e7ff', margin: 0 }}>
+                                            ✦ Choose a {activeTemplateCategory.charAt(0).toUpperCase() + activeTemplateCategory.slice(1)} Template
                                         </h2>
-                                        <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0' }}>
+                                        <p style={{ fontSize: '13px', color: '#818cf8', margin: '6px 0 0' }}>
                                             Select a layout to instantly apply it to your page.
                                         </p>
                                     </div>
                                     <button
                                         onClick={() => setActiveTemplateCategory(null)}
                                         style={{
-                                            width: '40px', height: '40px', borderRadius: '50%', border: 'none',
-                                            background: '#f1f5f9', color: '#64748b', display: 'flex',
-                                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                                            width: '36px', height: '36px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)',
+                                            background: 'rgba(255,255,255,0.06)', color: '#a5b4fc', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
                                         }}
-                                        className="hover:bg-slate-200"
+                                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
+                                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#a5b4fc'; }}
                                     >
-                                        <X size={20} />
+                                        <X size={18} />
                                     </button>
                                 </div>
 
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#f8fafc' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '32px' }}>
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '28px', background: 'rgba(10,8,30,0.5)' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: '24px' }}>
                                         {templates[activeTemplateCategory]?.map(template => (
                                             <div
                                                 key={template.id}
                                                 onClick={() => handleApplyTemplate(template)}
                                                 style={{
-                                                    background: '#fff', borderRadius: '12px', overflow: 'hidden',
-                                                    border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s'
+                                                    background: 'rgba(255,255,255,0.03)', borderRadius: '14px', overflow: 'hidden',
+                                                    border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'all 0.3s ease'
                                                 }}
-                                                className="hover:shadow-xl hover:-translate-y-1"
+                                                onMouseOver={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(99,102,241,0.15)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                                                onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
                                             >
-                                                <div style={{ position: 'relative', paddingTop: '65%', borderBottom: '1px solid #f1f5f9' }}>
+                                                <div style={{ position: 'relative', paddingTop: '60%', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                                     <img
                                                         src={template.preview}
                                                         alt={template.title}
                                                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                                                     />
                                                     <div style={{
-                                                        position: 'absolute', inset: 0, background: 'rgba(79, 70, 229, 0.1)',
-                                                        opacity: 0, transition: 'opacity 0.2s', display: 'flex',
+                                                        position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2))',
+                                                        opacity: 0, transition: 'opacity 0.3s ease', display: 'flex',
                                                         alignItems: 'center', justifyContent: 'center'
-                                                    }} className="hover:opacity-100">
+                                                    }}
+                                                        onMouseOver={e => e.currentTarget.style.opacity = '1'}
+                                                        onMouseOut={e => e.currentTarget.style.opacity = '0'}
+                                                    >
                                                         <span style={{
-                                                            background: '#4f46e5', color: '#fff', padding: '8px 20px',
-                                                            borderRadius: '6px', fontWeight: 600, fontSize: '13px'
+                                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', padding: '10px 24px',
+                                                            borderRadius: '10px', fontWeight: 700, fontSize: '12px', boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+                                                            letterSpacing: '0.02em'
                                                         }}>Apply Template</span>
                                                     </div>
                                                 </div>
-                                                <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '15px' }}>{template.title}</span>
-                                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                                                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <span style={{ fontWeight: 600, color: '#e0e7ff', fontSize: '13px' }}>{template.title}</span>
+                                                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.4)' }} />
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                     {(!templates[activeTemplateCategory] || templates[activeTemplateCategory].length === 0) && (
-                                        <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-                                            <Layout size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                                            <p>No templates available for this category yet.</p>
+                                        <div style={{ textAlign: 'center', padding: '60px 0', color: '#6366f1' }}>
+                                            <Layout size={48} style={{ marginBottom: '16px', opacity: 0.4 }} />
+                                            <p style={{ color: '#818cf8', fontSize: '14px' }}>No templates available for this category yet.</p>
                                         </div>
                                     )}
                                 </div>
@@ -2094,7 +2378,7 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                     )}
                 </AnimatePresence>
             </div>
-        </div>
+        </div >
     );
 };
 

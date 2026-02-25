@@ -1057,6 +1057,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
             display: flex; align-items: center;
             justify-content: space-between;
             padding: 0 16px; min-height: 48px;
+            gap: 20px;
           }
           .navbar-brand {
             color: #fff; font-weight: 700; font-size: 16px;
@@ -1143,9 +1144,9 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
           .gp-cart-badge { position:absolute; top:-8px; right:-10px; background:#ef4444; color:#fff; border-radius:50%; width:20px; height:20px; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
 
           /* Search */
-          .gp-search { display:flex; gap:0; border:2px solid #e2e8f0; border-radius:8px; overflow:hidden; }
-          .gp-search-input { flex:1; padding:10px 16px; border:none; outline:none; font-size:14px; }
-          .gp-search-btn { padding:10px 16px; border:none; background:#4f46e5; cursor:pointer; font-size:16px; }
+          .gp-search { display:flex; gap:0; border:2px solid #e2e8f0; border-radius:8px; overflow:hidden; background:#fff; flex:1; max-width:400px; margin:0 auto; }
+          .gp-search-input { flex:1; padding:10px 16px; border:none; outline:none; font-size:14px; background:transparent; }
+          .gp-search-btn { padding:10px 16px; border:none; background:#4f46e5; cursor:pointer; font-size:16px; color:#fff; }
           .gp-search-btn:hover { background:#4338ca; }
 
           /* Link */
