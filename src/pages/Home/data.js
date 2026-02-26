@@ -64,7 +64,7 @@ export const recentActivities = {
             date: "2024-12-28",
             status: "Active",
             progress: 75,
-            avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice"
+            avatar: "https://ui-avatars.com/api/?name=Alice"
         },
         {
             id: 2,
@@ -74,7 +74,7 @@ export const recentActivities = {
             date: "2024-12-27",
             status: "Active",
             progress: 32,
-            avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob"
+            avatar: "https://ui-avatars.com/api/?name=Bob"
         },
         {
             id: 3,
@@ -94,7 +94,7 @@ export const recentActivities = {
             date: "2024-12-25",
             status: "Active",
             progress: 90,
-            avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Diana"
+            avatar: "https://ui-avatars.com/api/?name=Diana"
         },
         {
             id: 5,
@@ -104,7 +104,7 @@ export const recentActivities = {
             date: "2024-12-24",
             status: "Inactive",
             progress: 12,
-            avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Evan"
+            avatar: "https://ui-avatars.com/api/?name=Evan"
         },
     ],
     payments: [
@@ -191,10 +191,10 @@ export const popularCourses = [
 ];
 
 export const bestInstructors = [
-    { id: 1, name: "Nil Yeager", role: "Design Course", courseCount: 5, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nil" },
-    { id: 2, name: "Theron Trump", role: "Design Course", courseCount: 8, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Theron" },
-    { id: 3, name: "Tyler Mark", role: "Design Course", courseCount: 12, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tyler" },
-    { id: 4, name: "Johen Mark", role: "Design Course", courseCount: 3, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Johen" },
+    { id: 1, name: "Nil Yeager", role: "Design Course", courseCount: 5, avatar: "https://ui-avatars.com/api/?name=Nil" },
+    { id: 2, name: "Theron Trump", role: "Design Course", courseCount: 8, avatar: "https://ui-avatars.com/api/?name=Theron" },
+    { id: 3, name: "Tyler Mark", role: "Design Course", courseCount: 12, avatar: "https://ui-avatars.com/api/?name=Tyler" },
+    { id: 4, name: "Johen Mark", role: "Design Course", courseCount: 3, avatar: "https://ui-avatars.com/api/?name=Johen" },
 ];
 
 export const upcomingWebinars = [

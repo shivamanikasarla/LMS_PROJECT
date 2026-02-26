@@ -1,5 +1,7 @@
 const API_BASE = '/website/themes';
 const SEO_BASE = '/website/seo';
+const HEADER_BASE = '/website/header';
+const SETTINGS_BASE = '/website/settings';
 
 // Helper to get auth token
 const getAuthToken = () => {
@@ -203,10 +205,25 @@ export const websiteService = {
     // ROBOTS.TXT — Save
     // =========================================
     saveRobots: async (tenantThemeId, robotsContent) => {
-        return fetchWithAuthText(`${SEO_BASE}/${tenantThemeId}/robots`, {
+        const token = getAuthToken();
+        const headers = {
+            'Content-Type': 'text/plain',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${SEO_BASE}/${tenantThemeId}/robots`, {
             method: 'PUT',
-            body: JSON.stringify(robotsContent),
+            headers,
+            body: robotsContent,
         });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || `HTTP ${response.status}`);
+        }
+        return response.text();
     },
 
     // =========================================
@@ -261,6 +278,151 @@ export const websiteService = {
     deleteSitemap: async (tenantThemeId) => {
         return fetchWithAuth(`${SEO_BASE}/${tenantThemeId}/sitemap`, {
             method: 'DELETE',
+        });
+    },
+
+    // =========================================
+    // CUSTOM HEADER — Save (creates a new tenant_header row)
+    // Returns the headerId (Long)
+    // =========================================
+    saveCustomHeader: async (headerConfigJson) => {
+        return fetchWithAuth(`${HEADER_BASE}/save`, {
+            method: 'POST',
+            body: typeof headerConfigJson === 'string' ? headerConfigJson : JSON.stringify(headerConfigJson),
+        });
+    },
+
+    // =========================================
+    // CUSTOM HEADER — List all saved headers
+    // =========================================
+    listCustomHeaders: async () => {
+        return fetchWithAuth(`${HEADER_BASE}/list`);
+    },
+
+    // =========================================
+    // CUSTOM HEADER — Apply a saved header to a theme
+    // =========================================
+    applyCustomHeader: async (tenantThemeId, headerId) => {
+        return fetchWithAuth(`${HEADER_BASE}/apply?tenantThemeId=${tenantThemeId}&headerId=${headerId}`, {
+            method: 'POST',
+        });
+    },
+
+    // =========================================
+    // CUSTOM HEADER — Revert to default header
+    // =========================================
+    revertHeaderToDefault: async (tenantThemeId) => {
+        return fetchWithAuth(`${HEADER_BASE}/revert?tenantThemeId=${tenantThemeId}`, {
+            method: 'POST',
+        });
+    },
+
+    // =========================================
+    // CUSTOM HEADER — Export as ZIP (html + css)
+    // =========================================
+    exportHeader: async (html, css) => {
+        const token = getAuthToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${HEADER_BASE}/export`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ html, css }),
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || `HTTP ${response.status}`);
+        }
+        return response.blob();
+    },
+
+    // =========================================
+    // SETTINGS — Get all settings
+    // =========================================
+    getSettings: async () => {
+        return fetchWithAuth(`${SETTINGS_BASE}`);
+    },
+
+    // =========================================
+    // SETTINGS — Update site name
+    // =========================================
+    updateSiteName: async (siteName) => {
+        const token = getAuthToken();
+        const headers = { 'Content-Type': 'text/plain' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${SETTINGS_BASE}/site-name`, {
+            method: 'PUT',
+            headers,
+            body: siteName,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    },
+
+    // =========================================
+    // SETTINGS — Upload logo
+    // =========================================
+    uploadLogo: async (file) => {
+        const token = getAuthToken();
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${SETTINGS_BASE}/logo`, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    },
+
+    // =========================================
+    // SETTINGS — Upload favicon
+    // =========================================
+    uploadFavicon: async (file) => {
+        const token = getAuthToken();
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${SETTINGS_BASE}/favicon`, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    },
+
+    // =========================================
+    // SETTINGS — Update footfall enabled
+    // =========================================
+    updateFootfall: async (enabled) => {
+        return fetchWithAuth(`${SETTINGS_BASE}/footfall`, {
+            method: 'PUT',
+            body: JSON.stringify(enabled),
+        });
+    },
+
+    // =========================================
+    // SETTINGS — Update store theme
+    // =========================================
+    updateStoreTheme: async (viewType, storeConfigJson) => {
+        return fetchWithAuth(`${SETTINGS_BASE}/store?viewType=${viewType}`, {
+            method: 'PUT',
+            body: storeConfigJson ? JSON.stringify(storeConfigJson) : undefined,
         });
     },
 };

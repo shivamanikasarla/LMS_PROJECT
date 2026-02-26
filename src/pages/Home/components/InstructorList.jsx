@@ -22,7 +22,7 @@ const InstructorList = ({ instructors }) => {
                         {instructor.avatar ? (
                             <img src={instructor.avatar} alt={instructor.name} className="instructor-avatar" />
                         ) : (
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${instructor.name}`} alt={instructor.name} className="instructor-avatar" />
+                            <img src={`https://ui-avatars.com/api/?name=${instructor.name}&background=random&color=fff`} alt={instructor.name} className="instructor-avatar" />
                         )}
                         <div className="instructor-info">
                             <h4 className="instructor-name">{instructor.name}</h4>

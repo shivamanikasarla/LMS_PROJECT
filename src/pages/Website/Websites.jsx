@@ -81,8 +81,8 @@ const useThemeManager = () => {
           name: template.name,
           image: template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
           color: '#8b5cf6',
-          status: rawStatus || (isVisible ? 'draft' : 'draft'),
-          isVisible: isVisible,
+          status: rawStatus || 'draft',
+          isVisible: rawStatus === 'live' ? true : isVisible,
           tenantThemeId: template.tenant_theme_id || storedTenantThemeId || null
         };
       });
@@ -122,6 +122,16 @@ const useThemeManager = () => {
       return;
     }
 
+    // If theme already has a tenantThemeId, just make it visible (don't create duplicate)
+    if (theme.tenantThemeId) {
+      console.log("ℹ️ Theme already applied (tenantThemeId:", theme.tenantThemeId, "). Just making it visible.");
+      if (!visibleThemeIds.includes(id)) {
+        setVisibleThemeIds(prev => [...prev, id]);
+      }
+      toast.success("Theme added to workspace");
+      return;
+    }
+
     try {
       const response = await websiteService.applyTheme(theme.themeTemplateId);
 
@@ -129,6 +139,8 @@ const useThemeManager = () => {
       let newTenantThemeId = null;
       if (response && typeof response === 'object' && response.tenantThemeId) {
         newTenantThemeId = response.tenantThemeId;
+      } else if (response && typeof response === 'object' && response.tenant_theme_id) {
+        newTenantThemeId = response.tenant_theme_id;
       } else if (response && typeof response === 'string' && response.match(/\d+/)) {
         // Fallback for string response containing ID
         const match = response.match(/(\d+)/);
@@ -169,14 +181,31 @@ const useThemeManager = () => {
 
   const publishTheme = async (tenantThemeId) => {
     if (!tenantThemeId) {
-      toast.error('No theme to publish');
+      toast.error('No theme to publish. Please apply a theme first.');
+      return;
+    }
+
+    // Confirmation dialog
+    const currentLive = themes.find(t => t.status === 'live');
+    const confirmMsg = currentLive
+      ? `Are you sure you want to publish this theme as LIVE?\n\nThe currently live theme "${currentLive.name}" will be set to Draft.`
+      : 'Are you sure you want to publish this theme as LIVE?';
+
+    if (!window.confirm(confirmMsg)) {
       return;
     }
 
     try {
       await websiteService.publishTheme(tenantThemeId);
       toast.success("Theme published as LIVE!");
-      // Refresh themes
+
+      // Ensure the published theme stays visible in tabs
+      const publishedTheme = themes.find(t => t.tenantThemeId === tenantThemeId);
+      if (publishedTheme && !visibleThemeIds.includes(publishedTheme.id)) {
+        setVisibleThemeIds(prev => [...prev, publishedTheme.id]);
+      }
+
+      // Refresh themes from backend to get updated statuses (new LIVE, old becomes DRAFT)
       await fetchThemes();
     } catch (error) {
       console.error('Error publishing theme:', error);
@@ -955,7 +984,7 @@ const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }
 
 
 const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
-  const { themes, liveTheme, loading: themesLoading } = useThemeManager();
+  const { themes, liveTheme, applyTheme, refreshThemes, loading: themesLoading } = useThemeManager();
 
   // Use passed ID or fallback to the live theme's tenant ID
   const activeId = tenantThemeId || liveTheme?.tenantThemeId;
@@ -1137,14 +1166,16 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
           <Globe size={48} className="text-amber-500" />
         </div>
         <h3 className="font-bold text-slate-800 mb-2">No Active Context</h3>
-        <p className="text-slate-500 mb-4">Please apply a theme or select one from below to manage its navigation settings.</p>
+        <p className="text-slate-500 mb-4">Click a theme below to apply it and manage its navigation settings.</p>
 
         <div className="list-group text-start">
           {themes.map(t => (
             <button key={t.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-              onClick={() => {
+              onClick={async () => {
+                // Apply the theme to get a tenantThemeId, then select it
+                await applyTheme(t.id);
                 setSelectedThemeId(t.id);
-                toast.success(`Context switched to ${t.name}`);
+                toast.success(`Applied & switched to ${t.name}`);
               }}>
               <span>{t.name}</span>
               <span className={`badge ${t.status === 'live' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span>
@@ -1345,23 +1376,7 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
         </div>
       </motion.div>
 
-      {/* Code Editor Modal */}
-      <AnimatePresence>
-        {isCodeEditorOpen && (
-          <HeaderCodeEditorModal
-            isOpen={isCodeEditorOpen}
-            onClose={() => setCodeEditorOpen(false)}
-            initialHtml={headerConfig.customHtml || '<!-- Default Header HTML -->\n<header class="custom-header">\n  <div class="logo">My Logo</div>\n  <nav>\n    <a href="/">Home</a>\n    <a href="/courses">Courses</a>\n  </nav>\n</header>'}
-            initialCss={headerConfig.customCss || '/* Custom Header CSS */\n.custom-header {\n  display: flex;\n  justify-content: space-between;\n  padding: 20px;\n  background: #fff;\n  box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n}\n\n.logo {\n  font-weight: bold;\n  font-size: 24px;\n}'}
-            onSave={(html, css) => {
-              updateHeaderConfig('customHtml', html);
-              updateHeaderConfig('customCss', css);
-              setCodeEditorOpen(false);
-              toast.success("Custom Header Saved!");
-            }}
-          />
-        )}
-      </AnimatePresence>
+
 
 
 
@@ -1452,28 +1467,51 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
               updateHeaderConfig('customHtml', html);
               updateHeaderConfig('customCss', css);
               setCodeEditorOpen(false);
-              // Also save to backend
+              // Save to backend via new Header API (save → apply)
               if (tenantThemeId) {
                 try {
-                  const headerPayload = {
-                    config: { ...headerConfig, customHtml: html, customCss: css },
-                    links: headerLinks
-                  };
-                  await websiteService.saveHeader(tenantThemeId, JSON.stringify(headerPayload));
-                  toast.success("Custom Header saved to server!");
+                  // Step 1: Save header config to tenant_headers table
+                  const headerPayload = JSON.stringify({
+                    custom: { html, css },
+                    isCustomHeader: true,
+                    builder: null
+                  });
+                  const headerId = await websiteService.saveCustomHeader(headerPayload);
+                  console.log("✅ Custom header saved, headerId:", headerId);
+
+                  // Step 2: Apply the saved header to the current theme
+                  if (headerId) {
+                    await websiteService.applyCustomHeader(tenantThemeId, headerId);
+                    console.log("✅ Header applied to theme:", tenantThemeId);
+                    toast.success("Custom Header saved & applied to theme!");
+                  } else {
+                    toast.success("Custom Header saved!");
+                  }
                 } catch (err) {
                   console.error('Failed to save header to backend:', err);
                   toast.warning("Header saved locally. Backend save failed: " + err.message);
                 }
               } else {
-                toast.success("Custom Header Saved!");
+                toast.success("Custom Header Saved locally!");
               }
             }}
-            onUnpublish={() => {
-              if (window.confirm("Are you sure you want to unpublish the custom header? This will revert to the default header.")) {
+            onUnpublish={async () => {
+              if (window.confirm("Are you sure you want to revert to the default header? This will unpublish the custom header.")) {
+                // Revert on backend first
+                if (tenantThemeId) {
+                  try {
+                    await websiteService.revertHeaderToDefault(tenantThemeId);
+                    console.log("✅ Header reverted to default on backend");
+                    toast.success("Reverted to default header!");
+                  } catch (err) {
+                    console.error('Failed to revert header:', err);
+                    toast.warning("Reverted locally. Backend revert failed: " + err.message);
+                  }
+                }
                 updateHeaderConfig('customHeader', 'no');
+                updateHeaderConfig('customHtml', '');
+                updateHeaderConfig('customCss', '');
                 setCodeEditorOpen(false);
-                toast.info("Custom Header Unpublished. Reverted to default.");
               }
             }}
           />
@@ -1488,7 +1526,7 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
 
 
 const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
-  const { themes, liveTheme, loading: themesLoading } = useThemeManager();
+  const { themes, liveTheme, applyTheme, loading: themesLoading } = useThemeManager();
 
   // Use passed ID or fallback to the live theme's tenant ID
   const activeId = tenantThemeId || liveTheme?.tenantThemeId;
@@ -1510,77 +1548,46 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
     if (!activeId) return;
 
     const fetchData = async () => {
-      setLoading(true);
       try {
-        // Fetch SEO Config
-        const seoData = await websiteService.getSeo(activeId);
-        if (seoData) {
+        // Fetch SEO Config and Robots.txt in parallel for speed
+        const [seoData, robots] = await Promise.allSettled([
+          websiteService.getSeo(activeId),
+          websiteService.getRobots(activeId),
+        ]);
+
+        // Parse SEO Config
+        if (seoData.status === 'fulfilled' && seoData.value) {
           try {
-            const parsed = typeof seoData === 'string' ? JSON.parse(seoData) : seoData;
+            const parsed = typeof seoData.value === 'string' ? JSON.parse(seoData.value) : seoData.value;
             if (Array.isArray(parsed)) {
               setSeoPages(parsed);
             } else if (parsed && typeof parsed === 'object') {
-              const newPages = seoPages.map(page => ({
+              setSeoPages(prev => prev.map(page => ({
                 ...page,
                 ...(parsed[page.id] || {})
-              }));
-              setSeoPages(newPages);
+              })));
             }
           } catch (e) {
             console.warn('Failed to parse SEO data:', e);
           }
         }
 
-        // Fetch Robots.txt
-        const robots = await websiteService.getRobots(activeId);
-        if (robots) setRobotsTxt(robots);
-
-        // Fetch Sitemap
-        const sitemap = await websiteService.getSitemap(activeId);
-        if (sitemap) setSitemapFile({ name: sitemap.split('/').pop(), path: sitemap });
-
+        // Set Robots.txt
+        if (robots.status === 'fulfilled' && robots.value) {
+          setRobotsTxt(robots.value);
+        }
       } catch (err) {
         console.warn('Failed to fetch SEO data:', err.message);
-      } finally {
-        setLoading(false);
       }
     };
 
-    if (activeId) fetchData();
+    fetchData();
   }, [activeId]);
 
   const updatePageSeo = (id, field, value) => {
     setSeoPages(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
-  // --- Actions ---
-  const handleSave = async () => {
-    if (!activeId) {
-      toast.error("No active theme found to save to.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Save header
-      await websiteService.saveHeader(activeId, JSON.stringify({
-        config: headerConfig,
-        links: headerLinks
-      }));
-
-      // Save footer
-      await websiteService.saveFooter(activeId, JSON.stringify({
-        config: footerConfig,
-        links: footerLinks
-      }));
-
-      toast.success("Navigation settings saved!");
-    } catch (err) {
-      toast.error("Failed to save: " + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleSaveSeo = async (pageId) => {
     if (!activeId) {
@@ -1613,11 +1620,8 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
     const file = e.target.files[0];
     if (!file || !activeId) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      await websiteService.uploadSitemap(activeId, formData);
+      await websiteService.uploadSitemap(activeId, file);
       setSitemapFile({ name: file.name });
       toast.success("Sitemap uploaded!");
     } catch (err) {
@@ -1712,9 +1716,10 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
           <div className="list-group text-start">
             {themes.map(t => (
               <button key={t.id} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                onClick={() => {
+                onClick={async () => {
+                  await applyTheme(t.id);
                   setSelectedThemeId(t.id);
-                  toast.success(`Managing SEO for ${t.name}`);
+                  toast.success(`Applied & managing SEO for ${t.name}`);
                 }}>
                 <span>{t.name}</span>
                 <span className={`badge ${t.status === 'live' ? 'bg-success' : 'bg-secondary'}`}>{t.status}</span>
@@ -1735,9 +1740,7 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
         </p>
       </motion.div>
 
-      {loading ? (
-        <div className="p-5 text-center text-slate-500">Loading SEO configurations...</div>
-      ) : (
+      {(
         <div className="row g-4">
           {seoPages.map((page, index) => {
             const icon = getPageIcon(page.id);
@@ -1830,125 +1833,200 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
             if (index === 2) {
               return [
                 pageCard,
-                <div className="col-lg-6" key="seo-tools-combined">
-                  <motion.div variants={itemVariants} className="d-flex flex-column gap-3 h-100">
-
-                    {/* Sitemap Card Compact */}
-                    <motion.div
-                      className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
-                      style={{ border: '1px solid #d1fae5' }}
-                      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
-                    >
-                      <div
-                        className="p-3 border-bottom d-flex align-items-center justify-content-between"
-                        style={{ background: 'linear-gradient(to right, #ecfdf5, transparent)', borderColor: '#d1fae5' }}
-                      >
-                        <div className="d-flex align-items-center gap-2">
-                          <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
-                            <Map size={18} style={{ color: '#059669' }} />
-                          </motion.div>
-                          <h3 className="text-base font-bold m-0" style={{ color: '#065f46' }}>Sitemap.xml</h3>
-                        </div>
-                        {sitemapFile && (
-                          <div className="d-flex gap-1">
-                            <button
-                              className="btn btn-icon text-danger p-1"
-                              onClick={handleSitemapDelete}
-                              title="Delete Sitemap"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                            <span className="text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border" style={{ color: '#059669', borderColor: '#a7f3d0' }}>
-                              Live
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3 d-flex align-items-center justify-content-between">
-                        <span className="text-muted small text-truncate" style={{ maxWidth: '180px' }}>{sitemapFile ? sitemapFile.name : 'No file uploaded'}</span>
-                        <label
-                          className="btn cursor-pointer py-1 px-3 text-xs fw-bold shadow-sm d-flex align-items-center"
-                          style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
-                        >
-                          {sitemapFile ? 'Replace' : 'Upload'}
-                          <input type="file" className="d-none" accept=".xml" onChange={handleSitemapUpload} />
-                        </label>
-                      </div>
-                    </motion.div>
-
-                    {/* Robots.txt Card Compact */}
-                    <motion.div
-                      className="wb-card bg-white p-0 shadow-sm overflow-hidden flex-grow-1 hover:shadow-lg transition-all"
-                      style={{ border: '1px solid #e0e7ff' }}
-                      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
-                    >
-                      <div
-                        className="p-3 border-bottom d-flex align-items-center justify-content-between"
-                        style={{ background: 'linear-gradient(to right, #eef2ff, transparent)', borderColor: '#e0e7ff' }}
-                      >
-                        <div className="d-flex align-items-center gap-2">
-                          <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
-                            <Bot size={18} style={{ color: '#4f46e5' }} />
-                          </motion.div>
-                          <h3 className="text-base font-bold m-0" style={{ color: '#3730a3' }}>Robots.txt</h3>
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="py-1 px-3 text-xs text-white border-0 rounded shadow-sm"
-                          style={{ backgroundColor: '#4f46e5' }}
-                          onClick={handleSaveRobots}
-                        >
-                          Save
-                        </motion.button>
-                      </div>
-                      <div className="p-0">
-                        <textarea
-                          className="wb-input font-monospace text-xs border-0 rounded-0"
-                          rows={3}
-                          value={robotsTxt}
-                          onChange={(e) => setRobotsTxt(e.target.value)}
-                          style={{ resize: 'none', width: '100%', padding: '12px', backgroundColor: '#0f172a', color: '#e2e8f0' }}
-                        />
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                </div>
               ];
             }
             return pageCard;
           })}
         </div>
       )}
+
+      {/* ─── SITEMAP & ROBOTS.TXT SECTION ─── */}
+      {activeId && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 100, delay: 0.3 }}
+          className="row g-4 mt-4"
+        >
+          {/* Sitemap Card */}
+          <div className="col-lg-6">
+            <motion.div
+              className="wb-card bg-white p-0 shadow-sm overflow-hidden hover:shadow-lg transition-all h-100"
+              style={{ border: '1px solid #d1fae5' }}
+              whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
+            >
+              <div
+                className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                style={{ background: 'linear-gradient(to right, #ecfdf5, transparent)', borderColor: '#d1fae5' }}
+              >
+                <div className="d-flex align-items-center gap-2">
+                  <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
+                    <Map size={18} style={{ color: '#059669' }} />
+                  </motion.div>
+                  <h3 className="text-base font-bold m-0" style={{ color: '#065f46' }}>Sitemap.xml</h3>
+                </div>
+                {sitemapFile && (
+                  <div className="d-flex gap-1">
+                    <button
+                      className="btn btn-icon text-danger p-1"
+                      onClick={handleSitemapDelete}
+                      title="Delete Sitemap"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <span className="small fw-bold bg-white px-2 py-1 rounded border" style={{ color: '#059669', borderColor: '#a7f3d0', fontSize: '10px' }}>
+                      Live
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="p-3 d-flex align-items-center justify-content-between">
+                <span className="text-muted small text-truncate" style={{ maxWidth: '250px' }}>{sitemapFile ? sitemapFile.name : 'No file uploaded'}</span>
+                <label
+                  className="btn cursor-pointer py-1 px-3 text-xs fw-bold shadow-sm d-flex align-items-center"
+                  style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
+                >
+                  {sitemapFile ? 'Replace' : 'Upload'}
+                  <input type="file" className="d-none" accept=".xml" onChange={handleSitemapUpload} />
+                </label>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Robots.txt Card */}
+          <div className="col-lg-6">
+            <motion.div
+              className="wb-card bg-white p-0 shadow-sm overflow-hidden hover:shadow-lg transition-all h-100"
+              style={{ border: '1px solid #e0e7ff' }}
+              whileHover={{ y: -3, transition: { type: 'spring', stiffness: 300 } }}
+            >
+              <div
+                className="p-3 border-bottom d-flex align-items-center justify-content-between"
+                style={{ background: 'linear-gradient(to right, #eef2ff, transparent)', borderColor: '#e0e7ff' }}
+              >
+                <div className="d-flex align-items-center gap-2">
+                  <motion.div whileHover={{ rotate: 10 }} className="p-1.5 bg-white rounded-lg shadow-sm">
+                    <Bot size={18} style={{ color: '#4f46e5' }} />
+                  </motion.div>
+                  <h3 className="text-base font-bold m-0" style={{ color: '#3730a3' }}>Robots.txt</h3>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="py-1 px-3 text-xs text-white border-0 rounded shadow-sm"
+                  style={{ backgroundColor: '#4f46e5' }}
+                  onClick={handleSaveRobots}
+                >
+                  Save
+                </motion.button>
+              </div>
+              <div className="p-0">
+                <textarea
+                  className="wb-input font-monospace text-xs border-0 rounded-0"
+                  rows={4}
+                  value={robotsTxt}
+                  onChange={(e) => setRobotsTxt(e.target.value)}
+                  style={{ resize: 'none', width: '100%', padding: '12px', backgroundColor: '#0f172a', color: '#e2e8f0' }}
+                />
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };
 
 const SettingsTab = () => {
-  const [settings, setSettings] = usePersistentState('lms_wb_settings', {
-    siteName: 'LMS Academy',
-    siteDescription: 'The best place to learn online.',
+  const [settings, setSettings] = useState({
+    siteName: '',
+    siteDescription: '',
     logo: null,
+    logoPath: null,
     favicon: null,
-    enableFootfall: true
+    faviconPath: null,
+    enableFootfall: false
   });
+  const [saving, setSaving] = useState(false);
 
   const logoInputRef = useRef(null);
   const faviconInputRef = useRef(null);
 
-  const handleFileUpload = (e, key) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 500000) {
-        toast.error("File is too large for this demo (max 500KB)");
-        return;
+  // Fetch settings from backend on mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await websiteService.getSettings();
+        if (data) {
+          setSettings(prev => ({
+            ...prev,
+            siteName: data.siteName || '',
+            logoPath: data.logoPath || null,
+            faviconPath: data.faviconPath || null,
+            enableFootfall: data.footfallEnabled ?? false,
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch settings:', err.message);
       }
+    };
+    fetchSettings();
+  }, []);
+
+  // Save site name to backend
+  const handleSaveSiteName = async () => {
+    if (!settings.siteName.trim()) return;
+    setSaving(true);
+    try {
+      await websiteService.updateSiteName(settings.siteName);
+      toast.success('Site name saved!');
+    } catch (err) {
+      toast.error('Failed to save site name: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Upload logo to backend
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await websiteService.uploadLogo(file);
+      // Show local preview
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSettings(prev => ({ ...prev, [key]: reader.result }));
-        toast.success(`${key === 'logo' ? 'Logo' : 'Favicon'} updated!`);
-      };
+      reader.onloadend = () => setSettings(prev => ({ ...prev, logo: reader.result }));
       reader.readAsDataURL(file);
+      toast.success('Logo uploaded!');
+    } catch (err) {
+      toast.error('Logo upload failed: ' + err.message);
+    }
+  };
+
+  // Upload favicon to backend
+  const handleFaviconUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await websiteService.uploadFavicon(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setSettings(prev => ({ ...prev, favicon: reader.result }));
+      reader.readAsDataURL(file);
+      toast.success('Favicon uploaded!');
+    } catch (err) {
+      toast.error('Favicon upload failed: ' + err.message);
+    }
+  };
+
+  // Toggle footfall
+  const handleFootfallToggle = async (checked) => {
+    setSettings(prev => ({ ...prev, enableFootfall: checked }));
+    try {
+      await websiteService.updateFootfall(checked);
+      toast.info(`Social Footfall ${checked ? 'Enabled' : 'Disabled'}`);
+    } catch (err) {
+      toast.error('Failed to update footfall: ' + err.message);
+      setSettings(prev => ({ ...prev, enableFootfall: !checked }));
     }
   };
 
@@ -1986,9 +2064,11 @@ const SettingsTab = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="btn-primary-action" onClick={() => toast.success("All settings saved successfully!")}
+          className="btn-primary-action"
+          onClick={handleSaveSiteName}
+          disabled={saving}
         >
-          <Check size={18} className="me-2" /> Save Changes
+          <Check size={18} className="me-2" /> {saving ? 'Saving...' : 'Save Changes'}
         </motion.button>
       </div>
 
@@ -2010,7 +2090,8 @@ const SettingsTab = () => {
                 className="wb-input w-100 p-3 bg-slate-50 border-slate-200 focus:bg-white transition-all"
                 placeholder="e.g. My Awesome Academy"
                 value={settings.siteName}
-                onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                onChange={(e) => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
+                onBlur={handleSaveSiteName}
               />
               <p className="text-xs text-slate-400 mt-2">This name will appear in browser tabs and email notifications.</p>
             </div>
@@ -2022,7 +2103,7 @@ const SettingsTab = () => {
                 className="wb-input w-100 p-3 bg-slate-50 border-slate-200 focus:bg-white transition-all"
                 placeholder="Briefly describe your academy..."
                 value={settings.siteDescription || ''}
-                onChange={(e) => setSettings({ ...settings, siteDescription: e.target.value })}
+                onChange={(e) => setSettings(prev => ({ ...prev, siteDescription: e.target.value }))}
               />
               <p className="text-xs text-slate-400 mt-2">Used for SEO and social media sharing previews.</p>
             </div>
@@ -2046,10 +2127,10 @@ const SettingsTab = () => {
                 className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-400 transition-colors cursor-pointer bg-slate-50"
                 onClick={() => logoInputRef.current.click()}
               >
-                {settings.logo ? (
+                {(settings.logo || settings.logoPath) ? (
                   <div className="position-relative group">
                     <img
-                      src={settings.logo}
+                      src={settings.logo || settings.logoPath}
                       alt="Logo"
                       className="img-fluid mx-auto mb-2"
                       style={{ maxHeight: '80px', objectFit: 'contain' }}
@@ -2065,7 +2146,7 @@ const SettingsTab = () => {
                     <p className="text-xs text-slate-400 m-0 mt-1">PNG, JPG (Max 500KB)</p>
                   </div>
                 )}
-                <input ref={logoInputRef} type="file" className="d-none" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} />
+                <input ref={logoInputRef} type="file" className="d-none" accept="image/*" onChange={handleLogoUpload} />
               </div>
             </div>
 
@@ -2074,9 +2155,9 @@ const SettingsTab = () => {
               <label className="wb-label mb-2">Favicon</label>
               <div className="d-flex align-items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div className="bg-white border border-slate-100 rounded-lg flex-shrink-0 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                  {settings.favicon ? (
+                  {(settings.favicon || settings.faviconPath) ? (
                     <img
-                      src={settings.favicon}
+                      src={settings.favicon || settings.faviconPath}
                       className="object-contain"
                       style={{ width: '32px', height: '32px' }}
                     />
@@ -2089,7 +2170,7 @@ const SettingsTab = () => {
                   <p className="text-xs text-slate-400 m-0">32x32px PNG</p>
                 </div>
                 <button className="btn btn-sm btn-outline-secondary bg-white border-slate-200 text-slate-600" onClick={() => faviconInputRef.current.click()}>Upload</button>
-                <input ref={faviconInputRef} type="file" className="d-none" accept="image/*" onChange={(e) => handleFileUpload(e, 'favicon')} />
+                <input ref={faviconInputRef} type="file" className="d-none" accept="image/*" onChange={handleFaviconUpload} />
               </div>
             </div>
           </motion.div>
@@ -2117,11 +2198,7 @@ const SettingsTab = () => {
                   className="form-check-input cursor-pointer"
                   type="checkbox"
                   checked={settings.enableFootfall}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setSettings(prev => ({ ...prev, enableFootfall: checked }));
-                    toast.info(`Social Footfall ${checked ? 'Enabled' : 'Disabled'}`);
-                  }}
+                  onChange={(e) => handleFootfallToggle(e.target.checked)}
                 />
               </div>
             </div>

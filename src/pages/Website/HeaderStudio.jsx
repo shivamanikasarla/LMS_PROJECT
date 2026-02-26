@@ -5,9 +5,10 @@ import {
     FileText, LogIn, ShoppingCart, Search, FormInput, List, MessageSquare, Tag,
     Columns, Clock, Video, Map, Sliders, BookOpen, Library, LayoutTemplate,
     Layers, Globe, CheckSquare, CircleDot, ChevronDown, ChevronUp, Quote,
-    Sparkles, Zap, PanelLeft, Eye, EyeOff, Plus, ListTree, Trash2
+    Sparkles, Zap, PanelLeft, Eye, EyeOff, Plus, ListTree, Trash2, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { websiteService } from '../../services/websiteService';
 
 // ─── Simple HTML to tree parser ───
 const SELF_CLOSING_TAGS = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr']);
@@ -1575,6 +1576,53 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                         <Trash2 size={14} /> Clear
                     </button>
                     <button
+                        onClick={async () => {
+                            try {
+                                // Build a complete, self-contained HTML document with CSS inlined
+                                const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Header</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        /* Inlined custom styles (also available as styles.css) */
+        ${cssCode}
+    </style>
+</head>
+<body>
+${htmlCode}
+</body>
+</html>`;
+                                const blob = await websiteService.exportHeader(fullHtml, cssCode);
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'header.zip';
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                                console.error('Export failed:', err);
+                                alert('Export failed: ' + err.message);
+                            }
+                        }}
+                        style={{
+                            padding: '6px 12px', borderRadius: '8px',
+                            border: '1px solid rgba(52,211,153,0.3)',
+                            background: 'transparent',
+                            color: '#34d399', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px',
+                        }}
+                    >
+                        <Download size={14} /> Export ZIP
+                    </button>
+                    <button
                         onClick={() => onSave(htmlCode, cssCode)}
                         style={{
                             padding: '7px 18px', borderRadius: '8px', border: 'none',
@@ -1975,7 +2023,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                     )}
                 </AnimatePresence>
             </div>
-        </div>
+        </div >
     );
 };
 
