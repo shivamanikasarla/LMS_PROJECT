@@ -613,10 +613,9 @@ const ThemeOptionsModal = ({ isOpen, onClose, theme, onPreview, onApply }) => {
 
 // --- Tabs ---
 
-const WebsiteBuilderTab = ({ themeId }) => {
+const WebsiteBuilderTab = () => {
   const [isModalOpen, setModalOpen] = useState(false);
-  const storageKey = themeId ? `lms_wb_pages_v2_${themeId}` : 'lms_wb_pages_v2_default';
-  const [pages, setPages] = usePersistentState(storageKey, DEFAULT_THEME_PAGES);
+  const [pages, setPages] = usePersistentState('lms_website_builder_pages', []);
 
   const [editingPage, setEditingPage] = useState(null);
   const [designingPage, setDesigningPage] = useState(null);
@@ -629,8 +628,11 @@ const WebsiteBuilderTab = ({ themeId }) => {
       toast.success("Page updated successfully!");
     } else {
       // Create new
-      setPages([...pages, { id: Date.now(), ...pageData, status: 'Draft' }]);
+      const newPage = { id: Date.now(), ...pageData, status: 'Draft' };
+      setPages([...pages, newPage]);
       toast.success("Page created successfully!");
+      // Immediately open the PageBuilder for the new page
+      setDesigningPage(newPage);
     }
   };
 
@@ -759,8 +761,6 @@ const WebsiteBuilderTab = ({ themeId }) => {
         )}
       </motion.div>
 
-
-
       <PageModal
         isOpen={isModalOpen}
         onClose={() => { setModalOpen(false); setEditingPage(null); }}
@@ -787,7 +787,7 @@ const WebsiteBuilderTab = ({ themeId }) => {
           }}
         />
       )}
-    </motion.div >
+    </motion.div>
   );
 };
 
@@ -2305,7 +2305,7 @@ const Websites = () => {
               />
             )}
             {activeTab === 'builder' && (
-              <WebsiteBuilderTab themeId={activeTheme?.id} />
+              <WebsiteBuilderTab />
             )}
             {activeTab === 'settings' && <SettingsTab />}
           </motion.div>
