@@ -2,9 +2,55 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { navigationConfig } from '../../config/navigation';
 
+const HoverNavLink = ({ item, active, onCloseMobile }) => {
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+
+    return (
+        <div className="nav-item-wrapper h-100 d-flex align-items-center">
+            <NavLink
+                to={item.path}
+                onClick={onCloseMobile}
+                className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill text-decoration-none transition-smooth flex-shrink-0 ${active ? 'bg-dark text-white shadow-sm' : 'text-secondary hover-bg-light'} ${hasSubItems ? 'nav-dropdown-trigger' : ''}`}
+                style={{ fontSize: '0.9rem', fontWeight: active ? '600' : '500', whiteSpace: 'nowrap' }}
+            >
+                <i className={`bi ${item.icon}`}></i>
+                <span>{item.label}</span>
+                {hasSubItems && <i className="bi bi-chevron-down small opacity-50 ms-1"></i>}
+            </NavLink>
+
+            {hasSubItems && (
+                <div
+                    className="glass-dropdown position-absolute"
+                    style={{
+                        top: '100%',
+                        left: '0',
+                        opacity: 0,
+                        visibility: 'hidden',
+                        marginTop: '8px',
+                        transform: 'translateY(10px) scale(0.95)'
+                    }}
+                >
+                    {item.subItems.map((sub, idx) => (
+                        <NavLink
+                            key={idx}
+                            to={sub.path}
+                            className="dropdown-item-premium"
+                            onClick={onCloseMobile}
+                        >
+                            <i className={`bi ${sub.icon}`}></i>
+                            <span>{sub.label}</span>
+                        </NavLink>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const TopNav = () => {
     const location = useLocation();
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [expandedItem, setExpandedItem] = useState(null); // For mobile sub-menus
 
     const isActive = (item) => {
         if (item.matchPrefix) {
@@ -13,9 +59,12 @@ const TopNav = () => {
 
         // Check if any sub-item is active
         if (item.subItems) {
-            return item.subItems.some(sub =>
-                location.pathname === sub.path || location.pathname.startsWith(sub.path + '/')
-            );
+            return item.subItems.some(sub => {
+                const search = sub.path.split('?')[1];
+                const path = sub.path.split('?')[0];
+                const paramsMatch = !search || location.search.includes(search);
+                return (location.pathname === path || location.pathname.startsWith(path + '/')) && paramsMatch;
+            });
         }
 
         return location.pathname === item.path;
@@ -44,21 +93,14 @@ const TopNav = () => {
                         </div>
 
                         {/* DESKTOP NAV (Hidden on Mobile) */}
-                        <div className="d-none d-md-flex align-items-center gap-1 flex-grow-1 mx-4">
-                            {navigationConfig.map((item) => {
-                                const active = isActive(item);
-                                return (
-                                    <NavLink
-                                        key={item.id}
-                                        to={item.path}
-                                        className={`d-flex align-items-center gap-2 px-3 py-2 rounded-pill text-decoration-none transition-smooth flex-shrink-0 ${active ? 'bg-dark text-white shadow-sm' : 'text-secondary hover-bg-light'}`}
-                                        style={{ fontSize: '0.9rem', fontWeight: active ? '600' : '500', whiteSpace: 'nowrap' }}
-                                    >
-                                        <i className={`bi ${item.icon}`}></i>
-                                        <span>{item.label}</span>
-                                    </NavLink>
-                                );
-                            })}
+                        <div className="d-none d-md-flex align-items-center gap-1 flex-grow-1 mx-4 h-100">
+                            {navigationConfig.map((item) => (
+                                <HoverNavLink
+                                    key={item.id}
+                                    item={item}
+                                    active={isActive(item)}
+                                />
+                            ))}
                         </div>
 
                         {/* USER ACTIONS */}
@@ -125,16 +167,46 @@ const TopNav = () => {
                             <div className="d-flex flex-column gap-2">
                                 {navigationConfig.map((item) => {
                                     const active = isActive(item);
+                                    const hasSubItems = item.subItems && item.subItems.length > 0;
+                                    const isExpanded = expandedItem === item.id;
+
                                     return (
-                                        <NavLink
-                                            key={item.id}
-                                            to={item.path}
-                                            onClick={() => setShowMobileMenu(false)}
-                                            className={`d-flex align-items-center gap-3 px-3 py-3 rounded-3 text-decoration-none transition-smooth ${active ? 'bg-primary text-white shadow-sm' : 'text-secondary hover-bg-light'}`}
-                                        >
-                                            <i className={`bi ${item.icon} fs-5`}></i>
-                                            <span className="fw-medium">{item.label}</span>
-                                        </NavLink>
+                                        <div key={item.id} className="d-flex flex-column">
+                                            <div className="d-flex align-items-center">
+                                                <NavLink
+                                                    to={item.path}
+                                                    onClick={() => !hasSubItems && setShowMobileMenu(false)}
+                                                    className={`d-flex align-items-center gap-3 px-3 py-3 rounded-3 text-decoration-none transition-smooth flex-grow-1 ${active ? 'bg-primary text-white shadow-sm' : 'text-secondary hover-bg-light'}`}
+                                                >
+                                                    <i className={`bi ${item.icon} fs-5`}></i>
+                                                    <span className="fw-medium">{item.label}</span>
+                                                </NavLink>
+                                                {hasSubItems && (
+                                                    <button
+                                                        className={`btn border-0 py-3 px-3 ${active ? 'text-white' : 'text-secondary'}`}
+                                                        onClick={() => setExpandedItem(isExpanded ? null : item.id)}
+                                                    >
+                                                        <i className={`bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {hasSubItems && isExpanded && (
+                                                <div className="ms-4 my-1 border-start ps-3 d-flex flex-column gap-1">
+                                                    {item.subItems.map((sub, idx) => (
+                                                        <NavLink
+                                                            key={idx}
+                                                            to={sub.path}
+                                                            onClick={() => setShowMobileMenu(false)}
+                                                            className="d-flex align-items-center gap-3 px-3 py-2 rounded-2 text-decoration-none text-secondary hover-bg-light small"
+                                                        >
+                                                            <i className={`bi ${sub.icon}`}></i>
+                                                            <span>{sub.label}</span>
+                                                        </NavLink>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     );
                                 })}
                             </div>

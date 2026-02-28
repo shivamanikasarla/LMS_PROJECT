@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Monitor, Tablet, Smartphone, Check, ChevronRight, Undo, Redo, Code,
@@ -44,9 +45,9 @@ const usePersistentState = (key, initialValue) => {
 };
 
 // --- Custom Hook for Theme Management (Backend Integrated) ---
-const useThemeManager = () => {
+const useThemeManager = (enabled = true) => {
   const [themes, setThemes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Default to false if not enabled
 
   // State for tracking visible themes (tabs)
   const [visibleThemeIds, setVisibleThemeIds] = usePersistentState('wb_visible_theme_ids', []);
@@ -109,8 +110,10 @@ const useThemeManager = () => {
   };
 
   useEffect(() => {
-    fetchThemes();
-  }, [visibleThemeIds, appliedThemeIds]); // Refetch when IDs change
+    if (enabled) {
+      fetchThemes();
+    }
+  }, [enabled, visibleThemeIds, appliedThemeIds]); // Refetch when IDs change or enabled
 
   const liveTheme = themes.find(t => t.status === 'live');
   const stagingTheme = themes.find(t => t.status === 'staging' || t.status === 'draft');
@@ -263,6 +266,8 @@ const PageModal = ({ isOpen, onClose, onSave, pageToEdit }) => {
     }
   }, [isOpen, pageToEdit]);
 
+  const isScratch = type === 'Landing Page' || type === 'About / Info' || type === 'Legal / Policy' || type === 'Custom Page';
+
   if (!isOpen) return null;
 
   const handleSubmit = () => {
@@ -335,10 +340,9 @@ const PageModal = ({ isOpen, onClose, onSave, pageToEdit }) => {
             onChange={(e) => setType(e.target.value)}
           >
             <option>Landing Page</option>
-            <option>Course Catalog</option>
             <option>About / Info</option>
             <option>Legal / Policy</option>
-            <option>Blog Post</option>
+            <option>Custom Page</option>
           </select>
         </div>
 
@@ -620,6 +624,7 @@ const WebsiteBuilderTab = () => {
   const [editingPage, setEditingPage] = useState(null);
   const [designingPage, setDesigningPage] = useState(null);
   const [previewingPage, setPreviewingPage] = useState(null);
+  const [isHeaderStudioOpen, setHeaderStudioOpen] = useState(false);
 
   const handleSavePage = (pageData) => {
     if (editingPage) {
@@ -627,10 +632,16 @@ const WebsiteBuilderTab = () => {
       setPages(prev => prev.map(p => p.id === pageData.id ? pageData : p));
       toast.success("Page updated successfully!");
     } else {
-      // Create new
-      const newPage = { id: Date.now(), ...pageData, status: 'Draft' };
+      // Create new - defaults to empty canvas (scratch)
+      const newPage = {
+        id: Date.now(),
+        ...pageData,
+        status: 'Draft',
+        html: '', // Explicit empty scratch pad
+        css: ''   // Explicit empty styles
+      };
       setPages([...pages, newPage]);
-      toast.success("Page created successfully!");
+      toast.success("New page created from scratch!");
       // Immediately open the PageBuilder for the new page
       setDesigningPage(newPage);
     }
@@ -674,7 +685,16 @@ const WebsiteBuilderTab = () => {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible">
-      <motion.div variants={itemVariants} className="d-flex justify-content-end align-items-center mb-4">
+      <motion.div variants={itemVariants} className="d-flex justify-content-end align-items-center mb-4 gap-3">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="btn-secondary-action border-indigo-200 text-indigo-700 bg-indigo-50"
+          onClick={() => setHeaderStudioOpen(true)}
+        >
+          <Sliders size={18} /> Global Header
+        </motion.button>
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -743,6 +763,15 @@ const WebsiteBuilderTab = () => {
                     </td>
                     <td className="pe-4 py-3 text-end">
                       <div className="d-flex align-items-center justify-content-end gap-2">
+                        {page.status === 'Published' && (
+                          <button
+                            className="btn-icon text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                            title="Open Published URL"
+                            onClick={() => window.open(`https://lms-preview.com${page.url}`, '_blank')}
+                          >
+                            <Globe size={18} />
+                          </button>
+                        )}
                         <button className="btn-icon text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => setPreviewingPage(page)} title="Preview"><Eye size={18} /></button>
                         <button className="btn-icon text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleEdit(page)} title="Edit"><Edit2 size={18} /></button>
                         <button className="btn-icon text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(page.id)} title="Delete"><Trash2 size={18} /></button>
@@ -784,6 +813,17 @@ const WebsiteBuilderTab = () => {
               p.id === designingPage.id ? { ...p, html, css } : p
             ));
             setDesigningPage(null);
+          }}
+        />
+      )}
+
+      {isHeaderStudioOpen && (
+        <HeaderStudio
+          isOpen={isHeaderStudioOpen}
+          onClose={() => setHeaderStudioOpen(false)}
+          onSave={(html, css) => {
+            console.log("💾 Builder Header Saved Independently");
+            setHeaderStudioOpen(false);
           }}
         />
       )}
@@ -2211,8 +2251,16 @@ const SettingsTab = () => {
 
 
 const Websites = () => {
-  const [activeTab, setActiveTab] = useState('appearance');
-  const { liveTheme, themes } = useThemeManager();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = useMemo(() => searchParams.get('tab') || 'appearance', [searchParams]);
+
+  const setActiveTab = (tabId) => {
+    setSearchParams({ tab: tabId });
+  };
+
+  // Optimization: Only fetch theme data if we are on theme-related tabs
+  const shouldFetchThemes = ['appearance', 'navigation', 'seo'].includes(activeTab);
+  const { liveTheme, themes, loading: themesLoading } = useThemeManager(shouldFetchThemes);
 
   // Track which theme the user is currently "managing" across tabs
   // PERSISTENT: Remembers your selection even after refresh
@@ -2251,12 +2299,21 @@ const Websites = () => {
         <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
         <div className="wb-header">
-          <h1 className="wb-title">Manage Website</h1>
-          <p className="wb-subtitle">Design, customize, and manage your public-facing academy website.</p>
+          <h1 className="wb-title">
+            {activeTab === 'builder' ? 'Website Builder' : 'Manage Website'}
+          </h1>
+          <p className="wb-subtitle">
+            {activeTab === 'builder'
+              ? 'Design and manage your custom web pages from scratch independently of themes.'
+              : 'Design, customize, and manage your public-facing academy website.'}
+          </p>
         </div>
 
         <div className="wb-tabs">
-          {tabs.map(tab => (
+          {tabs.filter(tab => {
+            if (activeTab === 'builder') return tab.id === 'builder';
+            return tab.id !== 'builder';
+          }).map(tab => (
             <motion.button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}

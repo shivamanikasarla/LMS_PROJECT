@@ -220,8 +220,62 @@ main.flex-grow-1>div.container-fluid.py-4 {
   padding-bottom: 1.5rem !important;
 }
 
-/* Refine Sub-Nav Items for "Attached" look */
-.sub-nav-item-circle {
-  margin-bottom: 0.25rem !important;
-  /* Tighten icon-label gap further if needed, but flex gap logic handles it */
+
+/* =========================================
+   PREMIUM DROPDOWN & GLASSMORPHISM
+   ========================================= */
+
+.glass-dropdown {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  border-radius: 16px;
+  padding: 8px;
+  min-width: 220px;
+  transform-origin: top;
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  z-index: 1050;
+}
+
+.dropdown-item-premium {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: #475569;
+  text-decoration: none !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item-premium:hover {
+  background: rgba(79, 70, 229, 0.08);
+  color: #4f46e5;
+  transform: translateX(4px);
+}
+
+.dropdown-item-premium i {
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+
+.nav-item-wrapper {
+  position: relative;
+}
+
+.nav-dropdown-trigger {
+  cursor: pointer;
+}
+
+/* Hover logic for Desktop */
+@media (min-width: 768px) {
+  .nav-item-wrapper:hover .glass-dropdown {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) scale(1) !important;
+  }
 }

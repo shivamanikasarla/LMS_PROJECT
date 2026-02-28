@@ -8,7 +8,6 @@ import {
     Sparkles, Zap, PanelLeft, Eye, EyeOff, Plus, ListTree, Trash2, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { websiteService } from '../../services/websiteService';
 
 // ─── Simple HTML to tree parser ───
 const SELF_CLOSING_TAGS = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr']);

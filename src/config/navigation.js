@@ -114,7 +114,11 @@ export const navigationConfig = [
         id: 'website',
         label: 'Website',
         path: '/website',
-        icon: 'bi-globe'
+        icon: 'bi-globe',
+        subItems: [
+            { label: 'Website Manager', path: '/website', icon: 'bi-window-stack' },
+            { label: 'Website Builder', path: '/website?tab=builder', icon: 'bi-layout-text-window' }
+        ]
     },
 
     {
