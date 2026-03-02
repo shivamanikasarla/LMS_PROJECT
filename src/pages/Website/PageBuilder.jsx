@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 
-const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
+const PageBuilder = ({ isOpen, onClose, page, onSave, onPublish }) => {
     const [activeDevice, setActiveDevice] = useState('desktop'); // desktop, tablet, mobile
     const [htmlCode, setHtmlCode] = useState(page?.html || `
         <header class="gy-header" data-section-id="header-default">
@@ -1685,8 +1685,14 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                     </button>
                     <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.08)' }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '10px', color: '#818cf8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
-                            ● Unpublished
+                        <span style={{
+                            fontSize: '10px',
+                            color: page?.status?.toUpperCase() === 'PUBLISHED' ? '#10b981' : '#818cf8',
+                            textTransform: 'uppercase',
+                            fontWeight: 700,
+                            letterSpacing: '0.1em'
+                        }}>
+                            ● {page?.status || 'Draft'}
                         </span>
                         <span style={{ fontSize: '15px', fontWeight: 700, color: '#e0e7ff', letterSpacing: '-0.01em' }}>
                             {page?.title || 'New Page'}
@@ -1753,6 +1759,13 @@ const PageBuilder = ({ isOpen, onClose, page, onSave }) => {
                         }}
                         onMouseOver={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.5)'; }}
                         onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)'; }}
+                        onClick={() => {
+                            if (onPublish) {
+                                onPublish(htmlCode, cssCode);
+                            } else {
+                                toast.info("Publish not yet configured for this screen.");
+                            }
+                        }}
                     >
                         <Send size={16} /> Publish
                     </button>

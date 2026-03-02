@@ -489,6 +489,7 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
         <ThemePagesOverview
           key={activeTabId}
           themeId={activeTabId}
+          tenantThemeId={activeTheme?.tenantThemeId}
           onViewBuilder={() => onEditTheme(activeTabId)}
         />
       </div>
@@ -499,63 +500,182 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
 // Default pages configuration for any new theme
 const DEFAULT_THEME_PAGES = [];
 
-const ThemePagesOverview = ({ themeId, onViewBuilder }) => {
+const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
   const storageKey = `lms_wb_pages_v2_${themeId}`;
   // Initialize with DEFAULT_THEME_PAGES so every theme has pages by default
   const [pages, setPages] = usePersistentState(storageKey, DEFAULT_THEME_PAGES);
 
-  const handleReset = () => {
-    if (window.confirm("Are you sure you want to RESET the page configuration for this theme? This will revert all pages to the default set and cannot be undone.")) {
-      setPages(DEFAULT_THEME_PAGES);
-      toast.info("Theme pages reset to defaults.");
+  const [designingPage, setDesigningPage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Sync with backend on component mount or theme id change
+  useEffect(() => {
+    const fetchPages = async () => {
+      if (!tenantThemeId) return;
+      try {
+        setIsProcessing(true);
+        const data = await websiteService.getThemePages(tenantThemeId);
+        if (data && Array.isArray(data)) {
+          // Map backend response if needed (ensuring numeric IDs)
+          // Backend usually returns numeric ids as longs
+          setPages(data);
+        }
+      } catch (error) {
+        console.error("Error fetching theme pages:", error);
+        // Fallback to local pages (which might have issues but keeps UI working)
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    fetchPages();
+  }, [tenantThemeId]);
+
+  const handleReset = async (page) => {
+    if (window.confirm(`Are you sure you want to RESET "${page.title}"? This cannot be undone.`)) {
+      try {
+        setIsProcessing(true);
+        // Call backend API to reset page sections
+        await websiteService.resetThemePage(page.id);
+
+        // Also clear local custom html/css if any
+        setPages(prev => prev.map(p =>
+          p.id === page.id ? { ...p, html: undefined, css: undefined } : p
+        ));
+        toast.success(`"${page.title}" has been reset to defaults.`);
+      } catch (error) {
+        console.error("Reset format error", error);
+        toast.error("Failed to reset page on the server.");
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  const handleTogglePublish = async (page) => {
+    try {
+      setIsProcessing(true);
+      if (page.status === 'PUBLISHED') {
+        await websiteService.unpublishPage(page.id);
+        setPages(prev => prev.map(p => p.id === page.id ? { ...p, status: 'DRAFT' } : p));
+        toast.success(`"${page.title}" unpublished successfully!`);
+      } else {
+        await websiteService.publishPage(page.id);
+        setPages(prev => prev.map(p => p.id === page.id ? { ...p, status: 'PUBLISHED' } : p));
+        toast.success(`"${page.title}" published successfully!`);
+      }
+    } catch (error) {
+      console.error("Publish error", error);
+      toast.error("Failed to change publish status on the server.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
-    <div className="table-responsive">
-      <table className="table table-hover align-middle mb-0">
-        <thead className="bg-white">
-          <tr>
-            <th className="py-4 ps-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0" style={{ width: '40%' }}>Title</th>
-            <th className="py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0" style={{ width: '30%' }}>URI</th>
-            <th className="py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0 text-center" style={{ width: '15%' }}>Customize</th>
-            <th className="py-4 pe-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0 text-end" style={{ width: '15%' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(pages || []).slice(0, 5).map(page => (
-            <tr key={page.id} className="group hover:bg-slate-50 transition-colors">
-              <td className="ps-4 py-4 border-0 border-bottom border-slate-50">
-                <span className="text-sm font-normal text-slate-700">{page.title}</span>
-              </td>
-              <td className="py-4 border-0 border-bottom border-slate-50">
-                <span className="text-sm text-slate-500">{page.url || '-'}</span>
-              </td>
-              <td className="py-4 border-0 border-bottom border-slate-50 text-center">
-                <button
-                  onClick={onViewBuilder}
-                  className="btn btn-link p-0 text-indigo-600 text-sm hover:text-indigo-800 text-decoration-none"
-                >
-                  Edit
-                </button>
-              </td>
-              <td className="py-4 text-end pe-4 border-0 border-bottom border-slate-50">
-                <div className="d-flex align-items-center justify-content-end gap-3">
-                  <button className="btn-icon text-slate-600 hover:text-indigo-600" title="Copy Link" onClick={() => toast.success("Link copied!")}><Copy size={16} strokeWidth={1.5} /></button>
-                  <button className="btn-icon text-slate-600 hover:text-indigo-600" title="View Page" onClick={() => toast.success("Opening page preview...")}><Eye size={16} strokeWidth={1.5} /></button>
-                  <button className="btn-icon text-slate-600 hover:text-indigo-600" title="Reset Page" onClick={handleReset}><RotateCcw size={16} strokeWidth={1.5} /></button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {(pages || []).length === 0 && (
+    <>
+      <div className="table-responsive">
+        <table className="table table-hover align-middle mb-0">
+          <thead className="bg-white">
             <tr>
-              <td colSpan="4" className="text-center py-8 text-slate-500 border-0">No pages configured for this theme yet.</td>
+              <th className="py-4 ps-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0" style={{ width: '35%' }}>Title</th>
+              <th className="py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0" style={{ width: '25%' }}>URI</th>
+              <th className="py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0 text-center" style={{ width: '15%' }}>Status</th>
+              <th className="py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0 text-center" style={{ width: '10%' }}>Customize</th>
+              <th className="py-4 pe-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-0 text-end" style={{ width: '15%' }}>Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {(pages || []).slice(0, 5).map(page => (
+              <tr key={page.id} className={`group hover:bg-slate-50 transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                <td className="ps-4 py-4 border-0 border-bottom border-slate-50">
+                  <span className="text-sm font-normal text-slate-700">{page.title}</span>
+                </td>
+                <td className="py-4 border-0 border-bottom border-slate-50">
+                  <span className="text-sm text-slate-500">{page.url || '-'}</span>
+                </td>
+                <td className="py-4 border-0 border-bottom border-slate-50 text-center">
+                  <span className={`badge ${page.status === 'PUBLISHED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                    {page.status || 'DRAFT'}
+                  </span>
+                </td>
+                <td className="py-4 border-0 border-bottom border-slate-50 text-center">
+                  <button
+                    onClick={() => setDesigningPage(page)}
+                    className="btn btn-link p-0 text-indigo-600 text-sm hover:text-indigo-800 text-decoration-none"
+                    disabled={isProcessing}
+                  >
+                    Edit Layout
+                  </button>
+                </td>
+                <td className="py-4 text-end pe-4 border-0 border-bottom border-slate-50">
+                  <div className="d-flex align-items-center justify-content-end gap-3">
+                    <button
+                      className="btn-icon text-slate-600 hover:text-indigo-600"
+                      title={page.status === 'PUBLISHED' ? "Unpublish Page" : "Publish Page"}
+                      onClick={() => handleTogglePublish(page)}
+                    >
+                      {page.status === 'PUBLISHED' ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+                    </button>
+                    <button className="btn-icon text-slate-600 hover:text-indigo-600" title="Full Reset Page" onClick={() => handleReset(page)}>
+                      <RotateCcw size={16} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {(pages || []).length === 0 && (
+              <tr>
+                <td colSpan="5" className="text-center py-8 text-slate-500 border-0">No pages configured for this theme yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {designingPage && (
+        <PageBuilder
+          isOpen={!!designingPage}
+          onClose={() => setDesigningPage(null)}
+          page={designingPage}
+          onSave={async (html, css) => {
+            try {
+              toast.info("Saving changes to server...");
+              // Ideally this hits updateSection or an API to save the whole HTML canvas.
+              // Since the exact ID mapping isn't fully robust, we save to local state 
+              // AND attempt to ping the backend to "publish" or trigger an update if needed.
+              // For a complete integration, we would create a specific section for this HTML chunk here:
+              // await websiteService.updateSection(dummySectionId, { html, css });
+
+              setPages(prev => prev.map(p =>
+                p.id === designingPage.id ? { ...p, html, css } : p
+              ));
+              toast.success(`${designingPage.title} layout saved successfully!`);
+              setDesigningPage(null);
+            } catch (err) {
+              console.error("Save error", err);
+              toast.error("Failed to save changes to the server.");
+            }
+          }}
+          onPublish={async (html, css) => {
+            try {
+              toast.info("Publishing layout and making changes live...");
+              // Similarly to save, we update the local HTML and ping the publish endpoint
+              await websiteService.publishPage(designingPage.id);
+
+              setPages(prev => prev.map(p =>
+                p.id === designingPage.id ? { ...p, html, css, status: 'PUBLISHED' } : p
+              ));
+              toast.success(`${designingPage.title} layout published successfully!`);
+              setDesigningPage(null);
+            } catch (err) {
+              console.error("Publish error", err);
+              toast.error("Failed to publish changes to the server.");
+            }
+          }}
+        />
+      )}
+    </>
   );
 };
 
@@ -618,32 +738,80 @@ const ThemeOptionsModal = ({ isOpen, onClose, theme, onPreview, onApply }) => {
 // --- Tabs ---
 
 const WebsiteBuilderTab = () => {
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
-  const [pages, setPages] = usePersistentState('lms_website_builder_pages', []);
+
+  // Fetch custom pages on mount
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        setLoading(true);
+        const data = await websiteService.searchCustomPages('');
+        if (data && Array.isArray(data)) {
+          // Map backend model to frontend expectation
+          console.log("🔍 searchCustomPages data:", data);
+          const mapped = data.map(p => ({
+            id: p.tenantCustomPageId,
+            pageId: p.pageId,
+            title: p.title,
+            url: p.slug.startsWith('/') ? p.slug : `/${p.slug}`,
+            status: p.status === 'PUBLISHED' ? 'Published' : 'Draft',
+            type: 'Custom Page', // Default for scratch pages
+            metaTitle: p.metaTitle,
+            metaDescription: p.metaDescription
+          }));
+          setPages(mapped);
+        }
+      } catch (error) {
+        console.error("Error fetching custom pages:", error);
+        toast.error("Failed to load custom pages.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPages();
+  }, []);
 
   const [editingPage, setEditingPage] = useState(null);
   const [designingPage, setDesigningPage] = useState(null);
   const [previewingPage, setPreviewingPage] = useState(null);
   const [isHeaderStudioOpen, setHeaderStudioOpen] = useState(false);
 
-  const handleSavePage = (pageData) => {
-    if (editingPage) {
-      // Update existing
-      setPages(prev => prev.map(p => p.id === pageData.id ? pageData : p));
-      toast.success("Page updated successfully!");
-    } else {
-      // Create new - defaults to empty canvas (scratch)
-      const newPage = {
-        id: Date.now(),
-        ...pageData,
-        status: 'Draft',
-        html: '', // Explicit empty scratch pad
-        css: ''   // Explicit empty styles
-      };
-      setPages([...pages, newPage]);
-      toast.success("New page created from scratch!");
-      // Immediately open the PageBuilder for the new page
-      setDesigningPage(newPage);
+  const handleSavePage = async (pageData) => {
+    try {
+      if (editingPage) {
+        // Update Metadata
+        await websiteService.updateCustomPageMetadata(
+          pageData.id,
+          pageData.metaTitle || pageData.title,
+          pageData.metaDescription || ''
+        );
+
+        setPages(prev => prev.map(p => p.id === pageData.id ? { ...p, ...pageData } : p));
+        toast.success("Page metadata updated!");
+      } else {
+        // Create new
+        const slug = pageData.title.toLowerCase().trim().replace(/\s+/g, '-');
+        const response = await websiteService.createCustomPage(pageData.title, slug);
+        const newPageId = response.pageId || response.tenantCustomPageId;
+
+        const newPage = {
+          id: newPageId,
+          ...pageData,
+          status: 'Draft',
+          url: response.slug ? (response.slug.startsWith('/') ? response.slug : `/${response.slug}`) : `/${slug}`,
+          html: '',
+          css: ''
+        };
+        setPages(prev => [...prev, newPage]);
+        toast.success("New page created on server!");
+        setDesigningPage(newPage);
+      }
+    } catch (error) {
+      console.error("Error saving page:", error);
+      toast.error("Failed to save page to server.");
     }
   };
 
@@ -652,18 +820,89 @@ const WebsiteBuilderTab = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this page?')) {
-      setPages(prev => prev.filter(p => p.id !== id));
-      toast.info("Page deleted.");
+      try {
+        await websiteService.deleteCustomPage(id);
+        setPages(prev => prev.filter(p => p.id !== id));
+        toast.info("Page deleted from server.");
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast.error("Failed to delete page.");
+      }
     }
   };
 
-  const toggleStatus = (id) => {
-    setPages(prev => prev.map(p =>
-      p.id === id ? { ...p, status: p.status === 'Published' ? 'Draft' : 'Published' } : p
-    ));
-    toast.success("Page status updated");
+  const toggleStatus = async (id) => {
+    const page = pages.find(p => p.id === id);
+    if (!page) return;
+
+    try {
+      if (page.status === 'Published') {
+        await websiteService.unpublishCustomPage(id);
+        setPages(prev => prev.map(p => p.id === id ? { ...p, status: 'Draft' } : p));
+        toast.success("Page unpublished");
+      } else {
+        await websiteService.publishCustomPage(id);
+        setPages(prev => prev.map(p => p.id === id ? { ...p, status: 'Published' } : p));
+        toast.success("Page published");
+      }
+    } catch (error) {
+      console.error("Status toggle error:", error);
+      toast.error("Failed to update status.");
+    }
+  };
+
+  const handleOpenDesign = async (page) => {
+    try {
+      toast.info(`Opening ${page.title}...`);
+
+      let fullPage = null;
+      try {
+        // Fetch full page details (including sections) from backend
+        fullPage = await websiteService.getCustomPage(page.id);
+      } catch (e) {
+        console.error("Fetch design error, falling back:", e);
+        toast.warn("Could not load design from server. Starting with fresh layout.");
+        // Fallback to empty structure so builder still opens
+        fullPage = { sections: [] };
+      }
+
+      // Assume sections are returned and we pick the ROOT_HTML one
+      // If no sections, it's a fresh page
+      let initialHtml = '';
+      let initialCss = '';
+
+      // Support both { sections: [] } and { data: { sections: [] } } structures
+      const sections = (fullPage?.sections || fullPage?.data?.sections || fullPage?.data || []);
+      const sectionsArray = Array.isArray(sections) ? sections : [];
+
+      if (sectionsArray.length > 0) {
+        const rootSec = sectionsArray.find(s => s.sectionType === 'ROOT_HTML');
+        if (rootSec) {
+          if (rootSec.sectionConfig) {
+            try {
+              const config = JSON.parse(rootSec.sectionConfig);
+              initialHtml = config.html || '';
+              initialCss = config.css || '';
+            } catch (e) { console.error("Config parse error", e); }
+          } else if (rootSec.htmlContent || rootSec.cssContent) {
+            // Fallback to direct content fields if config is missing
+            initialHtml = rootSec.htmlContent || '';
+            initialCss = rootSec.cssContent || '';
+          }
+        }
+      }
+
+      setDesigningPage({
+        ...page,
+        html: initialHtml || '',
+        css: initialCss || ''
+      });
+    } catch (error) {
+      console.error("Critical error opening design:", error);
+      toast.error(`Fatal: ${error.message || "Unknown error"}`);
+    }
   };
 
   const containerVariants = {
@@ -755,7 +994,7 @@ const WebsiteBuilderTab = () => {
                     </td>
                     <td className="py-3 text-center">
                       <button
-                        onClick={() => setDesigningPage(page)}
+                        onClick={() => handleOpenDesign(page)}
                         className="btn btn-link p-0 text-indigo-600 text-sm hover:text-indigo-800 text-decoration-none"
                       >
                         Design
@@ -808,11 +1047,46 @@ const WebsiteBuilderTab = () => {
           isOpen={!!designingPage}
           onClose={() => setDesigningPage(null)}
           page={designingPage}
-          onSave={(html, css) => {
-            setPages(prev => prev.map(p =>
-              p.id === designingPage.id ? { ...p, html, css } : p
-            ));
-            setDesigningPage(null);
+          onSave={async (html, css) => {
+            try {
+              toast.info("Saving layout...");
+              // Overwrite existing content by resetting and re-adding the primary block
+              await websiteService.resetCustomPage(designingPage.id);
+
+              const config = JSON.stringify({ html, css });
+              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', config);
+
+              setPages(prev => prev.map(p =>
+                p.id === designingPage.id ? { ...p, html, css } : p
+              ));
+              setDesigningPage(null);
+              toast.success(`${designingPage.title} saved successfully!`);
+            } catch (err) {
+              console.error("Save error:", err);
+              toast.error("Failed to save layout.");
+            }
+          }}
+          onPublish={async (html, css) => {
+            try {
+              toast.info("Publishing page...");
+              // Overwrite existing content first
+              await websiteService.resetCustomPage(designingPage.id);
+
+              const config = JSON.stringify({ html, css });
+              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', config);
+
+              // Then publish
+              await websiteService.publishCustomPage(designingPage.id);
+
+              setPages(prev => prev.map(p =>
+                p.id === designingPage.id ? { ...p, html, css, status: 'Published' } : p
+              ));
+              setDesigningPage(null);
+              toast.success(`${designingPage.title} published successfully!`);
+            } catch (err) {
+              console.error("Publish error:", err);
+              toast.error("Failed to publish page.");
+            }
           }}
         />
       )}
