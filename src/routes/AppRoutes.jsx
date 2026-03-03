@@ -42,6 +42,8 @@ const AppRoutes = () => {
 
         {/* ================= PUBLIC ROUTES ================= */}
         <Route path="/home" element={<LiveWebsite />} />
+        <Route path="/s/pages/:slug" element={<LiveWebsite />} />
+        <Route path="/:userSlug/home" element={<LiveWebsite />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/course-overview/:id" element={<CourseOverview />} />
         <Route path="/share/:shareCode" element={<CourseOverview />} />

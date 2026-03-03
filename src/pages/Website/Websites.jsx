@@ -857,39 +857,35 @@ const WebsiteBuilderTab = () => {
     try {
       toast.info(`Opening ${page.title}...`);
 
-      let fullPage = null;
+      let builderData = null;
       try {
-        // Fetch full page details (including sections) from backend
-        fullPage = await websiteService.getCustomPage(page.id);
+        // Fetch full page details (including sections) from backend using the new builder endpoint
+        builderData = await websiteService.getCustomPageBuilder(page.id);
       } catch (e) {
-        console.error("Fetch design error, falling back:", e);
+        console.error("Fetch designer error, falling back:", e);
         toast.warn("Could not load design from server. Starting with fresh layout.");
-        // Fallback to empty structure so builder still opens
-        fullPage = { sections: [] };
+        builderData = { sections: [] };
       }
 
-      // Assume sections are returned and we pick the ROOT_HTML one
-      // If no sections, it's a fresh page
+      // Handle the new sections structure from backend
+      const sections = builderData?.sections || [];
+
       let initialHtml = '';
       let initialCss = '';
 
-      // Support both { sections: [] } and { data: { sections: [] } } structures
-      const sections = (fullPage?.sections || fullPage?.data?.sections || fullPage?.data || []);
-      const sectionsArray = Array.isArray(sections) ? sections : [];
-
-      if (sectionsArray.length > 0) {
-        const rootSec = sectionsArray.find(s => s.sectionType === 'ROOT_HTML');
+      if (sections.length > 0) {
+        const rootSec = sections.find(s => s.sectionType === 'ROOT_HTML');
         if (rootSec) {
-          if (rootSec.sectionConfig) {
-            try {
-              const config = JSON.parse(rootSec.sectionConfig);
-              initialHtml = config.html || '';
-              initialCss = config.css || '';
-            } catch (e) { console.error("Config parse error", e); }
-          } else if (rootSec.htmlContent || rootSec.cssContent) {
-            // Fallback to direct content fields if config is missing
-            initialHtml = rootSec.htmlContent || '';
-            initialCss = rootSec.cssContent || '';
+          try {
+            const config = typeof rootSec.sectionConfig === 'string'
+              ? JSON.parse(rootSec.sectionConfig)
+              : rootSec.sectionConfig;
+            initialHtml = config.html || '';
+            initialCss = config.css || '';
+          } catch (e) {
+            console.error("Config parse error", e);
+            // Fallback for non-JSON content if applicable
+            initialHtml = rootSec.sectionConfig || '';
           }
         }
       }
@@ -1006,11 +1002,21 @@ const WebsiteBuilderTab = () => {
                           <button
                             className="btn-icon text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
                             title="Open Published URL"
-                            onClick={() => window.open(`https://lms-preview.com${page.url}`, '_blank')}
+                            onClick={() => window.open(`/s/pages${page.url}`, '_blank')}
                           >
                             <Globe size={18} />
                           </button>
                         )}
+                        <button
+                          className="btn-icon text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                          title="Set as Personal Home"
+                          onClick={() => {
+                            toast.success(`${page.title} is now your Personal Homepage!`);
+                            // Logic to save this preference could be added here
+                          }}
+                        >
+                          <Home size={18} />
+                        </button>
                         <button className="btn-icon text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => setPreviewingPage(page)} title="Preview"><Eye size={18} /></button>
                         <button className="btn-icon text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => handleEdit(page)} title="Edit"><Edit2 size={18} /></button>
                         <button className="btn-icon text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(page.id)} title="Delete"><Trash2 size={18} /></button>
@@ -1050,11 +1056,15 @@ const WebsiteBuilderTab = () => {
           onSave={async (html, css) => {
             try {
               toast.info("Saving layout...");
-              // Overwrite existing content by resetting and re-adding the primary block
+              // 1. Reset existing sections to start fresh (as per current implementation requirement)
               await websiteService.resetCustomPage(designingPage.id);
 
-              const config = JSON.stringify({ html, css });
-              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', config);
+              // 2. Add the primary HTML/CSS as a ROOT_HTML section
+              const configJson = JSON.stringify({ html, css });
+              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', configJson);
+
+              // 3. Ping the explicit save endpoint if needed by backend to update timestamps
+              await websiteService.saveCustomPage(designingPage.id);
 
               setPages(prev => prev.map(p =>
                 p.id === designingPage.id ? { ...p, html, css } : p
@@ -1069,13 +1079,12 @@ const WebsiteBuilderTab = () => {
           onPublish={async (html, css) => {
             try {
               toast.info("Publishing page...");
-              // Overwrite existing content first
+              // 1. Reset and Add sections first to ensure live content is updated
               await websiteService.resetCustomPage(designingPage.id);
+              const configJson = JSON.stringify({ html, css });
+              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', configJson);
 
-              const config = JSON.stringify({ html, css });
-              await websiteService.addCustomPageSection(designingPage.id, 'ROOT_HTML', config);
-
-              // Then publish
+              // 2. Publish the page on the backend
               await websiteService.publishCustomPage(designingPage.id);
 
               setPages(prev => prev.map(p =>

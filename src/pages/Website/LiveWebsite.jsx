@@ -1,22 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { websiteService } from '../../services/websiteService';
 import { toast } from 'react-toastify';
 
 const LiveWebsite = () => {
-    const [themeConfig, setThemeConfig] = useState(null);
+    const { slug } = useParams();
+    const [pageContent, setPageContent] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchLiveTheme = async () => {
+        const fetchData = async () => {
+            setLoading(true);
             try {
-                const config = await websiteService.getLiveTheme();
-                setThemeConfig(config);
+                if (slug) {
+                    // Fetch a specific custom page by slug (Personalized Home / Custom Pages)
+                    console.log(`🔍 Fetching custom page for slug: ${slug}`);
+                    const data = await websiteService.getPublicPage(slug);
+                    setPageContent(data);
+                } else {
+                    // Fetch the global live theme
+                    console.log("🌐 Fetching global live theme");
+                    const config = await websiteService.getLiveTheme();
+                    setPageContent(config);
+                }
             } catch (error) {
-                console.error("Failed to load live theme:", error);
-
-                // If it's a 404, it might mean no live theme is published yet
+                console.error("Failed to load website content:", error);
                 if (error.message.includes("404")) {
-                    toast.info("No live website published yet.");
+                    toast.info("This page doesn't exist yet.");
                 } else {
                     toast.error("Failed to load website.");
                 }
@@ -25,18 +35,29 @@ const LiveWebsite = () => {
             }
         };
 
-        fetchLiveTheme();
-    }, []);
+        fetchData();
+    }, [slug]);
+
+    // Compute combined CSS from all sections
+    const combinedCSS = useMemo(() => {
+        if (!pageContent || !pageContent.sections) return '';
+        return pageContent.sections
+            .map(sec => {
+                try {
+                    const config = typeof sec.sectionConfig === 'string'
+                        ? JSON.parse(sec.sectionConfig)
+                        : sec.sectionConfig;
+                    return config.css || '';
+                } catch (e) {
+                    return '';
+                }
+            })
+            .join('\n');
+    }, [pageContent]);
 
     if (loading) {
         return (
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#f8fafc'
-            }}>
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
                 <div className="spinner-border text-primary" role="status">
                     <span className="visually-hidden">Loading Website...</span>
                 </div>
@@ -44,17 +65,9 @@ const LiveWebsite = () => {
         );
     }
 
-    if (!themeConfig) {
+    if (!pageContent) {
         return (
-            <div style={{
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#f8fafc',
-                color: '#64748b'
-            }}>
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', color: '#64748b' }}>
                 <h1 className="display-4 fw-bold mb-3">Welcome to Our Academy</h1>
                 <p className="lead">We are currently setting up our new website.</p>
                 <p className="text-muted small">Please check back soon!</p>
@@ -62,19 +75,41 @@ const LiveWebsite = () => {
         );
     }
 
-    // Basic Renderer based on Config
-    // This assumes the backend returns the ENTIRE theme configuration object
-    // If the structure is unknown, we just dump it for now to help debugging
+    // Render logic for Custom Pages (List of Sections)
+    if (pageContent.sections && Array.isArray(pageContent.sections)) {
+        return (
+            <div className="live-website-render">
+                <style>{combinedCSS}</style>
+                {pageContent.sections.map((sec, idx) => {
+                    let html = '';
+                    try {
+                        const config = typeof sec.sectionConfig === 'string'
+                            ? JSON.parse(sec.sectionConfig)
+                            : sec.sectionConfig;
+                        html = config.html || '';
+                    } catch (e) {
+                        html = '';
+                    }
+                    return (
+                        <div
+                            key={idx}
+                            dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // Fallback Renderer for legacy Theme Config
     return (
         <div className="live-website-container">
-            {/* Debugging Header */}
             <div style={{ background: '#333', color: '#fff', padding: '10px', fontSize: '12px', textAlign: 'center' }}>
-                LIVE PREVIEW MODE — Theme: {themeConfig.name || 'Unknown'} (ID: {themeConfig.tenantThemeId})
+                LIVE PREVIEW MODE — {pageContent.name || 'Theme View'}
             </div>
-
             <div className="container mt-5">
                 <pre style={{ background: '#f1f1f1', padding: '20px', borderRadius: '8px', overflow: 'auto' }}>
-                    {JSON.stringify(themeConfig, null, 2)}
+                    {JSON.stringify(pageContent, null, 2)}
                 </pre>
             </div>
         </div>

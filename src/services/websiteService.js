@@ -528,4 +528,23 @@ export const websiteService = {
             method: 'DELETE'
         });
     },
+
+    getCustomPageBuilder: async (pageId) => {
+        return fetchWithAuth(`/website/custom-page/${pageId}/builder`);
+    },
+
+    saveCustomPage: async (pageId) => {
+        return fetchWithAuth(`/website/custom-page/${pageId}/save`, {
+            method: 'PUT'
+        });
+    },
+
+    previewCustomPage: async (pageId) => {
+        return fetchWithAuth(`/website/custom-page/${pageId}/preview`);
+    },
+
+    getPublicPage: async (slug) => {
+        // Backend usually has a public endpoint for the live view
+        return fetchWithAuth(`/website/store/s/pages/${slug.replace(/^\//, '')}`);
+    }
 };
