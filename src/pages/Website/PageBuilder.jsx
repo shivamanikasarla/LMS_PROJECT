@@ -146,6 +146,7 @@ const PageBuilder = ({ isOpen, onClose, page, onSave, onPublish }) => {
         { id: 'helpfaq', label: 'Help, FAQ', icon: <HelpCircle size={24} /> },
         { id: 'contact', label: 'Contact', icon: <Phone size={24} /> },
         { id: 'information', label: 'Information', icon: <Info size={24} /> },
+        { id: 'classx360', label: 'ClassX 360', icon: <Sparkles size={24} /> },
     ];
 
     const filteredSections = sections.filter(s =>
@@ -1333,6 +1334,22 @@ const PageBuilder = ({ isOpen, onClose, page, onSave, onPublish }) => {
                 css: `.in6-section { padding: 80px 5%; background: #f8fafc; font-family: 'Inter', sans-serif; } .in6-container { max-width: 800px; margin: 0 auto; text-align: center; } .in6-imgs { display: flex; gap: 12px; justify-content: center; margin-bottom: 30px; } .in6-imgs img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; } .in6-text h2 { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0 0 12px; } .in6-text p { font-size: 15px; color: #64748b; line-height: 1.7; margin: 0; max-width: 500px; margin: 0 auto; }`,
                 preview: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop'
             }
+        ],
+        classx360: [
+            {
+                id: 'cx-hero',
+                title: 'ClassX 360 - Premium Hero',
+                html: `<section class="cx-hero"><div class="cx-hero-content"><h1>All-In-One Education Management Platform</h1><p>Automate attendance, exams, fee workflows, staff records, and real-time insights — all in one system.</p><div class="cx-hero-cta"><button class="cx-btn-primary">Start Your Free Demo</button><button class="cx-btn-secondary">Explore Features</button></div></div></section>`,
+                css: `.cx-hero { position: relative; width: 100%; min-height: 80vh; display: flex; align-items: center; background: #1a1a1a; color: #fff; padding: 0 8%; } .cx-hero-content { max-width: 800px; } .cx-hero h1 { font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 20px; } .cx-hero p { font-size: 1.2rem; line-height: 1.6; margin-bottom: 40px; color: #ccc; } .cx-hero-cta { display: flex; gap: 20px; } .cx-btn-primary { background: linear-gradient(135deg, #cc0000, #800000); color: #fff; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 700; cursor: pointer; } .cx-btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 12px 30px; border-radius: 8px; font-weight: 700; cursor: pointer; backdrop-filter: blur(10px); }`,
+                preview: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=300&h=200&fit=crop'
+            },
+            {
+                id: 'cx-how-it-works',
+                title: 'ClassX 360 - How It Works',
+                html: `<section class="cx-how-it-works"><div class="cx-container"><div class="cx-header"><h2>How <span style="color:#800000">ClassX360</span> Works</h2><p>A simple 4-step workflow for smart institution management</p></div><div class="cx-steps"><div class="cx-step"><span>01</span><h3>Set Up Your Institution</h3><p>Configure your institute profile, academic structure, courses, and roles.</p></div><div class="cx-step"><span>02</span><h3>Manage Operations</h3><p>Handle student enrollment, attendance, exams, and fees with ease.</p></div><div class="cx-step"><span>03</span><h3>Communicate & Engage</h3><p>Share materials, send notifications, and keep everyone connected.</p></div><div class="cx-step"><span>04</span><h3>Track Growth</h3><p>Monitor student progress and institutional metrics using real-time analytics.</p></div></div></div></section>`,
+                css: `.cx-how-it-works { padding: 80px 8%; background: #fff; text-align: center; } .cx-container { max-width: 1200px; margin: 0 auto; } .cx-header h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; } .cx-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; margin-top: 50px; } .cx-step { position: relative; padding: 20px; } .cx-step span { font-size: 3rem; font-weight: 900; color: rgba(128, 0, 0, 0.1); position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 1; } .cx-step h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; position: relative; z-index: 2; } .cx-step p { font-size: 0.95rem; color: #64748b; line-height: 1.6; position: relative; z-index: 2; }`,
+                preview: 'https://images.unsplash.com/photo-1454165833767-027508018221?w=300&h=200&fit=crop'
+            }
         ]
     };
 
@@ -1649,6 +1666,39 @@ const PageBuilder = ({ isOpen, onClose, page, onSave, onPublish }) => {
         }
     };
 
+    const handleTestImport = async () => {
+        try {
+            toast.info("Connecting to external file...");
+            const response = await fetch('/friend-sample.html');
+            if (!response.ok) throw new Error("Failed to load friend's code. Make sure public/friend-sample.html exists.");
+            const html = await response.text();
+
+            // Simple parser for PoC
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const importedStyle = doc.querySelector('style')?.innerHTML || '';
+            const importedBody = doc.body.innerHTML;
+
+            if (importedStyle) {
+                setCssCode(prev => prev + '\n\/* Imported Style *\/\n' + importedStyle);
+            }
+            if (importedBody) {
+                // Wrap in a section for the builder
+                const sectionId = 'ext-' + Date.now();
+                const wrappedHtml = `<section data-section-id="${sectionId}">${importedBody}</section>`;
+                setHtmlCode(prev => prev + wrappedHtml);
+                setAddedSections(prev => [...prev, { id: sectionId, category: 'custom', label: 'Imported Hero' }]);
+            }
+
+            toast.success("Design connected successfully!");
+            setRefreshKey(prev => prev + 1);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.message);
+        }
+    };
+
     if (!isOpen) return null;
 
     const deviceWidths = {
@@ -1725,10 +1775,17 @@ const PageBuilder = ({ isOpen, onClose, page, onSave, onPublish }) => {
                     <div style={{ display: 'flex', gap: '2px' }}>
                         <button
                             onClick={() => setIsCodeView(!isCodeView)}
+                            title="Code Editor"
                             style={{ padding: '7px 10px', borderRadius: '10px', background: isCodeView ? 'rgba(34,211,238,0.15)' : 'transparent', border: 'none', color: isCodeView ? '#22d3ee' : '#94a3b8', cursor: 'pointer', transition: 'all 0.25s ease' }}
                         ><Code size={17} /></button>
                         <button
+                            onClick={handleTestImport}
+                            title="Test External Connection"
+                            style={{ padding: '7px 10px', borderRadius: '10px', background: 'rgba(99,102,241,0.1)', border: 'none', color: '#818cf8', cursor: 'pointer', transition: 'all 0.25s ease' }}
+                        ><Globe size={17} /></button>
+                        <button
                             onClick={() => setIsVisualPreview(!isVisualPreview)}
+                            title="Live Preview"
                             style={{ padding: '7px 10px', borderRadius: '10px', background: isVisualPreview ? 'rgba(34,211,238,0.15)' : 'transparent', border: 'none', color: isVisualPreview ? '#22d3ee' : '#94a3b8', cursor: 'pointer', transition: 'all 0.25s ease' }}
                         ><Eye size={17} /></button>
                     </div>

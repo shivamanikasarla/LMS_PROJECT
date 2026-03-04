@@ -54,8 +54,8 @@ const useThemeManager = (enabled = true) => {
 
   // State for tracking applied theme IDs (templateId -> tenantThemeId)
   const [appliedThemeIds, setAppliedThemeIds] = usePersistentState('wb_applied_theme_map', {});
-
-
+  // Track themes that were just published to "lock" their status as live for a short window
+  const publishingRef = useRef(null);
 
   // Fetch themes from backend
   const fetchThemes = async () => {
@@ -76,15 +76,25 @@ const useThemeManager = (enabled = true) => {
         // Check if we have a locally stored tenantThemeId for this template
         const storedTenantThemeId = appliedThemeIds ? appliedThemeIds[`template-${template.theme_id}`] : null;
 
+        // Determine if live based on backend status
+        // Standardize comparison to handle various string/case formats
+        const isBackendLive = rawStatus === 'live' || rawStatus === 'published' || rawStatus === 'active' || template.is_live === true;
+
+        // STATUS LOCK: If this theme was JUST published by this user session, force it to 'live'
+        // This prevents the UI from flickering back to 'draft' if the backend hasn't synced yet.
+        const isLockedLive = publishingRef.current === String(template.tenant_theme_id || '');
+        const isThemeLive = isBackendLive || isLockedLive;
+
         return {
           id: `template-${template.theme_id}`,
           themeTemplateId: template.theme_id,
           name: template.name,
           image: template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
           color: '#8b5cf6',
-          status: rawStatus || 'draft',
-          isVisible: rawStatus === 'live' ? true : isVisible,
-          tenantThemeId: template.tenant_theme_id || storedTenantThemeId || null
+          status: isThemeLive ? 'live' : 'draft', // Standardize on 'live' for frontend logic
+          originalStatus: rawStatus, // Keep original for debugging
+          isVisible: isThemeLive ? true : isVisible,
+          tenantThemeId: String(template.tenant_theme_id || storedTenantThemeId || '')
         };
       });
 
@@ -200,16 +210,41 @@ const useThemeManager = (enabled = true) => {
 
     try {
       await websiteService.publishTheme(tenantThemeId);
+
+      // Stringify for safe comparison
+      const targetId = String(tenantThemeId);
+
+      // STATUS LOCK: Lock this theme ID as 'live' for this session for 30 seconds
+      publishingRef.current = targetId;
+
+      // Update UI state immediately for responsiveness
+      setThemes(prev => prev.map(t =>
+        String(t.tenantThemeId) === targetId ? { ...t, status: 'live' } :
+          (t.status === 'live' ? { ...t, status: 'draft' } : t)
+      ));
+
       toast.success("Theme published as LIVE!");
 
       // Ensure the published theme stays visible in tabs
-      const publishedTheme = themes.find(t => t.tenantThemeId === tenantThemeId);
+      const publishedTheme = themes.find(t => String(t.tenantThemeId) === targetId);
       if (publishedTheme && !visibleThemeIds.includes(publishedTheme.id)) {
         setVisibleThemeIds(prev => [...prev, publishedTheme.id]);
       }
 
-      // Refresh themes from backend to get updated statuses (new LIVE, old becomes DRAFT)
-      await fetchThemes();
+      // Wait a bit longer (3 seconds) to ensure backend db is fully updated 
+      // before we fetch the status back, prevents flickering to 'draft'
+      setTimeout(async () => {
+        console.log("🔄 Background refresh after publish...");
+        await fetchThemes();
+      }, 3000);
+
+      // Clear the lock after 30 seconds (ample time for backend to be stable)
+      setTimeout(() => {
+        if (publishingRef.current === targetId) {
+          console.log("🔓 Releasing status lock for:", targetId);
+          publishingRef.current = null;
+        }
+      }, 30000);
     } catch (error) {
       console.error('Error publishing theme:', error);
       toast.error('Failed to publish theme');
@@ -426,7 +461,9 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
           {themes.filter(t => (t.isVisible !== false) || t.id === activeTabId).map(theme => {
             // Show all themes
             const isActive = activeTabId === theme.id;
-            const statusLabel = theme.status === 'live' ? 'Live' : 'Draft';
+            // Robust check for live/published status
+            const isLive = theme.status === 'live' || theme.status === 'published' || theme.status === 'active';
+            const statusLabel = isLive ? 'Live' : 'Draft';
 
 
             return (
@@ -439,29 +476,46 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
                   }`}
               >
                 <div className="d-flex align-items-center gap-2" style={{ zIndex: 2, position: 'relative' }}>
-                  {theme.name}
-                  <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${isActive ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                  <span className={isActive ? 'font-bold' : ''}>{theme.name}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isLive
+                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm'
+                    : isActive ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
                     {statusLabel}
                   </span>
                 </div>
 
+                {/* Bottom bar for Active Tab */}
                 {isActive && (
                   <motion.div
                     layoutId="activeTabUnderline"
                     className="position-absolute bottom-0 start-0 w-100 bg-indigo-600"
-                    style={{ height: '3px', borderRadius: '4px 4px 0 0' }}
+                    style={{ height: '3px', borderRadius: '4px 4px 0 0', zIndex: 10 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
 
-                {/* Glow effect for active tab */}
-                {isActive && (
+                {/* "Light" indicator for LIVE theme */}
+                {isLive && (
+                  <motion.div
+                    layoutId="liveStatusLight"
+                    className="position-absolute bottom-0 start-0 w-100"
+                    style={{
+                      height: '100%',
+                      background: 'linear-gradient(to top, rgba(79, 70, 229, 0.12), transparent)',
+                      zIndex: 1,
+                      borderBottom: '3px solid #4f46e5'
+                    }}
+                  />
+                )}
+
+                {/* Glow effect for Active tab */}
+                {isActive && !isLive && (
                   <motion.div
                     layoutId="activeTabGlow"
                     className="position-absolute bottom-0 start-0 w-100"
                     style={{
                       height: '20px',
-                      background: 'linear-gradient(to top, rgba(79, 70, 229, 0.1), transparent)',
+                      background: 'linear-gradient(to top, rgba(79, 70, 229, 0.08), transparent)',
                       zIndex: 1
                     }}
                   />
@@ -477,7 +531,10 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
             <button className="btn btn-outline-danger btn-sm bg-white text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300" onClick={() => removeThemeFromTabs(activeTabId)}>
               Remove theme
             </button>
-            <button className="btn btn-primary btn-sm bg-indigo-600 border-indigo-600 hover:bg-indigo-700" onClick={() => publishTheme(activeTheme?.tenantThemeId)}>
+            <button className="btn btn-primary btn-sm bg-indigo-600 border-indigo-600 hover:bg-indigo-700" onClick={async () => {
+              await publishTheme(activeTheme?.tenantThemeId);
+              // Ensure we re-calculate current theme status after publish
+            }}>
               Publish
             </button>
           </div>
@@ -489,6 +546,7 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
         <ThemePagesOverview
           key={activeTabId}
           themeId={activeTabId}
+          isLive={!isDraft}
           tenantThemeId={activeTheme?.tenantThemeId}
           onViewBuilder={() => onEditTheme(activeTabId)}
         />
@@ -500,13 +558,15 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
 // Default pages configuration for any new theme
 const DEFAULT_THEME_PAGES = [];
 
-const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
+const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder, isLive }) => {
   const storageKey = `lms_wb_pages_v2_${themeId}`;
   // Initialize with DEFAULT_THEME_PAGES so every theme has pages by default
   const [pages, setPages] = usePersistentState(storageKey, DEFAULT_THEME_PAGES);
 
   const [designingPage, setDesigningPage] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editingPageId, setEditingPageId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   // Sync with backend on component mount or theme id change
   useEffect(() => {
@@ -514,7 +574,7 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
       if (!tenantThemeId) return;
       try {
         setIsProcessing(true);
-        const data = await websiteService.getThemePages(tenantThemeId);
+        const data = await websiteService.getThemePages(tenantThemeId, isLive);
         if (data && Array.isArray(data)) {
           // Map backend response if needed (ensuring numeric IDs)
           // Backend usually returns numeric ids as longs
@@ -522,7 +582,14 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
         }
       } catch (error) {
         console.error("Error fetching theme pages:", error);
-        // Fallback to local pages (which might have issues but keeps UI working)
+        // Ensure we at least have Home and Courses if everything fails
+        if (pages.length === 0) {
+          setPages([
+            { id: 'p1', title: 'Home', url: '/home', status: 'DRAFT', type: 'System' },
+            { id: 'p2', title: 'Courses', url: '/courses', status: 'DRAFT', type: 'System' },
+            { id: 'p3', title: 'About Us', url: '/about', status: 'DRAFT', type: 'System' }
+          ]);
+        }
       } finally {
         setIsProcessing(false);
       }
@@ -531,49 +598,67 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
     fetchPages();
   }, [tenantThemeId]);
 
-  const handleReset = async (page) => {
-    if (window.confirm(`Are you sure you want to RESET "${page.title}"? This cannot be undone.`)) {
-      try {
-        setIsProcessing(true);
-        // Call backend API to reset page sections
-        await websiteService.resetThemePage(page.id);
 
-        // Also clear local custom html/css if any
-        setPages(prev => prev.map(p =>
-          p.id === page.id ? { ...p, html: undefined, css: undefined } : p
-        ));
-        toast.success(`"${page.title}" has been reset to defaults.`);
-      } catch (error) {
-        console.error("Reset format error", error);
-        toast.error("Failed to reset page on the server.");
-      } finally {
-        setIsProcessing(false);
-      }
+  const handleUpdateTitle = async (pageId) => {
+    if (!editingTitle.trim()) {
+      setEditingPageId(null);
+      return;
     }
-  };
 
-  const handleTogglePublish = async (page) => {
     try {
       setIsProcessing(true);
-      if (page.status === 'PUBLISHED') {
-        await websiteService.unpublishPage(page.id);
-        setPages(prev => prev.map(p => p.id === page.id ? { ...p, status: 'DRAFT' } : p));
-        toast.success(`"${page.title}" unpublished successfully!`);
-      } else {
-        await websiteService.publishPage(page.id);
-        setPages(prev => prev.map(p => p.id === page.id ? { ...p, status: 'PUBLISHED' } : p));
-        toast.success(`"${page.title}" published successfully!`);
-      }
+      await websiteService.updatePageTitle(pageId, editingTitle);
+      setPages(prev => prev.map(p => p.id === pageId ? { ...p, title: editingTitle } : p));
+      toast.success("Page title updated!");
     } catch (error) {
-      console.error("Publish error", error);
-      toast.error("Failed to change publish status on the server.");
+      console.error("Update title error", error);
+      toast.error("Failed to update title on the server.");
     } finally {
       setIsProcessing(false);
+      setEditingPageId(null);
     }
   };
 
   return (
     <>
+      {isLive && (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-4 mt-3 mb-2 p-3 rounded-lg border border-indigo-100 bg-indigo-50/50 d-flex align-items-center justify-content-between"
+          >
+            <div className="d-flex align-items-center gap-3">
+              <div className="bg-indigo-500 p-1.5 rounded-full shadow-sm">
+                <Check className="text-white" size={16} />
+              </div>
+              <div>
+                <h5 className="m-0 text-indigo-800 text-sm font-bold tracking-wide uppercase">This theme is currently live</h5>
+                <p className="m-0 text-indigo-600 text-xs opacity-80">All changes made to these pages are visible to your visitors.</p>
+              </div>
+            </div>
+            <div className="d-flex align-items-center gap-2 px-3 py-1 bg-white rounded-full border border-indigo-100 text-indigo-600 text-[10px] font-bold shadow-sm">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+              ACTIVE
+            </div>
+          </motion.div>
+
+          <div className="bg-indigo-50 border-bottom border-indigo-100 px-4 py-3 d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-3">
+              <div className="bg-indigo-100 p-2 rounded-lg text-indigo-700 d-flex align-items-center justify-content-center">
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <h6 className="m-0 font-bold text-indigo-900 border-0">Live Theme Active</h6>
+                <p className="m-0 text-xs text-indigo-600 border-0">This theme is currently published and visible to all your website visitors.</p>
+              </div>
+            </div>
+            <div className="d-none d-md-block">
+              <span className="badge bg-indigo-100 text-indigo-700 px-3 py-2 border border-indigo-200">PUBLIC</span>
+            </div>
+          </div>
+        </>
+      )}
       <div className="table-responsive">
         <table className="table table-hover align-middle mb-0">
           <thead className="bg-white">
@@ -589,7 +674,32 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
             {(pages || []).slice(0, 5).map(page => (
               <tr key={page.id} className={`group hover:bg-slate-50 transition-colors ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                 <td className="ps-4 py-4 border-0 border-bottom border-slate-50">
-                  <span className="text-sm font-normal text-slate-700">{page.title}</span>
+                  {editingPageId === page.id ? (
+                    <div className="d-flex align-items-center gap-2">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm border-indigo-300"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={() => handleUpdateTitle(page.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle(page.id)}
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <div className="d-flex align-items-center gap-2 group">
+                      <span className="text-sm font-normal text-slate-700">{page.title}</span>
+                      <button
+                        className="btn-icon p-1 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => {
+                          setEditingPageId(page.id);
+                          setEditingTitle(page.title);
+                        }}
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="py-4 border-0 border-bottom border-slate-50">
                   <span className="text-sm text-slate-500">{page.url || '-'}</span>
@@ -610,16 +720,7 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder }) => {
                 </td>
                 <td className="py-4 text-end pe-4 border-0 border-bottom border-slate-50">
                   <div className="d-flex align-items-center justify-content-end gap-3">
-                    <button
-                      className="btn-icon text-slate-600 hover:text-indigo-600"
-                      title={page.status === 'PUBLISHED' ? "Unpublish Page" : "Publish Page"}
-                      onClick={() => handleTogglePublish(page)}
-                    >
-                      {page.status === 'PUBLISHED' ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
-                    </button>
-                    <button className="btn-icon text-slate-600 hover:text-indigo-600" title="Full Reset Page" onClick={() => handleReset(page)}>
-                      <RotateCcw size={16} strokeWidth={1.5} />
-                    </button>
+                    {/* Page Actions Removed per Strict API Sync */}
                   </div>
                 </td>
               </tr>
