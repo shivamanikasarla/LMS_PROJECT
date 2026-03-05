@@ -60,30 +60,49 @@ const useThemeManager = (enabled = true) => {
   // Fetch themes from backend
   const fetchThemes = async () => {
     try {
-      setLoading(true);
+      // 1. Fetch the master templates list
       const templates = await websiteService.getAvailableThemes();
 
-      console.log('📡 [fetchThemes] Raw templates from backend:', JSON.stringify(templates));
+      // 2. Fetch the DEFINITIVE live theme for this tenant to avoid stale status
+      let liveThemeData = null;
+      try {
+        liveThemeData = await websiteService.getLiveTheme();
+        console.log('🌐 [fetchThemes] Definitive LIVE theme from backend:', liveThemeData);
+      } catch (e) {
+        console.warn('Could not fetch definitive live status');
+      }
+
+      // Live identity from various sources
+      const backendLiveTenantId = String(liveThemeData?.tenantThemeId || liveThemeData?.id || '');
+      const backendLiveTemplateId = String(liveThemeData?.themeTemplateId || liveThemeData?.theme_id || '');
+
+      // PERSISTENT LOCK: Check sessionStorage for a theme that was JUST published
+      const sessionLockId = sessionStorage.getItem('wb_publishing_lock');
 
       // Map backend data to frontend format
       const mappedThemes = templates.map(template => {
-        // Robust status check (case-insensitive)
+        const templateTenantId = String(template.tenant_theme_id || '');
+        const templateId = String(template.theme_id || '');
         const rawStatus = (template.status || '').toLowerCase();
 
-        // Check if this theme is already "applied" / visible in tabs
-        const isVisible = visibleThemeIds.includes(`template-${template.theme_id}`);
+        // 3. Super Robust Live Check: Match against:
+        //    A. The explicit /live endpoint (Tenant Theme ID)
+        //    B. The explicit /live endpoint (Master Template ID fallback)
+        //    C. The template's own status fields
+        const isBackendLive =
+          (backendLiveTenantId && backendLiveTenantId === templateTenantId) ||
+          (backendLiveTemplateId && backendLiveTemplateId === templateId) ||
+          rawStatus === 'live' || rawStatus === 'published' || rawStatus === 'active' ||
+          template.is_live === true;
 
-        // Check if we have a locally stored tenantThemeId for this template
-        const storedTenantThemeId = appliedThemeIds ? appliedThemeIds[`template-${template.theme_id}`] : null;
-
-        // Determine if live based on backend status
-        // Standardize comparison to handle various string/case formats
-        const isBackendLive = rawStatus === 'live' || rawStatus === 'published' || rawStatus === 'active' || template.is_live === true;
-
-        // STATUS LOCK: If this theme was JUST published by this user session, force it to 'live'
-        // This prevents the UI from flickering back to 'draft' if the backend hasn't synced yet.
-        const isLockedLive = publishingRef.current === String(template.tenant_theme_id || '');
+        // 4. STATUS LOCK: If this theme was JUST published (even across reloads)
+        const isLockedLive = (publishingRef.current === templateTenantId || sessionLockId === templateTenantId) && templateTenantId !== '';
         const isThemeLive = isBackendLive || isLockedLive;
+
+        // If it's live, we should clear the manual session lock as the backend has caught up
+        if (isBackendLive && sessionLockId === templateTenantId) {
+          sessionStorage.removeItem('wb_publishing_lock');
+        }
 
         return {
           id: `template-${template.theme_id}`,
@@ -91,14 +110,14 @@ const useThemeManager = (enabled = true) => {
           name: template.name,
           image: template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
           color: '#8b5cf6',
-          status: isThemeLive ? 'live' : 'draft', // Standardize on 'live' for frontend logic
-          originalStatus: rawStatus, // Keep original for debugging
-          isVisible: isThemeLive ? true : isVisible,
-          tenantThemeId: String(template.tenant_theme_id || storedTenantThemeId || '')
+          status: isThemeLive ? 'live' : 'draft',
+          originalStatus: rawStatus,
+          isVisible: isThemeLive ? true : visibleThemeIds.includes(`template-${template.theme_id}`),
+          tenantThemeId: templateTenantId || appliedThemeIds[`template-${template.theme_id}`] || ''
         };
       });
 
-      console.log('✅ Mapped Themes:', mappedThemes.map(t => ({ id: t.id, status: t.status, tenantId: t.tenantThemeId })));
+      console.log('✅ Theme Status Sync:', mappedThemes.map(t => ({ name: t.name, status: t.status })));
       setThemes(mappedThemes);
     } catch (error) {
       console.error('Error fetching themes:', error);
@@ -216,6 +235,7 @@ const useThemeManager = (enabled = true) => {
 
       // STATUS LOCK: Lock this theme ID as 'live' for this session for 30 seconds
       publishingRef.current = targetId;
+      sessionStorage.setItem('wb_publishing_lock', targetId);
 
       // Update UI state immediately for responsiveness
       setThemes(prev => prev.map(t =>

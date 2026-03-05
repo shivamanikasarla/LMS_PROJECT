@@ -6,7 +6,7 @@ const HEADER_BASE = '/website/header';
 const SETTINGS_BASE = '/website/settings';
 
 // Helper to get auth token
-const VALID_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzYW50b3NoY2hhdml0aGluaTIwMDRAZ21haWwuY29tIiwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NVUEVSX0FETUlOIl0sInBlcm1pc3Npb25zIjpbIioiXSwidGVuYW50RGIiOiJsbXNfdGVuYW50XzE3NzA3MDExMDEwODYiLCJpYXQiOjE3NzI2MjY4MTl9.j-kLr8Xn0ZWLG7yCr2LtL8-VdwekyTnxqr_zJdsfnOxK-jViLAJAjj2DSoaPhQY5bHidQZ6fLXBzBmqpjkHAqw";
+const VALID_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzYW50b3NoY2hhdml0aGluaTIwMDRAZ21haWwuY29tIiwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NVUEVSX0FETUlOIl0sInBlcm1pc3Npb25zIjpbIioiXSwidGVuYW50RGIiOiJsbXNfdGVuYW50XzE3NzA3MDExMDEwODYiLCJpYXQiOjE3NzI2OTg4ODF9.Jnc09emYvccxy0lhxKbkvVr1MdGKDRTc1u9vFOjl7Q_xBDk6xzCL0FFab1vTK5yfl7TSy8dP74ogXeUjOvOqRg";
 
 const getAuthToken = () => {
     return localStorage.getItem('authToken') || import.meta.env.VITE_DEV_AUTH_TOKEN || VALID_TOKEN;
