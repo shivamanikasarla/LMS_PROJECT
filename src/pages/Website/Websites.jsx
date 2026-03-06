@@ -60,6 +60,7 @@ const useThemeManager = (enabled = true) => {
   // Fetch themes from backend
   const fetchThemes = async () => {
     try {
+      setLoading(true);
       // 1. Fetch the master templates list
       const templates = await websiteService.getAvailableThemes();
 
@@ -81,26 +82,39 @@ const useThemeManager = (enabled = true) => {
 
       // Map backend data to frontend format
       const mappedThemes = templates.map(template => {
-        const templateTenantId = String(template.tenant_theme_id || '');
         const templateId = String(template.theme_id || '');
         const rawStatus = (template.status || '').toLowerCase();
 
+        // LOGIC PRIORITY:
+        // 1. Check if our local persistent storage has a fresher ID (from a recent apply/publish)
+        // 2. Fallback to the ID provided in the general templates list
+        const localTenantId = String(appliedThemeIds[`template-${template.theme_id}`] || '');
+        const listTenantId = String(template.tenant_theme_id || template.tenantThemeId || '');
+
+        let currentTenantId = localTenantId || listTenantId;
+
         // 3. Super Robust Live Check: Match against:
-        //    A. The explicit /live endpoint (Tenant Theme ID)
-        //    B. The explicit /live endpoint (Master Template ID fallback)
-        //    C. The template's own status fields
+        //    A. The definitive live ID from /live endpoint
+        //    B. The template ID (if it's the only live one)
+        //    C. Backend status fields
         const isBackendLive =
-          (backendLiveTenantId && backendLiveTenantId === templateTenantId) ||
+          (backendLiveTenantId && backendLiveTenantId === currentTenantId) ||
           (backendLiveTemplateId && backendLiveTemplateId === templateId) ||
           rawStatus === 'live' || rawStatus === 'published' || rawStatus === 'active' ||
           template.is_live === true;
 
         // 4. STATUS LOCK: If this theme was JUST published (even across reloads)
-        const isLockedLive = (publishingRef.current === templateTenantId || sessionLockId === templateTenantId) && templateTenantId !== '';
+        const isLockedLive = (publishingRef.current === currentTenantId || sessionLockId === currentTenantId) && currentTenantId !== '';
         const isThemeLive = isBackendLive || isLockedLive;
 
+        // RECONCILIATION: If it IS live, ensure we are using the definitive ID from the /live endpoint
+        if (isThemeLive && backendLiveTenantId && backendLiveTenantId !== currentTenantId && backendLiveTemplateId === templateId) {
+          console.log(`🎯 Reconciled stale ID ${currentTenantId} to live ID ${backendLiveTenantId} for ${template.name}`);
+          currentTenantId = backendLiveTenantId;
+        }
+
         // If it's live, we should clear the manual session lock as the backend has caught up
-        if (isBackendLive && sessionLockId === templateTenantId) {
+        if (isBackendLive && sessionLockId === currentTenantId) {
           sessionStorage.removeItem('wb_publishing_lock');
         }
 
@@ -108,12 +122,12 @@ const useThemeManager = (enabled = true) => {
           id: `template-${template.theme_id}`,
           themeTemplateId: template.theme_id,
           name: template.name,
-          image: template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
+          image: template.previewImageUrl || template.preview_image_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
           color: '#8b5cf6',
           status: isThemeLive ? 'live' : 'draft',
           originalStatus: rawStatus,
           isVisible: isThemeLive ? true : visibleThemeIds.includes(`template-${template.theme_id}`),
-          tenantThemeId: templateTenantId || appliedThemeIds[`template-${template.theme_id}`] || ''
+          tenantThemeId: currentTenantId
         };
       });
 
@@ -470,6 +484,14 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
   // Default to Live theme
   const [activeTabId, setActiveTabId] = useState(liveTheme?.id || themes.find(t => t.isVisible !== false)?.id);
 
+  // Sync activeTabId when themes are loaded
+  useEffect(() => {
+    if (!activeTabId && themes.length > 0) {
+      const defaultId = liveTheme?.id || themes.find(t => t.isVisible !== false)?.id;
+      if (defaultId) setActiveTabId(defaultId);
+    }
+  }, [themes, liveTheme, activeTabId]);
+
   const activeTheme = themes.find(t => t.id === activeTabId);
   const isDraft = activeTheme?.status === 'draft';
 
@@ -576,7 +598,11 @@ const ThemePagesManager = ({ themes, onEditTheme, applyTheme, publishTheme, remo
 };
 
 // Default pages configuration for any new theme
-const DEFAULT_THEME_PAGES = [];
+const DEFAULT_THEME_PAGES = [
+  { id: 'p1', title: 'Home', url: '/home', status: 'DRAFT', type: 'System' },
+  { id: 'p2', title: 'Courses', url: '/courses', status: 'DRAFT', type: 'System' },
+  { id: 'p3', title: 'About Us', url: '/about', status: 'DRAFT', type: 'System' }
+];
 
 const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder, isLive }) => {
   const storageKey = `lms_wb_pages_v2_${themeId}`;
@@ -596,9 +622,17 @@ const ThemePagesOverview = ({ themeId, tenantThemeId, onViewBuilder, isLive }) =
         setIsProcessing(true);
         const data = await websiteService.getThemePages(tenantThemeId, isLive);
         if (data && Array.isArray(data)) {
-          // Map backend response if needed (ensuring numeric IDs)
-          // Backend usually returns numeric ids as longs
-          setPages(data);
+          if (data.length > 0) {
+            setPages(data);
+          } else if (pages.length === 0) {
+            // If backend returns empty list and we have no local pages, provide defaults
+            console.log("ℹ️ Backend returned zero pages. Initializing system defaults.");
+            setPages([
+              { id: 'p1', title: 'Home', url: '/home', status: 'DRAFT', type: 'System' },
+              { id: 'p2', title: 'Courses', url: '/courses', status: 'DRAFT', type: 'System' },
+              { id: 'p3', title: 'About Us', url: '/about', status: 'DRAFT', type: 'System' }
+            ]);
+          }
         }
       } catch (error) {
         console.error("Error fetching theme pages:", error);
@@ -1235,8 +1269,101 @@ const WebsiteBuilderTab = () => {
   );
 };
 
-const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }) => {
-  const { themes, liveTheme, stagingTheme, applyTheme, publishTheme, removeThemeFromTabs, loading } = useThemeManager();
+/**
+ * Authenticated Image Component
+ * Fetches image with JWT token via websiteService and converts to ObjectURL
+ */
+const AuthenticatedImage = ({ src, className, alt, style, fallback }) => {
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Use a ref to track the current blob URL for cleanup
+  const currentBlobUrlRef = useRef(null);
+
+  useEffect(() => {
+    if (!src) {
+      setBlobUrl(null);
+      return;
+    }
+
+    if (src.startsWith('http') || src.startsWith('data:') || src.startsWith('blob:')) {
+      setBlobUrl(src);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchImage = async () => {
+      setLoading(true);
+      setIsError(false);
+      try {
+        const blob = await websiteService.getImageBlob(src);
+        if (isMounted) {
+          // Revoke the old URL before creating a new one
+          if (currentBlobUrlRef.current) {
+            URL.revokeObjectURL(currentBlobUrlRef.current);
+          }
+          const url = URL.createObjectURL(blob);
+          currentBlobUrlRef.current = url;
+          setBlobUrl(url);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.warn(`Failed to fetch authenticated image: ${src}`, err);
+          setIsError(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchImage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [src]);
+
+  // Final cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (currentBlobUrlRef.current) {
+        URL.revokeObjectURL(currentBlobUrlRef.current);
+      }
+    };
+  }, []);
+
+  if (loading && !blobUrl) {
+    return (
+      <div className={className} style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+        <div className="spinner-border spinner-border-sm text-indigo-500 m-auto" role="status"></div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={isError || !blobUrl ? fallback : blobUrl}
+      className={className}
+      alt={alt}
+      style={style}
+      onError={() => !isError && setIsError(true)}
+    />
+  );
+};
+
+const AppearanceTab = ({
+  explicitlyEditingThemeId,
+  setExplicitlyEditingThemeId,
+  themes,
+  liveTheme,
+  stagingTheme,
+  applyTheme,
+  publishTheme,
+  removeThemeFromTabs,
+  loading
+}) => {
+  // Removed redundant useThemeManager call
 
   // State for the Fullscreen Preview Modal
   const [previewTheme, setPreviewTheme] = useState(null);
@@ -1294,9 +1421,10 @@ const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }
                     whileHover={{ y: -5 }}
                   >
                     <div className="position-relative overflow-hidden bg-black">
-                      <img
+                      <AuthenticatedImage
                         src={theme.image}
                         alt={theme.name}
+                        fallback="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop"
                         className="w-100 object-cover transition-all duration-500 group-hover:scale-110 group-hover:opacity-60 group-hover:blur-sm"
                         style={{ height: '200px' }}
                       />
@@ -1416,7 +1544,13 @@ const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }
             </div>
 
             <div className="flex-grow-1 overflow-auto bg-slate-50 p-5 d-flex justify-content-center">
-              <img src={previewTheme.image} alt={previewTheme.name} style={{ maxWidth: '1000px', width: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+              <AuthenticatedImage
+                key={previewTheme.id}
+                src={previewTheme.image}
+                alt={previewTheme.name}
+                fallback="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop"
+                style={{ maxWidth: '1000px', width: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+              />
             </div>
           </div>
         )}
@@ -1427,8 +1561,8 @@ const AppearanceTab = ({ explicitlyEditingThemeId, setExplicitlyEditingThemeId }
 
 
 
-const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
-  const { themes, liveTheme, applyTheme, refreshThemes, loading: themesLoading } = useThemeManager();
+const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, applyTheme, refreshThemes, loading: themesLoading }) => {
+  // Removed redundant useThemeManager call
 
   // Use passed ID or fallback to the live theme's tenant ID
   const activeId = tenantThemeId || liveTheme?.tenantThemeId;
@@ -1969,8 +2103,8 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId }) => {
 
 
 
-const SEOTab = ({ tenantThemeId, setSelectedThemeId }) => {
-  const { themes, liveTheme, applyTheme, loading: themesLoading } = useThemeManager();
+const SEOTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, applyTheme, loading: themesLoading }) => {
+  // Removed redundant useThemeManager call
 
   // Use passed ID or fallback to the live theme's tenant ID
   const activeId = tenantThemeId || liveTheme?.tenantThemeId;
@@ -2664,7 +2798,15 @@ const Websites = () => {
 
   // Optimization: Only fetch theme data if we are on theme-related tabs
   const shouldFetchThemes = ['appearance', 'navigation', 'seo'].includes(activeTab);
-  const { liveTheme, themes, loading: themesLoading } = useThemeManager(shouldFetchThemes);
+  const useThemeManagerInstance = useThemeManager(shouldFetchThemes);
+  const {
+    liveTheme,
+    themes,
+    loading: themesLoading,
+    applyTheme,
+    publishTheme,
+    removeThemeFromTabs
+  } = useThemeManagerInstance;
 
   // Track which theme the user is currently "managing" across tabs
   // PERSISTENT: Remembers your selection even after refresh
@@ -2751,18 +2893,34 @@ const Websites = () => {
               <AppearanceTab
                 explicitlyEditingThemeId={selectedThemeId}
                 setExplicitlyEditingThemeId={setSelectedThemeId}
+                themes={themes}
+                liveTheme={liveTheme}
+                stagingTheme={themes.find(t => t.status === 'staging' || t.status === 'draft')}
+                applyTheme={applyTheme}
+                publishTheme={publishTheme}
+                removeThemeFromTabs={removeThemeFromTabs}
+                loading={themesLoading}
               />
             )}
             {activeTab === 'navigation' && (
               <NavigationTab
                 tenantThemeId={activeTenantThemeId}
                 setSelectedThemeId={setSelectedThemeId}
+                themes={themes}
+                liveTheme={liveTheme}
+                applyTheme={applyTheme}
+                refreshThemes={useThemeManagerInstance.refreshThemes}
+                loading={themesLoading}
               />
             )}
             {activeTab === 'seo' && (
               <SEOTab
                 tenantThemeId={activeTenantThemeId}
                 setSelectedThemeId={setSelectedThemeId}
+                themes={themes}
+                liveTheme={liveTheme}
+                applyTheme={applyTheme}
+                loading={themesLoading}
               />
             )}
             {activeTab === 'builder' && (

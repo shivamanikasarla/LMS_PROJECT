@@ -6,7 +6,7 @@ const HEADER_BASE = '/website/header';
 const SETTINGS_BASE = '/website/settings';
 
 // Helper to get auth token
-const VALID_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzYW50b3NoY2hhdml0aGluaTIwMDRAZ21haWwuY29tIiwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NVUEVSX0FETUlOIl0sInBlcm1pc3Npb25zIjpbIioiXSwidGVuYW50RGIiOiJsbXNfdGVuYW50XzE3NzA3MDExMDEwODYiLCJpYXQiOjE3NzI2OTg4ODF9.Jnc09emYvccxy0lhxKbkvVr1MdGKDRTc1u9vFOjl7Q_xBDk6xzCL0FFab1vTK5yfl7TSy8dP74ogXeUjOvOqRg";
+const VALID_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzYW50b3NoY2hhdml0aGluaTIwMDRAZ21haWwuY29tIiwidXNlcklkIjoxLCJyb2xlcyI6WyJST0xFX1NVUEVSX0FETUlOIl0sInBlcm1pc3Npb25zIjpbIioiXSwidGVuYW50RGIiOiJsbXNfdGVuYW50XzE3NzA3MDExMDEwODYiLCJpYXQiOjE3NzI3NzY1NTR9.nml_BxtN6jPhrJNdoJp0zYlqwIbmuhstuZLci5DtQz14sxgnG9o_dVP0thA29i7EM6pK1fSL3sGNQgJlxZe4lg";
 
 const getAuthToken = () => {
     return localStorage.getItem('authToken') || import.meta.env.VITE_DEV_AUTH_TOKEN || VALID_TOKEN;
@@ -70,7 +70,27 @@ const fetchWithAuthText = async (url, options = {}) => {
     }
 };
 
+// Helper for fetching blobs (images) with authentication
+const fetchImageBlobWithAuth = async (url) => {
+    try {
+        const response = await apiClient({
+            url,
+            method: 'GET',
+            responseType: 'blob'
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`📡 websiteService API Error (blob) [GET] ${url}:`, error.response?.status);
+        throw error;
+    }
+};
+
 export const websiteService = {
+    // =========================================
+    // IMAGE BLOB — Fetch with auth
+    // =========================================
+    getImageBlob: (url) => fetchImageBlobWithAuth(url),
+
     // =========================================
     // Get available theme templates from master DB
     // =========================================
@@ -112,26 +132,34 @@ export const websiteService = {
         if (!tenantThemeId) return [];
 
         try {
-            // New strict logic:
-            // 1. If it's the live theme, use the dedicated live endpoint and extract pages
+            let pages = [];
+
+            // 1. If it's the live theme, try the summary endpoint first
             if (isLive) {
-                console.log("🌐 Fetching LIVE theme: /website/themes/live");
+                console.log("🌐 Fetching Theme [LIVE SUMMARY]: /website/themes/live");
                 const themeData = await fetchWithAuth(`${API_BASE}/live`);
-                if (themeData && themeData.pages) return themeData.pages;
-                return [];
+                if (themeData) {
+                    pages = Array.isArray(themeData) ? themeData : (themeData.pages || themeData.data);
+                    if (pages && Array.isArray(pages) && pages.length > 0) {
+                        return pages;
+                    }
+                }
+                console.log("ℹ️ LIVE summary had no pages, falling back to detail endpoint.");
             }
 
-            // 2. Otherwise, fetch the theme structure and extract pages array
-            console.log(`🌐 Fetching theme structure for pages: ${API_BASE}/${tenantThemeId}`);
+            // 2. Fetch/Fallback to detailed theme structure
+            console.log(`🌐 Fetching Theme [DETAIL]: ${API_BASE}/${tenantThemeId}`);
             const data = await fetchWithAuth(`${API_BASE}/${tenantThemeId}`);
 
-            if (data && typeof data === 'object') {
-                if (Array.isArray(data.pages)) return data.pages;
-                if (data.data && Array.isArray(data.data)) return data.data;
-                if (Array.isArray(data)) return data;
+            if (data) {
+                // Check all known keys where pages might hide
+                const extracted = Array.isArray(data) ? data : (data.pages || data.data || data.theme?.pages);
+                if (Array.isArray(extracted)) {
+                    return extracted;
+                }
             }
 
-            console.warn("⚠️ Backend returned theme structure without a pages array:", data);
+            console.warn("⚠️ Backend returned theme structure without a valid pages array:", data);
             return [];
         } catch (error) {
             console.error(`❌ [websiteService] getThemePages failed for ${tenantThemeId}:`, error.message);

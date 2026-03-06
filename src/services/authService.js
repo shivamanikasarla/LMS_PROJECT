@@ -7,13 +7,18 @@ export const authService = {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email,
+                    username: email, // Fallback for backends expecting 'username'
+                    password
+                })
             });
 
             if (!res.ok) {
-                const error = await res.text();
-                console.error('Login failed with status:', res.status, error);
-                throw new Error(error || 'Login failed');
+                const errorBody = await res.text();
+                console.error('Login failed status:', res.status);
+                console.error('Error Response Body:', errorBody);
+                throw new Error(errorBody || `Login failed with status ${res.status}`);
             }
 
             // Backend returns the raw token string, not JSON

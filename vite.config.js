@@ -30,8 +30,8 @@ export default defineConfig(({ mode }) => {
   console.log(`  Website Backend:       ${TARGET_WEBSITE}`)
   console.log('-----------------------------------------------------')
 
-  const ADMIN_TARGET = 'http://192.168.1.24:9090'; // Use IP for connection
-  const ADMIN_DOMAIN = 'santoshchavithini.yourdomain.com:9090'; // Domain for Host header
+  const ADMIN_TARGET = TARGET_ADMIN;
+  const ADMIN_DOMAIN = new URL(TARGET_ADMIN).host;
 
   return {
     plugins: [react()],
@@ -88,31 +88,67 @@ export default defineConfig(({ mode }) => {
           target: ADMIN_TARGET,
           changeOrigin: true,
           secure: false,
-          headers: { Host: ADMIN_DOMAIN }
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
         },
         '/student': {
           target: ADMIN_TARGET,
           changeOrigin: true,
           secure: false,
-          headers: { Host: ADMIN_DOMAIN }
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
         },
         '/website': {
           target: ADMIN_TARGET,
           changeOrigin: true,
           secure: false,
-          headers: { Host: ADMIN_DOMAIN }
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
+        },
+        '/themes': {
+          target: ADMIN_TARGET,
+          changeOrigin: true,
+          secure: false,
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
         },
         '/auth': {
           target: ADMIN_TARGET,
           changeOrigin: true,
           secure: false,
-          headers: { Host: ADMIN_DOMAIN }
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
         },
         '/users': {
           target: ADMIN_TARGET,
           changeOrigin: true,
           secure: false,
-          headers: { Host: ADMIN_DOMAIN }
+          xfwd: true,
+          headers: {
+            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Origin': TARGET_ADMIN,
+            'Referer': TARGET_ADMIN + '/'
+          }
         },
         '/uploads': {
           target: TARGET_UPLOADS,
