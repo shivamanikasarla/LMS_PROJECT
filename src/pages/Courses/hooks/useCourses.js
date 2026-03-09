@@ -23,7 +23,7 @@ export const useCourses = () => {
 
         // If relative path, prepend backend origin
         // We use the same target as configured in vite.config.js
-        const BACKEND_URL = "http://192.168.1.23:5151";
+        const BACKEND_URL = "http://192.168.1.22:5151";
         return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 

@@ -79,72 +79,42 @@ function getNodeDisplayInfo(node) {
 
 function parseHtmlToTree(html) {
     if (!html || !html.trim()) return [];
-    const nodes = [];
-    const stack = [];
-    // Regex to find tags and text
-    const re = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*?)(\/?)>|([^<]+)/g;
-    let match;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString('<body>' + html + '</body>', 'text/html');
+    const root = doc.body;
     let idCounter = 0;
-    while ((match = re.exec(html)) !== null) {
-        const [, isClosing, tagName, attrs, selfClose, textContent] = match;
-        if (textContent) {
-            const trimmed = textContent.trim();
-            if (trimmed && stack.length > 0) {
-                // Add text node to current parent
-                const parent = stack[stack.length - 1];
-                parent.children.push({
-                    id: `_text_${idCounter++}`,
-                    tag: '#text',
-                    text: trimmed.length > 30 ? trimmed.substring(0, 30) + '…' : trimmed,
-                    children: [],
-                    className: '',
-                });
-            }
-            continue;
-        }
-        const tag = tagName.toLowerCase();
-        if (isClosing) {
-            // Close tag - pop from stack
-            if (stack.length > 0) {
-                const closed = stack.pop();
-                if (stack.length > 0) {
-                    stack[stack.length - 1].children.push(closed);
-                } else {
-                    nodes.push(closed);
+
+    function buildTree(element) {
+        const nodes = [];
+        Array.from(element.childNodes).forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                const trimmed = child.textContent.trim();
+                if (trimmed) {
+                    nodes.push({
+                        id: `_text_${idCounter++}`,
+                        tag: '#text',
+                        text: trimmed.length > 30 ? trimmed.substring(0, 30) + '…' : trimmed,
+                        children: [],
+                        className: '',
+                    });
                 }
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const tag = child.tagName.toLowerCase();
+                if (tag === 'script' || tag === 'style') return;
+
+                const node = {
+                    id: `_node_${idCounter++}`,
+                    tag,
+                    className: child.className || '',
+                    children: buildTree(child),
+                };
+                nodes.push(node);
             }
-        } else {
-            // Extract class name if present
-            const classMatch = attrs.match(/class=["']([^"']*)["']/);
-            const className = classMatch ? classMatch[1] : '';
-            const node = {
-                id: `_node_${idCounter++}`,
-                tag,
-                className,
-                children: [],
-            };
-            if (selfClose || SELF_CLOSING_TAGS.has(tag)) {
-                // Self-closing tag
-                if (stack.length > 0) {
-                    stack[stack.length - 1].children.push(node);
-                } else {
-                    nodes.push(node);
-                }
-            } else {
-                stack.push(node);
-            }
-        }
+        });
+        return nodes;
     }
-    // Flush remaining stack
-    while (stack.length > 0) {
-        const remaining = stack.pop();
-        if (stack.length > 0) {
-            stack[stack.length - 1].children.push(remaining);
-        } else {
-            nodes.push(remaining);
-        }
-    }
-    return nodes;
+
+    return buildTree(root);
 }
 
 // ─── LayerTreeNode component ───
@@ -339,7 +309,7 @@ const ALL_WIDGETS = [
     { id: '3col', label: '3 Columns', icon: Layers, cat: 'layout', snippet: '<div class="row">\n  <div class="cell"></div>\n  <div class="cell"></div>\n  <div class="cell"></div>\n</div>' },
     { id: '2col37', label: '2 Col 3/7', icon: LayoutTemplate, cat: 'layout', snippet: '<div class="row">\n  <div class="cell" style="flex:3"></div>\n  <div class="cell" style="flex:7"></div>\n</div>' },
     { id: 'navbar', label: 'Navbar', icon: List, cat: 'layout', snippet: '<nav class="navbar">\n  <div class="navbar-container">\n    <div class="navbar-brand" contenteditable="true">Brand</div>\n    <ul class="navbar-menu">\n      <li><a href="#" contenteditable="true">Home</a></li>\n      <li><a href="#" contenteditable="true">About</a></li>\n      <li><a href="#" contenteditable="true">Contact</a></li>\n    </ul>\n  </div>\n</nav>' },
-    { id: 'tabs', label: 'Tabs', icon: Layout, cat: 'layout', snippet: '<div class="gp-tabs" data-component="tabs">\n  <div class="gp-tabs-header">\n    <button class="gp-tab-btn active" contenteditable="true">Tab 1</button>\n    <button class="gp-tab-btn" contenteditable="true">Tab 2</button>\n    <button class="gp-tab-btn" contenteditable="true">Tab 3</button>\n  </div>\n  <div class="gp-tab-content" contenteditable="true">\n    <p>Tab content goes here. Click to edit this text.</p>\n  </div>\n</div>' },
+    { id: 'tabs', label: 'Tabs', icon: Layout, cat: 'layout', snippet: '<div class="gp-tabs" data-component="tabs">\n  <div class="gp-tabs-header">\n    <button class="gp-tab-btn active" contenteditable="true">Tab 1</button>\n    <button class="gp-tab-btn" contenteditable="true">Tab 2</button>\n    <button class="gp-tab-btn" contenteditable="true">Tab 3</button>\n  </div>\n  <div class="gp-tab-content-wrapper">\n    <div class="gp-tab-pane active" contenteditable="true">Tab 1 content goes here...</div>\n    <div class="gp-tab-pane" contenteditable="true">Tab 2 content goes here...</div>\n    <div class="gp-tab-pane" contenteditable="true">Tab 3 content goes here...</div>\n  </div>\n</div>' },
 
     // Media
     { id: 'image', label: 'Image', icon: ImageIcon, cat: 'media', snippet: '<div class="gp-image-wrapper" data-component="image">\n  <img src="https://placehold.co/600x300/e2e8f0/94a3b8?text=Click+to+change+image" alt="placeholder" class="gp-image" />\n  <div class="gp-image-overlay">📷 Double-click to change image</div>\n</div>' },
@@ -833,11 +803,11 @@ const CATEGORIES = [
     { key: 'forms', label: 'Forms', icon: FormInput },
 ];
 
-const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpublish }) => {
+const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpublish, initialTab = 'design' }) => {
     const [htmlCode, setHtmlCode] = useState(initialHtml);
     const [cssCode, setCssCode] = useState(initialCss);
     const [deviceMode, setDeviceMode] = useState('desktop');
-    const [activeTab, setActiveTab] = useState('design');
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [activeCat, setActiveCat] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [hoveredWidget, setHoveredWidget] = useState(null);
@@ -888,11 +858,17 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
     // Select a layer from the structure panel and highlight on canvas
     const handleSelectLayer = useCallback((nodeId, topIndex) => {
         setSelectedLayer(nodeId);
-        setSelectedElementIndex(topIndex);
-        if (iframeRef.current && iframeRef.current.contentWindow && topIndex !== undefined) {
-            iframeRef.current.contentWindow.postMessage({ type: 'builder-select-element', index: topIndex }, '*');
+        // Robust selection: find the absolute index in a flat list of all elements
+        // The structure panel provides 'topIndex' which we now treat as the absolute index 
+        // because we'll flatten the tree to find it or similar.
+        // Actually, let's just use the nodeId suffix if it was generated from the absolute list.
+        const absoluteIndex = nodeId.startsWith('_node_') ? parseInt(nodeId.replace('_node_', '')) : -1;
+
+        setSelectedElementIndex(absoluteIndex);
+        if (iframeRef.current && iframeRef.current.contentWindow && absoluteIndex >= 0) {
+            iframeRef.current.contentWindow.postMessage({ type: 'builder-select-element', index: absoluteIndex }, '*');
             // Also request styles
-            iframeRef.current.contentWindow.postMessage({ type: 'builder-get-styles', index: topIndex }, '*');
+            iframeRef.current.contentWindow.postMessage({ type: 'builder-get-styles', index: absoluteIndex }, '*');
         }
     }, []);
 
@@ -1094,13 +1070,15 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
           [data-component]:hover { border-color: #3b97e3; }
 
           /* Tabs */
-          .gp-tabs { border: 2px solid #3b97e3; border-radius: 4px; overflow: hidden; }
-          .gp-tabs::before { content:'Tabs'; position:absolute;top:0;left:0;background:#3b97e3;color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:0 0 3px 0;z-index:2; }
-          .gp-tabs-header { display:flex; background:#f1f5f9; border-bottom:2px solid #e2e8f0; }
+          .gp-tabs { border: 2px solid #3b97e3; border-radius: 4px; overflow: hidden; position: relative; }
+          .gp-tabs::before { content:'Tabs'; position:absolute;top:0;left:0;background:#3b97e3;color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:0 0 3px 0;z-index:10; }
+          .gp-tabs-header { display:flex; background:#f1f5f9; border-bottom:2px solid #e2e8f0; position: relative; z-index: 5; }
           .gp-tab-btn { padding:10px 20px; border:none; background:transparent; cursor:pointer; font-size:13px; font-weight:500; color:#64748b; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
           .gp-tab-btn.active { color:#4f46e5; border-bottom-color:#4f46e5; background:#fff; }
           .gp-tab-btn:hover { color:#334155; background:#f8fafc; }
-          .gp-tab-content { padding:16px; min-height:60px; }
+          .gp-tab-content-wrapper { position: relative; }
+          .gp-tab-pane { display: none; padding:16px; min-height:60px; }
+          .gp-tab-pane.active { display: block; }
 
           /* Image */
           .gp-image-wrapper { position:relative; border:2px solid #3b97e3; border-radius:4px; overflow:hidden; }
@@ -1242,181 +1220,199 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
         ${htmlCode}
         <script>
           (function() {
+            var selectedIdx = -1;
+
             function addToolbars() {
               document.querySelectorAll('.builder-toolbar').forEach(t => t.remove());
-              var els = document.body.children;
-              for (var i = 0; i < els.length; i++) {
-                var el = els[i];
-                if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
-                var tb = document.createElement('div');
-                tb.className = 'builder-toolbar';
-                // Move Up button
-                var btnUp = document.createElement('button');
-                btnUp.innerHTML = '&#8593;';
-                btnUp.title = 'Move Up';
-                btnUp.setAttribute('data-idx', i);
-                btnUp.onclick = function(e) {
+              // Add toolbars and click listeners to elements
+              // We only add toolbars to top-level elements or components with data-component
+              var items = document.body.querySelectorAll('*');
+              items.forEach((el, i) => {
+                if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE' || el.classList.contains('builder-toolbar')) return;
+
+                // Add select listener
+                el.onclick = function(e) {
                   e.stopPropagation();
-                  var idx = parseInt(this.getAttribute('data-idx'));
-                  var body = document.body;
-                  var children = Array.from(body.children).filter(c => c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE');
-                  if (idx > 0) {
-                    body.insertBefore(children[idx], children[idx - 1]);
-                    syncBack();
+                  clearSelection();
+                  el.classList.add('builder-selected');
+                  var idx = Array.from(document.body.querySelectorAll('*')).indexOf(el);
+                  var tagInfo = el.tagName.toLowerCase();
+                  var cls = el.className ? el.className.toString().split(' ').find(function(c) { return c.startsWith('gp-'); }) : '';
+                  window.parent.postMessage({ type: 'builder-element-clicked', index: idx, tagName: cls || tagInfo }, '*');
+
+                  // --- Inline Tab Switching Logic ---
+                  if (el.classList.contains('gp-tab-btn')) {
+                    var tabsContainer = el.closest('.gp-tabs');
+                    if (tabsContainer) {
+                      var btns = tabsContainer.querySelectorAll('.gp-tab-btn');
+                      var btnIdx = Array.from(btns).indexOf(el);
+                      var contentWrapper = tabsContainer.querySelector('.gp-tab-content-wrapper');
+                      if (contentWrapper) {
+                        var panes = contentWrapper.querySelectorAll('.gp-tab-pane');
+                        btns.forEach(b => b.classList.remove('active'));
+                        panes.forEach(p => p.classList.remove('active'));
+                        el.classList.add('active');
+                        if (panes[btnIdx]) panes[btnIdx].classList.add('active');
+                      }
+                    }
+                  }
+
+                  // --- Inline Slider Logic ---
+                  if (el.classList.contains('gp-slider-arrow') || el.classList.contains('dot')) {
+                    var slider = el.closest('.gp-slider');
+                    if (slider) {
+                      var slides = slider.querySelectorAll('.gp-slide');
+                      var dots = slider.querySelectorAll('.dot');
+                      var current = Array.from(slides).findIndex(s => s.classList.contains('active'));
+                      if (current === -1) current = 0;
+                      
+                      var next = current;
+                      if (el.classList.contains('prev')) next = (current - 1 + slides.length) % slides.length;
+                      else if (el.classList.contains('next')) next = (current + 1) % slides.length;
+                      else if (el.classList.contains('dot')) next = Array.from(dots).indexOf(el);
+
+                      slides.forEach((s, idx) => s.classList.toggle('active', idx === next));
+                      dots.forEach((d, idx) => d.classList.toggle('active', idx === next));
+                    }
                   }
                 };
-                // Duplicate button
-                var btnDup = document.createElement('button');
-                btnDup.innerHTML = '&#9112;';
-                btnDup.title = 'Duplicate';
-                btnDup.setAttribute('data-idx', i);
-                btnDup.onclick = function(e) {
-                  e.stopPropagation();
-                  var idx = parseInt(this.getAttribute('data-idx'));
-                  var children = Array.from(document.body.children).filter(c => c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE');
-                  var clone = children[idx].cloneNode(true);
-                  var cloneTb = clone.querySelector('.builder-toolbar');
-                  if (cloneTb) cloneTb.remove();
-                  children[idx].after(clone);
-                  syncBack();
-                };
-                // Delete button
-                var btnDel = document.createElement('button');
-                btnDel.innerHTML = '&#128465;';
-                btnDel.title = 'Delete';
-                btnDel.setAttribute('data-idx', i);
-                btnDel.onclick = function(e) {
-                  e.stopPropagation();
-                  var idx = parseInt(this.getAttribute('data-idx'));
-                  var children = Array.from(document.body.children).filter(c => c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE');
-                  children[idx].remove();
-                  syncBack();
-                };
-                tb.appendChild(btnUp);
-                tb.appendChild(btnDup);
-                tb.appendChild(btnDel);
-                el.appendChild(tb);
-              }
+
+                // Only add actions toolbar to top-level or data-component elements
+                if (el.parentElement === document.body || el.hasAttribute('data-component')) {
+                  var tb = document.createElement('div');
+                  tb.className = 'builder-toolbar';
+                  
+                  // Move Up
+                  var btnUp = document.createElement('button');
+                  btnUp.innerHTML = '↑';
+                  btnUp.onclick = function(e) {
+                    e.stopPropagation();
+                    if (el.previousElementSibling) {
+                      el.parentElement.insertBefore(el, el.previousElementSibling);
+                      syncBack();
+                    }
+                  };
+                  
+                  // Duplicate
+                  var btnDup = document.createElement('button');
+                  btnDup.innerHTML = '⧉';
+                  btnDup.onclick = function(e) {
+                    e.stopPropagation();
+                    var clone = el.cloneNode(true);
+                    clone.querySelectorAll('.builder-toolbar').forEach(t => t.remove());
+                    el.after(clone);
+                    syncBack();
+                  };
+                  
+                  // Delete
+                  var btnDel = document.createElement('button');
+                  btnDel.innerHTML = '✕';
+                  btnDel.onclick = function(e) {
+                    e.stopPropagation();
+                    el.remove();
+                    syncBack();
+                  };
+                  
+                  tb.appendChild(btnUp);
+                  tb.appendChild(btnDup);
+                  tb.appendChild(btnDel);
+                  el.appendChild(tb);
+                }
+              });
             }
+
             function syncBack() {
               document.querySelectorAll('.builder-toolbar').forEach(t => t.remove());
+              document.querySelectorAll('.builder-selected').forEach(t => t.classList.remove('builder-selected'));
               var html = document.body.innerHTML;
-              html = html.replace(/<script[\\s\\S]*?<\\/script>/gi, '').trim();
+              // Prevent early script termination by splitting the tag string
+              var scriptRegex = new RegExp('<script[\\s\\S]*?<\\/script>', 'gi');
+              html = html.replace(scriptRegex, '').trim();
               window.parent.postMessage({ type: 'builder-update-html', html: html }, '*');
               setTimeout(addToolbars, 50);
             }
-            addToolbars();
 
-            // ─── Slider navigation ───
-            document.querySelectorAll('.gp-slider').forEach(function(slider) {
-              var slides = slider.querySelectorAll('.gp-slide');
-              var dots = slider.querySelectorAll('.dot');
-              var prevBtn = slider.querySelector('.prev');
-              var nextBtn = slider.querySelector('.next');
-              if (slides.length === 0) return;
-              var current = 0;
-              function showSlide(idx) {
-                slides.forEach(function(s,i) { s.classList.toggle('active', i===idx); });
-                dots.forEach(function(d,i) { d.classList.toggle('active', i===idx); });
-                current = idx;
-              }
-              if (prevBtn) prevBtn.onclick = function(e) { e.preventDefault(); showSlide((current - 1 + slides.length) % slides.length); };
-              if (nextBtn) nextBtn.onclick = function(e) { e.preventDefault(); showSlide((current + 1) % slides.length); };
-              dots.forEach(function(d, i) { d.onclick = function() { showSlide(i); }; });
-            });
-
-            // ─── Image double-click to change URL ───
-            document.querySelectorAll('.gp-image-wrapper').forEach(function(wrapper) {
-              wrapper.addEventListener('dblclick', function() {
-                var img = wrapper.querySelector('img');
-                if (!img) return;
-                var url = prompt('Enter new image URL:', img.src);
-                if (url && url.trim()) { img.src = url.trim(); syncBack(); }
-              });
-            });
-
-            // ─── Tab switching ───
-            document.querySelectorAll('.gp-tabs').forEach(function(tabs) {
-              var btns = tabs.querySelectorAll('.gp-tab-btn');
-              btns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                  btns.forEach(function(b) { b.classList.remove('active'); });
-                  btn.classList.add('active');
-                });
-              });
-            });
-
-            // ─── Sync contenteditable changes back on blur ───
-            document.querySelectorAll('[contenteditable="true"]').forEach(function(el) {
-              el.addEventListener('blur', function() { syncBack(); });
-            });
-
-            // ─── Click to select element on canvas ───
-            function clearSelection() {
-              document.querySelectorAll('.builder-selected').forEach(function(el) {
-                el.classList.remove('builder-selected');
-              });
+            function getYouTubeId(url) {
+              var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              var match = url.match(regExp);
+              return (match && match[2].length == 11) ? match[2] : null;
             }
-            var topEls = Array.from(document.body.children).filter(function(c) {
-              return c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE';
+
+            // Double click for media elements
+            document.addEventListener('dblclick', function(e) {
+              // Image
+              var imgWrapper = e.target.closest('.gp-image-wrapper');
+              if (imgWrapper) {
+                var img = imgWrapper.querySelector('img');
+                if (img) {
+                  var url = prompt('Enter new image URL:', img.src);
+                  if (url && url.trim()) { img.src = url.trim(); syncBack(); }
+                }
+                return;
+              }
+
+              // Video
+              var vidWrapper = e.target.closest('.gp-video');
+              if (vidWrapper) {
+                var frame = vidWrapper.querySelector('iframe');
+                if (frame) {
+                  var url = prompt('Enter YouTube URL or Embed Link:', frame.src);
+                  if (url && url.trim()) {
+                    var finalUrl = url.trim();
+                    var ytId = getYouTubeId(finalUrl);
+                    if (ytId) finalUrl = 'https://www.youtube.com/embed/' + ytId;
+                    frame.src = finalUrl;
+                    syncBack();
+                  }
+                }
+                return;
+              }
+
+              // Map / Iframe
+              var embedWrapper = e.target.closest('.gp-map, .gp-iframe');
+              if (embedWrapper) {
+                var frame = embedWrapper.querySelector('iframe');
+                if (frame) {
+                  var url = prompt('Enter new Source URL:', frame.src);
+                  if (url && url.trim()) { frame.src = url.trim(); syncBack(); }
+                }
+                return;
+              }
             });
-            topEls.forEach(function(el, idx) {
-              el.addEventListener('click', function(e) {
-                e.stopPropagation();
-                clearSelection();
-                el.classList.add('builder-selected');
-                // Tell parent which element was clicked
-                var tagInfo = el.tagName.toLowerCase();
-                var cls = el.className ? el.className.toString().split(' ').find(function(c) { return c.startsWith('gp-'); }) : '';
-                window.parent.postMessage({ type: 'builder-element-clicked', index: idx, tagName: cls || tagInfo }, '*');
-              });
-            });
-            // Clicking body background clears selection
-            document.body.addEventListener('click', function(e) {
+
+            // Selection and body clicks
+            document.body.onclick = function(e) {
               if (e.target === document.body) {
                 clearSelection();
                 window.parent.postMessage({ type: 'builder-element-clicked', index: -1 }, '*');
               }
-            });
+            };
 
-            // ─── Listen for select from structure panel ───
+            function clearSelection() {
+              document.querySelectorAll('.builder-selected').forEach(el => el.classList.remove('builder-selected'));
+            }
+
             window.addEventListener('message', function(e) {
-              if (e.data && e.data.type === 'builder-select-element') {
+              var els = document.body.querySelectorAll('*');
+              if (e.data.type === 'builder-select-element') {
                 clearSelection();
                 var idx = e.data.index;
-                var els = Array.from(document.body.children).filter(function(c) {
-                  return c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE';
-                });
                 if (idx >= 0 && idx < els.length) {
                   els[idx].classList.add('builder-selected');
                   els[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
               }
-              // Toggle visibility from structure panel eye icon
-              if (e.data && e.data.type === 'builder-toggle-visibility') {
-                var idx2 = e.data.index;
-                var els2 = Array.from(document.body.children).filter(function(c) {
-                  return c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE';
-                });
-                if (idx2 >= 0 && idx2 < els2.length) {
-                  var el = els2[idx2];
-                  if (el.style.display === 'none') {
-                    el.style.display = '';
-                    el.style.opacity = '';
-                  } else {
-                    el.style.display = 'none';
-                  }
+              if (e.data.type === 'builder-apply-style') {
+                var idx = e.data.index;
+                if (idx >= 0 && idx < els.length) {
+                  els[idx].style[e.data.property] = e.data.value;
                 }
               }
-              // ─── Get computed styles for properties panel ───
-              if (e.data && e.data.type === 'builder-get-styles') {
-                var gIdx = e.data.index;
-                var gEls = Array.from(document.body.children).filter(function(c) {
-                  return c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE';
-                });
-                if (gIdx >= 0 && gIdx < gEls.length) {
-                  var gEl = gEls[gIdx];
-                  var cs = window.getComputedStyle(gEl);
+              if (e.data.type === 'builder-get-styles') {
+                var idx = e.data.index;
+                if (idx >= 0 && idx < els.length) {
+                  var el = els[idx];
+                  var cs = window.getComputedStyle(el);
                   var props = ['display','position','top','right','bottom','left','overflow',
                     'width','height','maxWidth','minHeight',
                     'marginTop','marginRight','marginBottom','marginLeft',
@@ -1428,28 +1424,14 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                     'flexDirection','flexWrap','justifyContent','alignItems','gap',
                     'transition','cursor','rotate','scale'];
                   var stylesObj = {};
-                  props.forEach(function(p) {
-                    try { stylesObj[p] = cs[p] || ''; } catch(err) { stylesObj[p] = ''; }
-                  });
+                  props.forEach(p => { try { stylesObj[p] = cs[p] || ''; } catch(err) {} });
                   window.parent.postMessage({ type: 'builder-element-styles', styles: stylesObj }, '*');
                 }
               }
-              // ─── Apply single style from properties panel ───
-              if (e.data && e.data.type === 'builder-apply-style') {
-                var aIdx = e.data.index;
-                var aEls = Array.from(document.body.children).filter(function(c) {
-                  return c.tagName !== 'SCRIPT' && c.tagName !== 'STYLE';
-                });
-                if (aIdx >= 0 && aIdx < aEls.length) {
-                  aEls[aIdx].style[e.data.property] = e.data.value;
-                  // Do NOT call syncBack() here — it reloads the iframe and breaks selection
-                }
-              }
-              // ─── Sync HTML back on demand (called when panel closes or element changes) ───
-              if (e.data && e.data.type === 'builder-sync-html') {
-                syncBack();
-              }
+              if (e.data.type === 'builder-sync-html') syncBack();
             });
+
+            addToolbars();
           })();
         </script>
       </body>
@@ -1457,7 +1439,27 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
   `;
 
     const handleAddWidget = (snippet) => {
-        setHtmlCode(prev => prev + '\n' + snippet);
+        if (selectedElementIndex >= 0 && (selectedElementName === 'cell' || selectedElementName === 'row' || selectedElementName === 'div' || selectedElementName === 'section')) {
+            // Try to insert INTO the selected element
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+                // We need a way to tell the iframe to insert into a specific index
+                // For now, let's just append to body if we don't have a complex DOM manipulator in iframe
+                // But let's improve the iframe script later to support "append to selected"
+                setHtmlCode(prev => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString('<body>' + prev + '</body>', 'text/html');
+                    const els = Array.from(doc.body.querySelectorAll('*'));
+                    if (els[selectedElementIndex]) {
+                        els[selectedElementIndex].insertAdjacentHTML('beforeend', snippet);
+                    } else {
+                        doc.body.insertAdjacentHTML('beforeend', '\n' + snippet);
+                    }
+                    return doc.body.innerHTML;
+                });
+            }
+        } else {
+            setHtmlCode(prev => prev + '\n' + snippet);
+        }
     };
 
     // Drag handlers

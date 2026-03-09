@@ -1594,12 +1594,15 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
   });
 
   const [footerConfig, setFooterConfig] = useState({
-    bgColor: '#ffffff',
-    textColor: '#000000',
-    title: 'Launch your Academy',
-    copyright: '© 2025 LMS Academy. All rights reserved.'
+    bgColor: '#1a1f3c',
+    textColor: '#ffffff',
+    title: 'GET IN TOUCH',
+    copyright: '© 2025 Domain Name. All Rights Reserved.',
+    address: '123 Street, New York, USA',
+    phone: '+012 345 67890'
   });
 
+  const [siteSettings, setSiteSettings] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -1609,7 +1612,6 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
     const fetchConfigs = async () => {
       setLoading(true);
       try {
-        // Fetch header config
         const headerStr = await websiteService.getHeader(activeId);
         if (headerStr) {
           try {
@@ -1617,6 +1619,14 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
             if (parsed) {
               if (parsed.config) setHeaderConfig(prev => ({ ...prev, ...parsed.config }));
               if (parsed.links) setHeaderLinks(parsed.links);
+              // Handle custom header code if stored in thematic config
+              if (parsed.custom) {
+                setHeaderConfig(prev => ({
+                  ...prev,
+                  customHtml: parsed.custom.html || prev.customHtml,
+                  customCss: parsed.custom.css || prev.customCss
+                }));
+              }
             }
           } catch (e) {
             console.warn('Failed to parse header config:', e);
@@ -1643,12 +1653,104 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
       } catch (err) {
         console.warn('Failed to fetch footer config:', err.message);
       }
+
+      try {
+        // Fetch site settings (branding)
+        const settings = await websiteService.getSettings();
+        if (settings) {
+          setSiteSettings(settings);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch site settings:', err.message);
+      }
+
       setLoading(false);
     };
     fetchConfigs();
   }, [tenantThemeId]);
 
   // --- Handlers ---
+  const generateLiveHeaderTemplates = () => {
+    const bgColor = headerConfig?.config?.bgColor || '#ffffff';
+    const textColor = headerConfig?.config?.textColor || '#000000';
+    const height = headerConfig?.config?.height || 80;
+    const siteName = siteSettings?.siteName || "Academy Name";
+    const logoUrl = siteSettings?.logoUrl;
+
+    const linksHtml = headerLinks
+      .filter(l => l.visible)
+      .map(l => `<li><a href="${l.url}" ${l.newTab ? 'target="_blank"' : ''}>${l.text}</a></li>`)
+      .join('\n      ');
+
+    const html = `
+<header class="custom-header">
+  <div class="logo-area">
+    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="site-logo">` : `<span class="site-name">${siteName}</span>`}
+  </div>
+  <nav class="nav-area">
+    <ul class="nav-menu">
+      ${linksHtml}
+    </ul>
+  </nav>
+  <div class="nav-actions">
+    <button class="gp-btn gp-btn-primary">Get Started</button>
+  </div>
+</header>
+`.trim();
+
+    const css = `
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+  background: ${bgColor};
+  color: ${textColor};
+  height: ${height}px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-family: 'Inter', sans-serif;
+}
+
+.logo-area { display: flex; align-items: center; }
+.site-logo { height: 40px; }
+.site-name { font-weight: 800; font-size: 24px; color: ${textColor}; }
+
+.nav-menu {
+  list-style: none;
+  display: flex;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-menu a {
+  text-decoration: none;
+  color: ${textColor};
+  font-weight: 500;
+  font-size: 15px;
+  transition: opacity 0.2s;
+}
+
+.nav-menu a:hover { opacity: 0.7; }
+
+.gp-btn {
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gp-btn-primary {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+}
+`.trim();
+
+    return { html, css };
+  };
+
   const updateHeaderConfig = (key, value) => {
     setHeaderConfig(prev => ({ ...prev, [key]: value }));
   };
@@ -1714,6 +1816,7 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
 
   // --- Code Editor State ---
   const [isCodeEditorOpen, setCodeEditorOpen] = useState(false);
+  const [codeEditorInitialTab, setCodeEditorInitialTab] = useState('design');
 
   // --- Render ---
   const containerVariants = {
@@ -1775,29 +1878,52 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
         <h4 className="font-bold text-xl mb-4 text-slate-800">Header Preview</h4>
         <div className="header-preview-box shadow-sm" style={{
           height: `${headerConfig.height}px`,
+          minHeight: `${headerConfig.height}px`,
           backgroundColor: headerConfig.bgColor,
-          color: headerConfig.textColor
+          color: headerConfig.textColor,
+          transition: 'all 0.3s ease'
         }}>
-          {/* Logo Placeholder */}
+          {/* Branding */}
           <div className="d-flex align-items-center gap-2">
-            <div className="rounded-circle bg-indigo-100 p-2 d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
-              <Globe size={20} className="text-indigo-600" />
+            {siteSettings?.logoUrl ? (
+              <img src={siteSettings.logoUrl} alt="Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
+            ) : (
+              <div className="rounded-circle bg-indigo-100 p-2 d-flex align-items-center justify-content-center" style={{ width: 35, height: 35 }}>
+                <Globe size={18} className="text-indigo-600" />
+              </div>
+            )}
+            <div className="font-bold text-lg" style={{ color: headerConfig.textColor }}>
+              {siteSettings?.siteName || 'LOGO'}
             </div>
-            <div className="font-bold text-lg">LOGO</div>
           </div>
 
-          {/* Nav Links */}
-          <div className="d-none d-md-flex flex-grow-1 justify-content-center gap-4 text-sm font-medium d-none-mobile">
+          {/* Nav Links - Pill Style */}
+          <div className="d-none d-md-flex flex-grow-1 justify-content-center gap-3">
             {headerLinks.filter(l => l.visible).map(l => (
-              <span key={l.id} style={{ cursor: 'pointer', opacity: 0.9 }}>{l.text}</span>
+              <span key={l.id} className="header-preview-nav-link" style={{
+                color: headerConfig.textColor,
+                borderColor: `${headerConfig.textColor}40`
+              }}>
+                {l.text}
+              </span>
             ))}
           </div>
 
           {/* Right Controls */}
           <div className="d-flex align-items-center gap-3">
-            {headerConfig.showSearch === 'yes' && <Search size={20} style={{ cursor: 'pointer' }} />}
-            {headerConfig.showCart === 'yes' && <div className="position-relative" style={{ cursor: 'pointer' }}><Layout size={20} /><span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"><span className="visually-hidden">New alerts</span></span></div>}
-            <button className="btn-primary-action py-2 px-4 text-sm" onClick={() => toast.info("Login clicked (Preview mode)")} style={{ boxShadow: 'none' }}>Login</button>
+            {headerConfig.showSearch === 'yes' && <Search size={18} style={{ cursor: 'pointer', opacity: 0.8 }} />}
+            {headerConfig.showCart === 'yes' && (
+              <div className="position-relative" style={{ cursor: 'pointer', opacity: 0.8 }}>
+                <ShoppingCart size={18} />
+                <span className="preview-cart-badge">0</span>
+              </div>
+            )}
+            <button className="preview-login-btn" style={{
+              backgroundColor: headerConfig.textColor,
+              color: headerConfig.bgColor
+            }}>
+              Login
+            </button>
           </div>
         </div>
       </motion.div>
@@ -1820,10 +1946,10 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
 
         {headerConfig.customHeader === 'yes' ? (
           <div className="d-flex gap-4 mt-4">
-            <a href="#" className="d-flex align-items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800" onClick={(e) => { e.preventDefault(); setCodeEditorOpen(true); toast.info("Opening Header Studio..."); }}>
+            <a href="#" className="d-flex align-items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800" onClick={(e) => { e.preventDefault(); setCodeEditorInitialTab('design'); setCodeEditorOpen(true); toast.info("Opening Header Studio..."); }}>
               <Edit2 size={16} /> Edit Header
             </a>
-            <a href="#" className="d-flex align-items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800" onClick={(e) => { e.preventDefault(); setCodeEditorOpen(true); toast.info("Opening Code View..."); }}>
+            <a href="#" className="d-flex align-items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800" onClick={(e) => { e.preventDefault(); setCodeEditorInitialTab('code'); setCodeEditorOpen(true); toast.info("Opening Code View..."); }}>
               <Code size={16} /> Code
             </a>
           </div>
@@ -1934,22 +2060,72 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
       {/* FOOTER SECTION */}
       <motion.div variants={itemVariants} className="mb-5">
         <h4 className="font-bold text-xl mb-4 text-slate-800">Footer Preview</h4>
-        <div className="p-5 rounded-xl text-center transition-colors shadow-sm" style={{ backgroundColor: footerConfig.bgColor, color: footerConfig.textColor }}>
-          <h4 className="mb-3 font-bold">{footerConfig.title}</h4>
+        <div className="rounded-xl overflow-hidden shadow-sm" style={{ backgroundColor: footerConfig.bgColor, color: footerConfig.textColor }}>
+          <div className="p-5">
+            <div className="row g-4 text-start">
+              {/* Column 1: Get in Touch */}
+              <div className="col-md-4">
+                <h5 className="font-bold mb-4 text-uppercase tracking-wider" style={{ color: '#ff6b00' }}>{footerConfig.title || 'GET IN TOUCH'}</h5>
+                <div className="d-flex flex-column gap-3">
+                  <div className="d-flex align-items-center gap-2 opacity-90">
+                    <Map size={16} style={{ color: '#ff6b00' }} />
+                    <span className="text-sm">{footerConfig.address || '123 Street, New York, USA'}</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 opacity-90">
+                    <Clock size={16} style={{ color: '#ff6b00' }} />
+                    <span className="text-sm">{footerConfig.phone || '+012 345 67890'}</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 opacity-90">
+                    <Send size={16} style={{ color: '#ff6b00' }} />
+                    <span className="text-sm">info@example.com</span>
+                  </div>
+                  <div className="d-flex gap-2 mt-2">
+                    {['facebook', 'twitter', 'linkedin', 'instagram'].map(platform => (
+                      <div key={platform} className="p-2 border rounded" style={{ borderColor: `${footerConfig.textColor}30` }}>
+                        {platform === 'facebook' && <Facebook size={14} />}
+                        {platform === 'twitter' && <Twitter size={14} />}
+                        {platform === 'linkedin' && <Linkedin size={14} />}
+                        {platform === 'instagram' && <Instagram size={14} />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-          <div className="d-flex justify-content-center gap-3 mb-4 flex-wrap" style={{ opacity: 0.9 }}>
-            {footerLinks.facebook && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Facebook size={18} /></div>}
-            {footerLinks.twitter && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Twitter size={18} /></div>}
-            {footerLinks.instagram && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Instagram size={18} /></div>}
-            {footerLinks.youtube && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Youtube size={18} /></div>}
-            {footerLinks.linkedin && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Linkedin size={18} /></div>}
-            {footerLinks.telegram && <div className="p-2 rounded-circle" style={{ backgroundColor: `${footerConfig.textColor}15` }}><Send size={18} /></div>}
+              {/* Column 2: Our Courses */}
+              <div className="col-md-4">
+                <h5 className="font-bold mb-4 text-uppercase tracking-wider" style={{ color: '#ff6b00' }}>OUR COURSES</h5>
+                <div className="d-flex flex-column gap-2 opacity-80 text-sm">
+                  <div className="d-flex align-items-center gap-2"><ChevronRight size={14} style={{ color: '#ff6b00' }} /> Web Design</div>
+                  <div className="d-flex align-items-center gap-2"><ChevronRight size={14} style={{ color: '#ff6b00' }} /> Apps Design</div>
+                  <div className="d-flex align-items-center gap-2"><ChevronRight size={14} style={{ color: '#ff6b00' }} /> Marketing</div>
+                  <div className="d-flex align-items-center gap-2"><ChevronRight size={14} style={{ color: '#ff6b00' }} /> Research</div>
+                  <div className="d-flex align-items-center gap-2"><ChevronRight size={14} style={{ color: '#ff6b00' }} /> SEO</div>
+                </div>
+              </div>
 
-            {!Object.values(footerLinks).some(v => v) && <span className="text-sm fst-italic opacity-50 w-100">Social links will appear here when configured below</span>}
+              {/* Column 3: Newsletter */}
+              <div className="col-md-4">
+                <h5 className="font-bold mb-4 text-uppercase tracking-wider" style={{ color: '#ff6b00' }}>NEWSLETTER</h5>
+                <p className="text-sm opacity-80 mb-4">Rebum labore lorem dolores kasd est, et ipsum amet et at kasd, ipsum sea tempor magna tempor.</p>
+                <div className="d-flex">
+                  <input type="text" className="form-control form-control-sm rounded-start border-0" placeholder="Your Email Address" style={{ height: '40px' }} readOnly />
+                  <button className="btn btn-sm rounded-end px-3 font-bold" style={{ backgroundColor: '#ff6b00', color: '#fff', height: '40px' }}>Sign Up</button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="border-top pt-4 mt-4" style={{ borderColor: `${footerConfig.textColor}20` }}>
-            <p className="text-sm opacity-75 m-0">{footerConfig.copyright}</p>
+          <div className="px-5 py-3 d-flex justify-content-between align-items-center border-top" style={{ borderColor: `${footerConfig.textColor}15`, backgroundColor: 'rgba(0,0,0,0.1)' }}>
+            <p className="text-xs opacity-75 m-0">
+              <span style={{ color: '#ff6b00' }}>Domain Name.</span> All Rights Reserved. Designed by <span style={{ color: '#ff6b00' }}>HTML Codex</span>
+            </p>
+            <div className="d-flex gap-3 text-xs opacity-70">
+              <span>Privacy</span>
+              <span>Terms</span>
+              <span>FAQs</span>
+              <span>Help</span>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -1985,6 +2161,14 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
           <div className="col-md-6">
             <label className="wb-label mb-2 text-muted">Copyright Text</label>
             <input type="text" className="wb-input" value={footerConfig.copyright} onChange={(e) => updateFooterConfig('copyright', e.target.value)} />
+          </div>
+          <div className="col-md-6">
+            <label className="wb-label mb-2 text-muted">Address</label>
+            <input type="text" className="wb-input" value={footerConfig.address} onChange={(e) => updateFooterConfig('address', e.target.value)} />
+          </div>
+          <div className="col-md-6">
+            <label className="wb-label mb-2 text-muted">Phone Number</label>
+            <input type="text" className="wb-input" value={footerConfig.phone} onChange={(e) => updateFooterConfig('phone', e.target.value)} />
           </div>
         </div>
 
@@ -2039,11 +2223,13 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
           <HeaderStudio
             isOpen={isCodeEditorOpen}
             onClose={() => setCodeEditorOpen(false)}
-            initialHtml={headerConfig.customHtml || '<!-- Default Header HTML -->\n<header class="custom-header">\n  <div class="logo">My Logo</div>\n  <nav>\n    <a href="/">Home</a>\n    <a href="/courses">Courses</a>\n  </nav>\n</header>'}
-            initialCss={headerConfig.customCss || '/* Custom Header CSS */\n.custom-header {\n  display: flex;\n  justify-content: space-between;\n  padding: 20px;\n  background: #fff;\n  box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n}\n\n.logo {\n  font-weight: bold;\n  font-size: 24px;\n}'}
+            initialTab={codeEditorInitialTab}
+            initialHtml={headerConfig.customHtml || generateLiveHeaderTemplates().html}
+            initialCss={headerConfig.customCss || generateLiveHeaderTemplates().css}
             onSave={async (html, css) => {
               updateHeaderConfig('customHtml', html);
               updateHeaderConfig('customCss', css);
+              updateHeaderConfig('customHeader', 'yes');
               setCodeEditorOpen(false);
               // Save to backend via new Header API (save → apply)
               if (tenantThemeId) {
