@@ -28,7 +28,7 @@ const LoginPage = lazy(() => import('../pages/Login/LoginPage'));
 // New Modules
 const Fee = lazy(() => import('../pages/FeeManagement/fee'));
 const CreateFee = lazy(() => import('../pages/FeeManagement/CreateFee'));
-const Webinar = lazy(() => import('../pages/Webinar/Webinar'));
+const Webinar = lazy(() => import('../pages/Webinar/AnimatedRoutes'));
 const Settings = lazy(() => import('../pages/Settings/Settings'));
 const Website = lazy(() => import('../pages/Website/Website'));
 const LiveWebsite = lazy(() => import('../pages/Website/LiveWebsite'));
@@ -99,7 +99,7 @@ const AppRoutes = () => {
           {/* ===== NEW MODULES ===== */}
           <Route path="/fee/create" element={<CreateFee />} />
           <Route path="/fee/*" element={<Fee />} />
-          <Route path="/webinar" element={<Webinar />} />
+          <Route path="/webinar/*" element={<Webinar />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/website" element={<Website />} />
           <Route path="/transport/*" element={<Transport />} />

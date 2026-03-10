@@ -10,13 +10,13 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
 
-  const TARGET_MAIN = env.VITE_API_TARGET_MAIN || 'http://192.168.1.55:5151'
+  const TARGET_MAIN = env.VITE_API_TARGET_MAIN || 'http://192.168.1.27:5151'
   const TARGET_FEE = env.VITE_API_TARGET_FEE || 'http://192.168.1.6:3130'
   const TARGET_TRANSPORT = env.VITE_API_TARGET_TRANSPORT || 'http://192.168.1.20:9191'
-  const TARGET_ADMIN = env.VITE_API_TARGET_ADMIN || 'http://192.168.1.22:9090'
+  const TARGET_ADMIN = env.VITE_API_TARGET_ADMIN || 'http://192.168.1.22:8081'
   const TARGET_LIBRARY = env.VITE_API_TARGET_LIBRARY || 'http://localhost:9191'
   const TARGET_UPLOADS = env.VITE_API_TARGET_UPLOADS || 'http://localhost:5151'
-  const TARGET_WEBSITE = env.VITE_API_TARGET_WEBSITE || 'http://192.168.1.22:9090'
+  const TARGET_WEBSITE = env.VITE_API_TARGET_WEBSITE || 'http://192.168.1.22:8081'
 
   console.log('-----------------------------------------------------')
   console.log('  Vite Proxy Configuration')
@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }
@@ -101,7 +101,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }
@@ -112,7 +112,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }
@@ -123,7 +123,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }
@@ -134,7 +134,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }
@@ -145,7 +145,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           xfwd: true,
           headers: {
-            'Host': 'santoshchavithini.yourdomain.com:9090',
+            'Host': 'santoshchavithini.yourdomain.com:8081',
             'Origin': TARGET_ADMIN,
             'Referer': TARGET_ADMIN + '/'
           }

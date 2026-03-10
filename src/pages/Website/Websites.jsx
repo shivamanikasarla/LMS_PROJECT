@@ -1638,7 +1638,7 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
 
       try {
         // Fetch footer config
-        const footerStr = await websiteService.getFooter(tenantThemeId);
+        const footerStr = await websiteService.getFooter(activeId);
         if (footerStr) {
           try {
             const parsed = typeof footerStr === 'string' ? JSON.parse(footerStr) : footerStr;
@@ -1667,15 +1667,15 @@ const NavigationTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, a
       setLoading(false);
     };
     fetchConfigs();
-  }, [tenantThemeId]);
+  }, [activeId]);
 
   // --- Handlers ---
   const generateLiveHeaderTemplates = () => {
-    const bgColor = headerConfig?.config?.bgColor || '#ffffff';
-    const textColor = headerConfig?.config?.textColor || '#000000';
-    const height = headerConfig?.config?.height || 80;
+    const bgColor = headerConfig?.bgColor || '#ffffff';
+    const textColor = headerConfig?.textColor || '#000000';
+    const height = headerConfig?.height || 80;
     const siteName = siteSettings?.siteName || "Academy Name";
-    const logoUrl = siteSettings?.logoUrl;
+    const logoUrl = siteSettings?.logoUrl || siteSettings?.logoPath;
 
     const linksHtml = headerLinks
       .filter(l => l.visible)
@@ -2295,15 +2295,9 @@ const SEOTab = ({ tenantThemeId, setSelectedThemeId, themes, liveTheme, applyThe
   // Use passed ID or fallback to the live theme's tenant ID
   const activeId = tenantThemeId || liveTheme?.tenantThemeId;
 
-  const [seoPages, setSeoPages] = useState([
-    { id: 'home', name: 'Home Page', title: '', description: '', keywords: '' },
-    { id: 'courses', name: 'Course Catalog', title: '', description: '', keywords: '' },
-    { id: 'store', name: 'Store', title: '', description: '', keywords: '' },
-    { id: 'blog', name: 'Blog', title: '', description: '', keywords: '' },
-  ]);
-
+  const [seoPages, setSeoPages] = useState(DEFAULT_THEME_PAGES);
   const [sitemapFile, setSitemapFile] = useState(null);
-  const [robotsTxt, setRobotsTxt] = useState('User-agent: *\nAllow: /');
+  const [robotsTxt, setRobotsTxt] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 

@@ -1,21 +1,22 @@
-import './FirstPage.css'
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { webinarService } from '../../services/webinarService'
 import LiveCard from './LiveCard'
 import UpcomingCard from './UpcomingCard'
 import RecordedCard from './RecordedCard'
 import { FiSearch, FiPlus, FiCalendar, FiVideo, FiRadio, FiInbox, FiLayout } from 'react-icons/fi'
+import './FirstPage.css';
 
 const FirstPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Initialize filter from URL if present, else default to 'upcoming'
+  // Initialize filter from URL if present, else default to 'all'
   const getInitialFilter = () => {
     const params = new URLSearchParams(location.search)
     const f = params.get('filter')
-    if (f && ['live', 'upcoming', 'recorded'].includes(f)) return f
-    return 'upcoming'
+    if (f && ['all', 'live', 'upcoming', 'recorded'].includes(f)) return f
+    return 'all'
   }
 
   const [activeFilter, setActiveFilter] = useState(getInitialFilter())
@@ -23,48 +24,45 @@ const FirstPage = () => {
   const [items, setItems] = useState([])
   const [counts, setCounts] = useState({ live: 0, upcoming: 0, recorded: 0 })
   const [loadError, setLoadError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const f = params.get('filter')
-    if (f && ['live', 'upcoming', 'recorded'].includes(f)) {
+    if (f && ['all', 'live', 'upcoming', 'recorded'].includes(f)) {
       setActiveFilter(f)
     }
   }, [location.search])
 
-  const loadData = () => {
+  const loadData = async () => {
     try {
+      setIsLoading(true)
       setLoadError(null)
-      const keys = Object.keys(sessionStorage).filter(k => k.startsWith('webinar-'))
-      const loadedItems = []
-      const now = new Date()
 
-      keys.forEach(k => {
-        try {
-          const raw = sessionStorage.getItem(k)
-          if (!raw) return
-          let parsed = JSON.parse(raw)
-          if (parsed) {
-            // Re-eval status
-            if (parsed.dateTime) {
+      const allWebinars = await webinarService.getAllWebinars()
+
+      const now = new Date();
+      // Map backend keys to frontend expected keys
+      const loadedItems = (allWebinars || []).map(raw => {
+          const parsed = { ...raw };
+          parsed.id = raw.webinarId || raw.id;
+          parsed.dateTime = raw.startTime || raw.dateTime;
+          parsed.duration = raw.durationMinutes || raw.duration;
+          parsed.notes = raw.description || raw.notes;
+          parsed.memberLimit = raw.maxParticipants || raw.memberLimit;
+          
+          if (parsed.dateTime && parsed.duration) {
               const start = new Date(parsed.dateTime)
               const durationMs = (parseInt(parsed.duration, 10) || 30) * 60 * 1000
               const end = new Date(start.getTime() + durationMs)
               let newType = 'upcoming'
               if (now >= start && now <= end) newType = 'live'
               else if (now > end) newType = 'recorded'
-
-              if (parsed.type !== newType) {
-                parsed.type = newType
-                sessionStorage.setItem(k, JSON.stringify(parsed))
-              }
-            }
-            loadedItems.push(parsed)
+              
+              parsed.type = newType;
           }
-        } catch (e) {
-          console.warn('FirstPage: skipping invalid webinar key', k, e)
-        }
-      })
+          return parsed;
+      });
 
       // Sort by date/time
       loadedItems.sort((a, b) => (a.dateTime || '') > (b.dateTime || '') ? 1 : -1)
@@ -78,12 +76,17 @@ const FirstPage = () => {
 
       setCounts(grouped)
     } catch (err) {
+      console.error('Error loading webinars:', err)
       setLoadError(err.message || String(err))
+    } finally {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
     loadData()
+    // We can keep the event listener for local updates if needed, 
+    // but typically backend-driven apps rely on re-fetching.
     const handler = () => loadData()
     window.addEventListener('webinar-added', handler)
     return () => window.removeEventListener('webinar-added', handler)
@@ -93,7 +96,7 @@ const FirstPage = () => {
 
   const filteredItems = searchTerm
     ? items.filter(i => (i.title || '').toLowerCase().includes(searchTerm.toLowerCase()))
-    : items.filter(i => i.type === activeFilter)
+    : items.filter(i => activeFilter === 'all' ? true : i.type === activeFilter)
 
   return (
     <div className="firstpage-container">
@@ -159,49 +162,38 @@ const FirstPage = () => {
           </div>
         ) : (
           <div className="fp-dashboard">
-            <div className="fp-dashboard-header">
-              <div className="fp-header-top">
-                <h1 className="fp-heading">Your Webinars</h1>
-                <div className="fp-controls">
-                  <div className="fp-filter-bar">
-                    <button
-                      className={`fp-filter-btn ${activeFilter === 'live' ? 'active' : ''}`}
-                      onClick={() => setActiveFilter('live')}
-                    >
-                      <FiRadio /> Live
-                      <span className="fp-filter-count">{counts['live']}</span>
-                    </button>
-                    <button
-                      className={`fp-filter-btn ${activeFilter === 'upcoming' ? 'active' : ''}`}
-                      onClick={() => setActiveFilter('upcoming')}
-                    >
-                      <FiCalendar /> Upcoming
-                      <span className="fp-filter-count">{counts['upcoming']}</span>
-                    </button>
-                    <button
-                      className={`fp-filter-btn ${activeFilter === 'recorded' ? 'active' : ''}`}
-                      onClick={() => setActiveFilter('recorded')}
-                    >
-                      <FiVideo /> Recorded
-                      <span className="fp-filter-count">{counts['recorded']}</span>
-                    </button>
-                  </div>
-
-                  <div className="fp-search-wrapper">
-                    <FiSearch className="fp-search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Search webinars..."
-                      className="fp-search-input"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
+            <div className="fp-dashboard-header-clean">
+              <div className="fp-header-top-clean">
+                <div className="fp-search-wrapper-clean">
+                  <FiSearch className="fp-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search webinars..."
+                    className="fp-search-input"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
+                
+                <div className="fp-dropdown-clean">
+                  <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
+                    <option value="all">All Webinars</option>
+                    <option value="live">Live Webinars</option>
+                    <option value="upcoming">Upcoming Webinars</option>
+                    <option value="recorded">Recorded Webinars</option>
+                  </select>
+                </div>
+
+                <button
+                  className="btn-theme fp-schedule-btn"
+                  onClick={() => navigate('/webinar/webinars?create=1')}
+                >
+                  <FiPlus size={16} style={{marginRight: 8}}/> Schedule Webinar
+                </button>
               </div>
             </div>
 
-            <div className="fp-content-area">
+            <div className="fp-content-area-clean">
               {filteredItems.length === 0 ? (
                 <div className="fp-empty-state">
                   <FiInbox className="fp-empty-icon" />
@@ -218,13 +210,9 @@ const FirstPage = () => {
                   )}
                 </div>
               ) : (
-                <div className="fp-cards-grid">
+                <div className="fp-cards-grid-clean">
                   {filteredItems.map(item => (
-                    <div key={item.id}>
-                      {item.type === 'live' && <LiveCard item={item} />}
-                      {item.type === 'upcoming' && <UpcomingCard item={item} />}
-                      {item.type === 'recorded' && <RecordedCard item={item} />}
-                    </div>
+                    <SimpleWebinarCard key={item.id} item={item} navigate={navigate} />
                   ))}
                 </div>
               )}
@@ -234,6 +222,28 @@ const FirstPage = () => {
         }
       </main >
     </div >
+  )
+}
+
+const SimpleWebinarCard = ({ item, navigate }) => {
+  return (
+    <div className="admin-webinar-card">
+      <div className="awc-image-block" style={{ backgroundImage: `url(${item.cover || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=500'})` }}>
+        <div className="awc-image-overlay">
+          <h3 className="awc-title">{item.title || 'Untitled'}</h3>
+          <div className="awc-date">
+            {item.dateTime ? new Date(item.dateTime).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true}) : 'No Date Set'}
+          </div>
+        </div>
+      </div>
+      <div className="awc-body">
+        <p className="awc-desc">{item.notes || 'No description provided.'}</p>
+        <div className="awc-footer">
+          <span className={`awc-status ${item.type || 'upcoming'}`}>{item.type ? item.type.toUpperCase() : 'UPCOMING'}</span>
+          <button className="awc-view-btn" onClick={() => navigate(`/webinar/${item.id}`, { state: { item } })}>View Details</button>
+        </div>
+      </div>
+    </div>
   )
 }
 

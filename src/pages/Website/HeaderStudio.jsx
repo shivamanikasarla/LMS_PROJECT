@@ -8,6 +8,7 @@ import {
     Sparkles, Zap, PanelLeft, Eye, EyeOff, Plus, ListTree, Trash2, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { websiteService } from '../../services/websiteService';
 
 // ─── Simple HTML to tree parser ───
 const SELF_CLOSING_TAGS = new Set(['img', 'br', 'hr', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr']);
@@ -82,7 +83,8 @@ function parseHtmlToTree(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString('<body>' + html + '</body>', 'text/html');
     const root = doc.body;
-    let idCounter = 0;
+    let elementCounter = 0;
+    let textCounter = 0;
 
     function buildTree(element) {
         const nodes = [];
@@ -91,7 +93,7 @@ function parseHtmlToTree(html) {
                 const trimmed = child.textContent.trim();
                 if (trimmed) {
                     nodes.push({
-                        id: `_text_${idCounter++}`,
+                        id: `_text_${textCounter++}`,
                         tag: '#text',
                         text: trimmed.length > 30 ? trimmed.substring(0, 30) + '…' : trimmed,
                         children: [],
@@ -103,11 +105,12 @@ function parseHtmlToTree(html) {
                 if (tag === 'script' || tag === 'style') return;
 
                 const node = {
-                    id: `_node_${idCounter++}`,
+                    id: `_node_${elementCounter++}`,
                     tag,
                     className: child.className || '',
-                    children: buildTree(child),
                 };
+                // Recursively build children AFTER visiting the parent (depth-first matching querySelectorAll)
+                node.children = buildTree(child);
                 nodes.push(node);
             }
         });
@@ -126,7 +129,7 @@ const LayerTreeNode = ({ node, depth = 0, hoveredLayer, setHoveredLayer, selecte
     const isHovered = hoveredLayer === node.id;
     const isSelected = selectedLayer === node.id;
     const isTopLevel = depth === 1;
-    const showActions = isHovered && isTopLevel;
+    const showActions = isHovered;
 
     return (
         <div>
@@ -207,9 +210,10 @@ const LayerTreeNode = ({ node, depth = 0, hoveredLayer, setHoveredLayer, selecte
                             onClick={(e) => { e.stopPropagation(); if (onMoveNode) onMoveNode(topIndex, -1); }}
                             disabled={topIndex <= 0}
                             style={{
-                                background: 'transparent', border: 'none', padding: '2px 4px',
+                                border: 'none', padding: '2px 4px',
                                 color: topIndex > 0 ? '#818cf8' : '#475569', cursor: topIndex > 0 ? 'pointer' : 'default',
-                                fontSize: '11px', display: 'flex', alignItems: 'center', borderRadius: '2px',
+                                fontSize: '14px', display: 'flex', alignItems: 'center', borderRadius: '4px',
+                                background: isHovered ? 'rgba(129,140,248,0.1)' : 'transparent',
                             }}
                         >↑</button>
                         {/* Move Down */}
@@ -218,9 +222,10 @@ const LayerTreeNode = ({ node, depth = 0, hoveredLayer, setHoveredLayer, selecte
                             onClick={(e) => { e.stopPropagation(); if (onMoveNode) onMoveNode(topIndex, 1); }}
                             disabled={topIndex >= totalSiblings - 1}
                             style={{
-                                background: 'transparent', border: 'none', padding: '2px 4px',
+                                border: 'none', padding: '2px 4px',
                                 color: topIndex < totalSiblings - 1 ? '#818cf8' : '#475569', cursor: topIndex < totalSiblings - 1 ? 'pointer' : 'default',
-                                fontSize: '11px', display: 'flex', alignItems: 'center', borderRadius: '2px',
+                                fontSize: '14px', display: 'flex', alignItems: 'center', borderRadius: '4px',
+                                background: isHovered ? 'rgba(129,140,248,0.1)' : 'transparent',
                             }}
                         >↓</button>
                         {/* Duplicate */}
@@ -228,9 +233,10 @@ const LayerTreeNode = ({ node, depth = 0, hoveredLayer, setHoveredLayer, selecte
                             title="Duplicate"
                             onClick={(e) => { e.stopPropagation(); if (onDuplicateNode) onDuplicateNode(topIndex); }}
                             style={{
-                                background: 'transparent', border: 'none', padding: '2px 4px',
+                                border: 'none', padding: '2px 4px',
                                 color: '#818cf8', cursor: 'pointer',
-                                fontSize: '11px', display: 'flex', alignItems: 'center', borderRadius: '2px',
+                                fontSize: '14px', display: 'flex', alignItems: 'center', borderRadius: '4px',
+                                background: isHovered ? 'rgba(129,140,248,0.1)' : 'transparent',
                             }}
                         >⊕</button>
                         {/* Delete */}
@@ -238,9 +244,11 @@ const LayerTreeNode = ({ node, depth = 0, hoveredLayer, setHoveredLayer, selecte
                             title="Delete"
                             onClick={(e) => { e.stopPropagation(); if (onDeleteNode) onDeleteNode(topIndex); }}
                             style={{
-                                background: 'transparent', border: 'none', padding: '2px 4px',
+                                border: 'none', padding: '2px 4px',
                                 color: '#ef4444', cursor: 'pointer',
-                                fontSize: '11px', display: 'flex', alignItems: 'center', borderRadius: '2px',
+                                fontSize: '14px', display: 'flex', alignItems: 'center', borderRadius: '4px',
+                                background: isHovered ? 'rgba(239,68,68,0.1)' : 'transparent',
+                                fontWeight: 'bold'
                             }}
                         >✕</button>
                     </span>
@@ -654,7 +662,66 @@ const StylePanel = ({ styles, onStyleChange, elementName }) => {
                 <span style={{ fontWeight: '600', color: '#cbd5e1' }}>{elementName || 'Element'}</span>
             </div>
 
-            {/* ── General ── */}
+            {/* ── Actions (Prominent) ── */}
+            <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(148,163,184,0.06)', background: 'rgba(239, 68, 68, 0.03)' }}>
+                <button
+                    onClick={() => { if (window.confirm('Delete this element?')) onStyleChange('_delete', true); }}
+                    style={{
+                        width: '100%', padding: '8px', borderRadius: '6px',
+                        background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.05em'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                >
+                    <Trash2 size={13} /> Remove Selected
+                </button>
+            </div>
+
+            {/* ── Media Upload (Conditional) ── */}
+            {(elementName?.toLowerCase().includes('image') || elementName?.toLowerCase().includes('video') || elementName?.toLowerCase() === 'img') && (
+                <div style={{ padding: '0 14px 12px', borderBottom: '1px solid rgba(148,163,184,0.06)' }}>
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                            width: '100%', padding: '10px', borderRadius: '8px',
+                            background: 'linear-gradient(135deg, #6366f1, #818cf8)',
+                            color: 'white', border: 'none',
+                            fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <ImageIcon size={14} /> {isSaving ? 'Uploading...' : 'Upload from Device'}
+                    </button>
+                    <div style={{ marginTop: '6px', fontSize: '9px', color: '#64748b', textAlign: 'center' }}>
+                        Supports JPG, PNG, WEBP, MP4
+                    </div>
+                </div>
+            )}
+            {/* ── Media Properties ── */}
+            {(elementName?.toLowerCase().includes('image') || elementName?.toLowerCase().includes('video') || elementName?.toLowerCase().includes('map') || elementName?.toLowerCase().includes('iframe') || elementName?.toLowerCase() === 'img') && (
+                <StyleSection title="Media Properties" color="#f472b6">
+                    <StyleField
+                        label="Source URL"
+                        value={s('src') || ''}
+                        onChange={(val) => {
+                            const iframe = document.getElementById('builder-iframe');
+                            if (iframe && iframe.contentWindow) {
+                                iframe.contentWindow.postMessage({
+                                    type: 'builder-update-src',
+                                    url: val
+                                }, '*');
+                            }
+                            setTimeout(() => syncBack(), 100);
+                        }}
+                    />
+                </StyleSection>
+            )}
             <StyleSection title="General" color="#818cf8">
                 <StyleRow>
                     <StyleField label="Display" value={s('display')} onChange={set('display')}
@@ -774,8 +841,49 @@ const StylePanel = ({ styles, onStyleChange, elementName }) => {
                 </StyleRow>
                 <StyleField label="Gap" value={s('gap')} onChange={set('gap')} />
             </StyleSection>
-
-            {/* ── Extra ── */}
+            {/* ── Slider/Tab Management ── */}
+            {elementName?.toLowerCase().includes('slider') && (
+                <StyleSection title="Slider Controls" color="#818cf8">
+                    <button
+                        onClick={() => {
+                            const iframe = document.getElementById('builder-iframe');
+                            if (iframe && iframe.contentWindow) {
+                                iframe.contentWindow.postMessage({ type: 'builder-slider-add' }, '*');
+                            }
+                            setTimeout(() => syncBack(), 100);
+                        }}
+                        style={{
+                            width: '100%', padding: '8px', borderRadius: '6px',
+                            background: 'rgba(129,140,248,0.1)', color: '#818cf8',
+                            border: '1px solid rgba(129,140,248,0.2)',
+                            fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                        }}
+                    >
+                        + Add New Slide
+                    </button>
+                </StyleSection>
+            )}
+            {elementName?.toLowerCase().includes('tabs') && (
+                <StyleSection title="Tabs Controls" color="#fbbf24">
+                    <button
+                        onClick={() => {
+                            const iframe = document.getElementById('builder-iframe');
+                            if (iframe && iframe.contentWindow) {
+                                iframe.contentWindow.postMessage({ type: 'builder-tabs-add' }, '*');
+                            }
+                            setTimeout(() => syncBack(), 100);
+                        }}
+                        style={{
+                            width: '100%', padding: '8px', borderRadius: '6px',
+                            background: 'rgba(251,191,36,0.1)', color: '#fbbf24',
+                            border: '1px solid rgba(251,191,36,0.2)',
+                            fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                        }}
+                    >
+                        + Add New Tab
+                    </button>
+                </StyleSection>
+            )}
             <StyleSection title="Extra" color="#94a3b8" defaultOpen={false}>
                 <StyleField label="Transition" value={s('transition')} onChange={set('transition')} />
                 <div style={{ marginTop: '6px' }} />
@@ -817,6 +925,9 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
     const [selectedLayer, setSelectedLayer] = useState(null);
     const [selectedStyles, setSelectedStyles] = useState(null);
     const [selectedElementIndex, setSelectedElementIndex] = useState(-1);
+    const [selectedIdx, setSelectedIdx] = useState(-1);
+    const fileInputRef = useRef(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [selectedElementName, setSelectedElementName] = useState('');
     const [isDragging, setIsDragging] = useState(false);
     const [draggedSnippet, setDraggedSnippet] = useState(null);
@@ -882,8 +993,56 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
     // Debounce timer ref for style changes
     const styleSyncTimer = useRef(null);
 
+    // Close the properties panel and sync HTML
+    const handleCloseStylePanel = useCallback(() => {
+        // Sync any pending changes first
+        if (styleSyncTimer.current) clearTimeout(styleSyncTimer.current);
+        syncIframeHtml();
+        setSelectedStyles(null);
+        setSelectedElementIndex(-1);
+        setSelectedElementName('');
+        setSelectedLayer(null);
+    }, [syncIframeHtml]);
+
+    // Handle generalized node deletion by nodeId or selected index
+    const handleDeleteNode = useCallback((idOrIndex) => {
+        let targetIndex = -1;
+
+        if (typeof idOrIndex === 'string' && idOrIndex.startsWith('_node_')) {
+            targetIndex = parseInt(idOrIndex.replace('_node_', ''));
+        } else if (typeof idOrIndex === 'number') {
+            targetIndex = idOrIndex;
+        } else if (idOrIndex === undefined) {
+            targetIndex = selectedElementIndex;
+        }
+
+        if (targetIndex < 0) return;
+
+        setHtmlCode(prev => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString('<body>' + prev + '</body>', 'text/html');
+            const allElements = Array.from(doc.body.querySelectorAll('*'));
+            if (targetIndex >= 0 && targetIndex < allElements.length) {
+                allElements[targetIndex].remove();
+            }
+            return doc.body.innerHTML;
+        });
+
+        if (targetIndex === selectedElementIndex) {
+            setSelectedStyles(null);
+            setSelectedElementIndex(-1);
+            setSelectedElementName('');
+            setSelectedLayer(null);
+        }
+    }, [selectedElementIndex]);
+
     // Handle style change from the properties panel
     const handleStyleChange = useCallback((property, value) => {
+        if (property === '_delete') {
+            handleDeleteNode();
+            return;
+        }
+
         if (iframeRef.current && iframeRef.current.contentWindow && selectedElementIndex >= 0) {
             iframeRef.current.contentWindow.postMessage({
                 type: 'builder-apply-style', index: selectedElementIndex, property, value
@@ -898,16 +1057,6 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
         }, 800);
     }, [selectedElementIndex, syncIframeHtml]);
 
-    // Close the properties panel and sync HTML
-    const handleCloseStylePanel = useCallback(() => {
-        // Sync any pending changes first
-        if (styleSyncTimer.current) clearTimeout(styleSyncTimer.current);
-        syncIframeHtml();
-        setSelectedStyles(null);
-        setSelectedElementIndex(-1);
-        setSelectedElementName('');
-        setSelectedLayer(null);
-    }, [syncIframeHtml]);
 
     // Move a top-level element up or down in the HTML
     const handleMoveNode = useCallback((index, direction) => {
@@ -927,37 +1076,30 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
         });
     }, []);
 
-    // Delete a top-level element
-    const handleDeleteNode = useCallback((index) => {
+    // Duplicate an element by nodeId or absolute index
+    const handleDuplicateNode = useCallback((idOrIndex) => {
+        let targetIndex = -1;
+        if (typeof idOrIndex === 'string' && idOrIndex.startsWith('_node_')) {
+            targetIndex = parseInt(idOrIndex.replace('_node_', ''));
+        } else if (typeof idOrIndex === 'number') {
+            targetIndex = idOrIndex;
+        }
+
+        if (targetIndex < 0) return;
+
         setHtmlCode(prev => {
             const parser = new DOMParser();
             const doc = parser.parseFromString('<body>' + prev + '</body>', 'text/html');
-            const body = doc.body;
-            const children = Array.from(body.children);
-            if (index >= 0 && index < children.length) {
-                children[index].remove();
+            const allElements = Array.from(doc.body.querySelectorAll('*'));
+            if (targetIndex >= 0 && targetIndex < allElements.length) {
+                const clone = allElements[targetIndex].cloneNode(true);
+                allElements[targetIndex].insertAdjacentElement('afterend', clone);
             }
-            return body.innerHTML;
-        });
-        setSelectedLayer(null);
-    }, []);
-
-    // Duplicate a top-level element
-    const handleDuplicateNode = useCallback((index) => {
-        setHtmlCode(prev => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString('<body>' + prev + '</body>', 'text/html');
-            const body = doc.body;
-            const children = Array.from(body.children);
-            if (index >= 0 && index < children.length) {
-                const clone = children[index].cloneNode(true);
-                children[index].insertAdjacentElement('afterend', clone);
-            }
-            return body.innerHTML;
+            return doc.body.innerHTML;
         });
     }, []);
 
-    // Toggle visibility of a top-level element
+    // Toggle visibility
     const handleToggleVisibility = useCallback((index) => {
         if (iframeRef.current && iframeRef.current.contentWindow) {
             iframeRef.current.contentWindow.postMessage({ type: 'builder-toggle-visibility', index }, '*');
@@ -1194,18 +1336,19 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
 
           /* Builder selected element highlight */
           .builder-selected {
-            outline: 2px solid #fbbf24 !important;
+            outline: 4px solid #ef4444 !important;
             outline-offset: 2px;
-            box-shadow: 0 0 0 4px rgba(251,191,36,0.15) !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
           }
           /* Builder toolbar on elements */
-          body > * { position: relative; }
+          * { position: relative; }
           .builder-toolbar {
-            position: absolute; top: 0; right: 0; z-index: 100;
+            position: absolute; top: 0; right: 0; z-index: 1000;
             display: none; gap: 2px; padding: 2px;
             background: #3b97e3; border-radius: 0 0 0 4px;
+            pointer-events: auto;
           }
-          body > *:hover > .builder-toolbar { display: flex; }
+          *:hover > .builder-toolbar { display: flex; }
           .builder-toolbar button {
             background: transparent; border: none; color: #fff;
             cursor: pointer; padding: 3px 5px; font-size: 12px;
@@ -1218,7 +1361,8 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
       </head>
       <body>
         ${htmlCode}
-        <script>
+      </body>
+      <script>
           (function() {
             var selectedIdx = -1;
 
@@ -1235,6 +1379,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                   e.stopPropagation();
                   clearSelection();
                   el.classList.add('builder-selected');
+                  selectedIdx = i; // Use the closure index i
                   var idx = Array.from(document.body.querySelectorAll('*')).indexOf(el);
                   var tagInfo = el.tagName.toLowerCase();
                   var cls = el.className ? el.className.toString().split(' ').find(function(c) { return c.startsWith('gp-'); }) : '';
@@ -1252,7 +1397,10 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                         btns.forEach(b => b.classList.remove('active'));
                         panes.forEach(p => p.classList.remove('active'));
                         el.classList.add('active');
-                        if (panes[btnIdx]) panes[btnIdx].classList.add('active');
+                        if (panes[btnIdx]) {
+                            panes[btnIdx].classList.add('active');
+                            // If it's the active pane, maybe we want to select it in the studio too?
+                        }
                       }
                     }
                   }
@@ -1277,14 +1425,18 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                   }
                 };
 
-                // Only add actions toolbar to top-level or data-component elements
-                if (el.parentElement === document.body || el.hasAttribute('data-component')) {
+                // Add toolbars to almost everything
+                const interactiveTags = ['DIV', 'SECTION', 'NAV', 'HEADER', 'FOOTER', 'MAIN', 'ASIDE', 'ARTICLE', 'BUTTON', 'FORM', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'IMG', 'A', 'I', 'INPUT', 'LABEL', 'SELECT', 'TEXTAREA', 'SVG', 'PATH', 'FIGURE', 'FIGCAPTION'];
+                const isInteractive = interactiveTags.includes(el.tagName) || el.hasAttribute('data-component') || el.parentElement === document.body;
+
+                if (isInteractive && !el.classList.contains('gp-tab-btn')) {
                   var tb = document.createElement('div');
                   tb.className = 'builder-toolbar';
                   
                   // Move Up
                   var btnUp = document.createElement('button');
                   btnUp.innerHTML = '↑';
+                  btnUp.title = 'Move Up';
                   btnUp.onclick = function(e) {
                     e.stopPropagation();
                     if (el.previousElementSibling) {
@@ -1296,6 +1448,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                   // Duplicate
                   var btnDup = document.createElement('button');
                   btnDup.innerHTML = '⧉';
+                  btnDup.title = 'Duplicate';
                   btnDup.onclick = function(e) {
                     e.stopPropagation();
                     var clone = el.cloneNode(true);
@@ -1307,6 +1460,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                   // Delete
                   var btnDel = document.createElement('button');
                   btnDel.innerHTML = '✕';
+                  btnDel.title = 'Delete';
                   btnDel.onclick = function(e) {
                     e.stopPropagation();
                     el.remove();
@@ -1322,14 +1476,28 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
             }
 
             function syncBack() {
-              document.querySelectorAll('.builder-toolbar').forEach(t => t.remove());
-              document.querySelectorAll('.builder-selected').forEach(t => t.classList.remove('builder-selected'));
-              var html = document.body.innerHTML;
-              // Prevent early script termination by splitting the tag string
+              // 1. Create a clone of the document to avoid modifying the live preview DOM
+              var docClone = document.documentElement.cloneNode(true);
+              var bodyClone = docClone.querySelector('body');
+              if (!bodyClone) return;
+
+              // 2. Remove all UI elements and selection markers from the clone
+              bodyClone.querySelectorAll('.builder-toolbar').forEach(t => t.remove());
+              bodyClone.querySelectorAll('.builder-selected').forEach(el => el.classList.remove('builder-selected'));
+              
+              // 3. Remove ALL scripts that might have leaked into the body
+              bodyClone.querySelectorAll('script').forEach(s => s.remove());
+
+              // 4. Extract the clean HTML
+              var html = bodyClone.innerHTML.trim();
+              
+              // 5. Secondary safety check for leftover scripts via regex
               var scriptRegex = new RegExp('<script[\\s\\S]*?<\\/script>', 'gi');
               html = html.replace(scriptRegex, '').trim();
+
               window.parent.postMessage({ type: 'builder-update-html', html: html }, '*');
-              setTimeout(addToolbars, 50);
+              
+              // We don't need to call addToolbars here because we only modified the CLONE
             }
 
             function getYouTubeId(url) {
@@ -1397,6 +1565,7 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
               if (e.data.type === 'builder-select-element') {
                 clearSelection();
                 var idx = e.data.index;
+                selectedIdx = idx; // Update internal selectedIdx
                 if (idx >= 0 && idx < els.length) {
                   els[idx].classList.add('builder-selected');
                   els[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1428,7 +1597,111 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                   window.parent.postMessage({ type: 'builder-element-styles', styles: stylesObj }, '*');
                 }
               }
+              if (e.data.type === 'builder-update-media') {
+                var els = document.body.querySelectorAll('*');
+                if (selectedIdx >= 0 && selectedIdx < els.length) {
+                  var el = els[selectedIdx];
+                  if (el.tagName === 'IMG' || el.classList.contains('gp-image')) {
+                    if (el.tagName === 'IMG') el.src = e.data.url;
+                    else {
+                        var img = el.querySelector('img');
+                        if (img) img.src = e.data.url;
+                    }
+                  } else if (el.classList.contains('gp-video')) {
+                    var frame = el.querySelector('iframe');
+                    if (frame) frame.src = e.data.url;
+                  }
+                  syncBack();
+                }
+              }
+              if (e.data.type === 'builder-slider-add') {
+                var slider = document.querySelector('.gp-slider.builder-selected') || document.querySelector('.gp-slider');
+                if (slider) {
+                  var currentSlides = slider.querySelectorAll('.gp-slide');
+                  var currentDots = slider.querySelector('.gp-slider-dots');
+                  var newIdx = currentSlides.length + 1;
+                  
+                  // Add Slide
+                  var newSlide = document.createElement('div');
+                  newSlide.className = 'gp-slide';
+                  newSlide.contentEditable = 'true';
+                  newSlide.innerHTML = 'Slide ' + newIdx + ' — Click to edit';
+                  newSlide.style.background = '#f8fafc';
+                  slider.querySelector('.gp-slider-nav').before(newSlide);
+                  
+                  // Add Dot
+                  if (currentDots) {
+                    var newDot = document.createElement('span');
+                    newDot.className = 'dot';
+                    currentDots.appendChild(newDot);
+                  }
+                  
+                  // Activate New
+                  currentSlides.forEach(s => s.classList.remove('active'));
+                  if (currentDots) currentDots.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+                  newSlide.classList.add('active');
+                  if (currentDots) currentDots.lastChild.classList.add('active');
+                  syncBack();
+                }
+              }
+              if (e.data.type === 'builder-tabs-add') {
+                var tabs = document.querySelector('.gp-tabs.builder-selected') || document.querySelector('.gp-tabs');
+                if (tabs) {
+                  var header = tabs.querySelector('.gp-tabs-header');
+                  var content = tabs.querySelector('.gp-tab-content-wrapper');
+                  var newIdx = header.querySelectorAll('.gp-tab-btn').length + 1;
+                  
+                  // Add Btn
+                  var newBtn = document.createElement('button');
+                  newBtn.className = 'gp-tab-btn';
+                  newBtn.contentEditable = 'true';
+                  newBtn.innerHTML = 'Tab ' + newIdx;
+                  header.appendChild(newBtn);
+                  
+                  // Add Pane
+                  var newPane = document.createElement('div');
+                  newPane.className = 'gp-tab-pane';
+                  newPane.contentEditable = 'true';
+                  newPane.innerHTML = 'Tab ' + newIdx + ' content goes here...';
+                  content.appendChild(newPane);
+                  
+                  // Logic to switch to new
+                  newBtn.click(); // Trigger the existing click handler
+                  syncBack();
+                }
+              }
               if (e.data.type === 'builder-sync-html') syncBack();
+            });
+
+              if (e.data.type === 'builder-update-src') {
+                var els = document.body.querySelectorAll('*');
+                if (selectedIdx >= 0 && selectedIdx < els.length) {
+                  var el = els[selectedIdx];
+                  if (el.tagName === 'IMG' || el.classList.contains('gp-image')) {
+                    if (el.tagName === 'IMG') el.src = e.data.url;
+                    else {
+                        var img = el.querySelector('img');
+                        if (img) img.src = e.data.url;
+                    }
+                  } else if (el.tagName === 'IFRAME') {
+                    el.src = e.data.url;
+                  } else {
+                    var frame = el.querySelector('iframe');
+                    if (frame) frame.src = e.data.url;
+                  }
+                  syncBack();
+                }
+              }
+              window.addEventListener('keydown', function(e) {
+              if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+              if (selectedIdx >= 0 && (e.key === 'Delete' || e.key === 'Backspace')) {
+                var els = document.body.querySelectorAll('*');
+                if (els[selectedIdx] && !els[selectedIdx].classList.contains('gp-tab-btn')) {
+                  els[selectedIdx].remove();
+                  syncBack();
+                  window.parent.postMessage({ type: 'builder-element-clicked', index: -1 }, '*');
+                }
+              }
             });
 
             addToolbars();
@@ -1470,6 +1743,32 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
         setDraggedSnippet(snippet);
     }, []);
 
+    const handleMediaUpload = async (file) => {
+        try {
+            setIsSaving(true);
+            const result = await websiteService.uploadMedia(file);
+            const mediaUrl = result.url || result.path || result.filePath;
+
+            if (mediaUrl) {
+                // Find the selected element in the iframe and update it
+                const iframe = document.getElementById('builder-iframe');
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'builder-update-media',
+                        url: mediaUrl
+                    }, '*');
+                }
+                setTimeout(() => syncBack(), 100);
+            }
+        } catch (error) {
+            console.error('Media upload failed:', error);
+            alert('Upload failed: ' + error.message);
+        } finally {
+            setIsSaving(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const handleDragEnd = useCallback(() => {
         setIsDragging(false);
         setDraggedSnippet(null);
@@ -1499,6 +1798,13 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
             zIndex: 9999, display: 'flex', flexDirection: 'column', color: '#f8fafc',
             fontFamily: '"Inter", ui-sans-serif, system-ui, -apple-system, sans-serif',
         }}>
+            <style>{`
+                @keyframes pulse-red {
+                    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                    70% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
+            `}</style>
             {/* ─── TOP BAR ─── */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px',
@@ -1569,13 +1875,27 @@ const HeaderStudio = ({ isOpen, onClose, initialHtml, initialCss, onSave, onUnpu
                     <button
                         onClick={() => { if (window.confirm('Clear entire canvas?')) setHtmlCode(''); }}
                         style={{
-                            padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)',
+                            padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)',
                             background: 'transparent', color: '#f87171', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px',
                         }}
                     >
                         <Trash2 size={14} /> Clear
                     </button>
+                    {selectedElementIndex >= 0 && (
+                        <button
+                            onClick={() => { if (window.confirm('Delete selected element?')) handleDeleteNode(); }}
+                            style={{
+                                padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                background: '#ef4444', color: '#fff', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px',
+                                fontWeight: '700', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+                                animation: 'pulse-red 2s infinite'
+                            }}
+                        >
+                            <Trash2 size={15} /> DELETE SELECTED
+                        </button>
+                    )}
                     <button
                         onClick={async () => {
                             try {
@@ -1853,8 +2173,8 @@ ${htmlCode}
                                                     topIndex={i}
                                                     totalSiblings={layerTree.length}
                                                     onMoveNode={handleMoveNode}
-                                                    onDeleteNode={handleDeleteNode}
-                                                    onDuplicateNode={handleDuplicateNode}
+                                                    onDeleteNode={() => handleDeleteNode(node.id)}
+                                                    onDuplicateNode={() => handleDuplicateNode(node.id)}
                                                     onToggleVisibility={handleToggleVisibility}
                                                 />
                                             ))}
@@ -1973,7 +2293,7 @@ ${htmlCode}
 
                 {/* ─── RIGHT: STYLE PROPERTIES PANEL ─── */}
                 <AnimatePresence>
-                    {selectedStyles && selectedElementIndex >= 0 && (
+                    {selectedElementIndex >= 0 && (
                         <motion.div
                             initial={{ width: 0, opacity: 0 }}
                             animate={{ width: 260, opacity: 1 }}
@@ -2024,7 +2344,19 @@ ${htmlCode}
                     )}
                 </AnimatePresence>
             </div>
-        </div >
+
+            {/* Hidden File Input for Media Uploads */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*,video/*"
+                onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) handleMediaUpload(file);
+                }}
+            />
+        </div>
     );
 };
 

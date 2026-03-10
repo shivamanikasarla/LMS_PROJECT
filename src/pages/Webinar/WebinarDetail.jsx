@@ -1,27 +1,47 @@
-import './WebinarDetail.css'
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useEffect, useState } from 'react';
+import { webinarService } from '../../services/webinarService';
+import { motion } from 'framer-motion';
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import './WebinarDetail.css';
 
 const WebinarDetail = () => {
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
   const [item, setItem] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    // prefer location.state if available
-    if (location.state && location.state.item) {
-      setItem(location.state.item)
-      return
+    const fetchDetail = async () => {
+      // prefer location.state if available for instant display
+      if (location.state && location.state.item) {
+        setItem(location.state.item)
+        return
+      }
+
+      try {
+        setIsLoading(true)
+        const data = await webinarService.getWebinarById(id)
+        if (data) setItem(data)
+      } catch (err) {
+        console.error('Error fetching webinar detail:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    try {
-      const raw = sessionStorage.getItem(`webinar-${id}`)
-      if (raw) setItem(JSON.parse(raw))
-    } catch (err) {
-      console.error(err)
-    }
+
+    fetchDetail()
   }, [id, location.state])
+
+  if (isLoading) {
+    return (
+      <div className="wd-container">
+        <div className="wd-box">
+          <p>Loading webinar details...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!item) {
     return (
@@ -54,13 +74,16 @@ const WebinarDetail = () => {
         <div className="wd-actions">
           <button className="btn secondary" onClick={() => navigate('/')}>&larr; Back</button>
 
-          <button className="btn danger" onClick={() => {
+          <button className="btn danger" onClick={async () => {
             if (window.confirm('Are you sure you want to delete this webinar?')) {
-              sessionStorage.removeItem(`webinar-${item.id}`);
-              // Also try to help updating the list if possible, though strict state management might be needed
-              // For now, navigation back to home will reload list from storage
-              alert('Webinar deleted.');
-              navigate('/', { replace: true });
+              try {
+                await webinarService.deleteWebinar(item.id);
+                alert('Webinar deleted.');
+                navigate('/webinar', { replace: true });
+              } catch (err) {
+                console.error('Error deleting webinar:', err);
+                alert('Failed to delete webinar: ' + err.message);
+              }
             }
           }}>Delete</button>
 

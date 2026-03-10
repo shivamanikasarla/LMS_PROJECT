@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { FiCalendar, FiClock, FiUsers, FiArrowRight } from 'react-icons/fi'
 import './Webinars.css'
 

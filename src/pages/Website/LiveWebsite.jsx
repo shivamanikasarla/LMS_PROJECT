@@ -64,6 +64,35 @@ const smartParse = (data) => {
     }
 };
 
+// Helper to strip script leaks and JSON fragments from HTML strings
+const cleanupHtml = (html) => {
+    if (!html || typeof html !== 'string') return '';
+
+    let clean = html;
+
+    // 1. Unescape HTML if it was double-escaped (e.g. &lt;div&gt; showing as text)
+    if (clean.includes('&lt;') || clean.includes('&gt;')) {
+        try {
+            const doc = new DOMParser().parseFromString(clean, 'text/html');
+            clean = doc.documentElement.textContent || clean;
+        } catch (e) {
+            console.warn("HTML unescape failed", e);
+        }
+    }
+
+    // 2. Remove known script leak patterns (builder sync scripts)
+    const leakPattern = /(window\.(DYNAMIC_|SITE_SETTINGS|HEADER_CONFIG)[\s\S]*?;?)|(function\s+syncThemeNavigation[\s\S]*?\})/g;
+    clean = clean.replace(leakPattern, '');
+
+    // 3. Remove script tags
+    clean = clean.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+    // 4. Remove trailing JSON payload junk if it leaked
+    clean = clean.replace(/\"\},\"builder\":null,\"isCustomHeader\":true\};?/g, '');
+
+    return clean.trim();
+};
+
 const LiveWebsite = () => {
     const { slug } = useParams();
     const [pageContent, setPageContent] = useState(null);
@@ -112,15 +141,13 @@ const LiveWebsite = () => {
                 // Fetch Header and Footer
                 if (tenantId) {
                     try {
-                        let hData = await websiteService.getHeader(tenantId);
-                        hData = Array.isArray(hData) ? hData[0] : hData;
-                        if (hData) setHeaderData(smartParse(hData));
+                        const hData = await websiteService.getHeader(tenantId);
+                        if (hData) setHeaderData(hData);
                     } catch (e) { console.warn("Header not found:", e); }
 
                     try {
-                        let fData = await websiteService.getFooter(tenantId);
-                        fData = Array.isArray(fData) ? fData[0] : fData;
-                        if (fData) setFooterData(smartParse(fData));
+                        const fData = await websiteService.getFooter(tenantId);
+                        if (fData) setFooterData(fData);
                     } catch (e) { console.warn("Footer not found:", e); }
                 }
             } catch (error) {
@@ -185,15 +212,50 @@ const LiveWebsite = () => {
         );
     }
 
+    const generateNavHtml = (links) => {
+        if (!links || !Array.isArray(links)) return '';
+        return links
+            .filter(l => l.visible !== false && l.text)
+            .map(l => `<li><a href="${l.url || '#'}" ${l.newTab ? 'target="_blank" rel="noopener noreferrer"' : ''}>${l.text}</a></li>`)
+            .join('\n');
+    };
+
     const renderHeader = () => {
         if (!headerData) return null;
-        const config = headerData.config || {};
+        const config = headerData.config || headerData.configuration || {};
         const custom = headerData.custom || {};
+        const links = headerData.links || [];
 
         const isCustom = config.customHeader === 'yes' || !!custom.html;
-        const html = config.customHtml || custom.html;
+        let html = cleanupHtml(config.customHtml || custom.html);
 
         if (isCustom && html) {
+            try {
+                const navHtml = generateNavHtml(links);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Try several common selectors for navigation menu
+                const navMenu = doc.querySelector('.nav-menu, .nav-links, ul.nav, nav ul');
+
+                if (navMenu) {
+                    navMenu.innerHTML = navHtml;
+                    html = doc.body.innerHTML;
+                } else if (navHtml) {
+                    // Fallback: If no recognized nav menu found, but we HAVE links, 
+                    // wrap it in a simple nav and append to header if possible
+                    const headerEl = doc.querySelector('header') || doc.body.firstElementChild;
+                    if (headerEl) {
+                        const fallbackNav = doc.createElement('nav');
+                        fallbackNav.className = 'dynamic-nav-fallback';
+                        fallbackNav.innerHTML = `<ul class="nav-menu">${navHtml}</ul>`;
+                        headerEl.appendChild(fallbackNav);
+                        html = doc.body.innerHTML;
+                    }
+                }
+            } catch (err) {
+                console.error("Error injecting dynamic navigation:", err);
+            }
             return <div className="live-header-wrapper" dangerouslySetInnerHTML={{ __html: html }} />;
         }
         return null;
@@ -201,11 +263,11 @@ const LiveWebsite = () => {
 
     const renderFooter = () => {
         if (!footerData) return null;
-        const config = footerData.config || {};
+        const config = footerData.config || footerData.configuration || {};
         const custom = footerData.custom || {};
 
         const isCustom = config.customFooter === 'yes' || !!custom.html;
-        const html = config.customHtml || custom.html;
+        const html = cleanupHtml(config.customHtml || custom.html);
 
         if (isCustom && html) {
             return <div className="live-footer-wrapper" dangerouslySetInnerHTML={{ __html: html }} />;
@@ -237,7 +299,7 @@ const LiveWebsite = () => {
                 {renderSections.length > 0 ? (
                     renderSections.map((sec, idx) => {
                         const config = smartParse(sec.sectionConfig);
-                        const html = config?.html || '';
+                        const html = cleanupHtml(config?.html || '');
                         return (
                             <div
                                 key={idx}

@@ -240,7 +240,19 @@ export const websiteService = {
     // HEADER CONFIG — Get
     // =========================================
     getHeader: async (tenantThemeId) => {
-        return fetchWithAuthText(`${API_BASE}/${tenantThemeId}/header`);
+        const text = await fetchWithAuthText(`${API_BASE}/${tenantThemeId}/header`);
+        if (!text) return null;
+        try {
+            const parsed = JSON.parse(text);
+            const normalized = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+            return {
+                ...normalized,
+                links: normalized.links ? (typeof normalized.links === 'string' ? JSON.parse(normalized.links) : normalized.links) : []
+            };
+        } catch (e) {
+            console.error("Failed to parse header data:", e);
+            return null;
+        }
     },
 
     // =========================================
@@ -257,7 +269,19 @@ export const websiteService = {
     // FOOTER CONFIG — Get
     // =========================================
     getFooter: async (tenantThemeId) => {
-        return fetchWithAuthText(`${API_BASE}/${tenantThemeId}/footer`);
+        const text = await fetchWithAuthText(`${API_BASE}/${tenantThemeId}/footer`);
+        if (!text) return null;
+        try {
+            const parsed = JSON.parse(text);
+            const normalized = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+            return {
+                ...normalized,
+                links: normalized.links ? (typeof normalized.links === 'string' ? JSON.parse(normalized.links) : normalized.links) : {}
+            };
+        } catch (e) {
+            console.error("Failed to parse footer data:", e);
+            return null;
+        }
     },
 
     // =========================================
@@ -453,6 +477,24 @@ export const websiteService = {
         const headers = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    },
+
+    // =========================================
+    // GENERIC MEDIA — Upload
+    // =========================================
+    uploadMedia: async (file, category = 'media') => {
+        const token = getAuthToken();
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', category);
+
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        // Using settings/logo as a fallback if a generic media endpoint doesn't exist.
+        // It's known to work for images.
         const response = await fetch(`${SETTINGS_BASE}/logo`, {
             method: 'POST',
             headers,
