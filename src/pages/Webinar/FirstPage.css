@@ -1,24 +1,23 @@
-/* Page container */
 .firstpage-container {
   min-height: 100vh;
-  background: #f8fafc;
-  font-family: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #0f172a;
-  padding-bottom: 40px;
+  background: #ffffff;
+  width: 100%;
+  padding: 32px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 /* Navbar */
 .fp-navbar {
-  background: #ffffff;
+  background: transparent;
+  padding: 0 0 24px 0;
   border-bottom: 1px solid #e2e8f0;
-  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 .fp-brand {
@@ -55,18 +54,17 @@
 .fp-main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 32px;
+  padding: 0;
 }
 
 /* HERO SECTION (Empty State / Landing) */
 .fp-hero {
   text-align: center;
-  padding: 80px 20px;
-  background: #ffffff;
-  border-radius: 24px;
-  border: 1px solid #e2e8f0;
-  margin-top: 20px;
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+  padding: 100px 20px 80px;
+  background: transparent;
+  border: none;
+  margin-top: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: center;

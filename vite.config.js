@@ -13,10 +13,11 @@ export default defineConfig(({ mode }) => {
   const TARGET_MAIN = env.VITE_API_TARGET_MAIN || 'http://192.168.1.27:5151'
   const TARGET_FEE = env.VITE_API_TARGET_FEE || 'http://192.168.1.6:3130'
   const TARGET_TRANSPORT = env.VITE_API_TARGET_TRANSPORT || 'http://192.168.1.20:9191'
-  const TARGET_ADMIN = env.VITE_API_TARGET_ADMIN || 'http://192.168.1.22:8081'
+  const TARGET_ADMIN = env.VITE_API_TARGET_ADMIN || 'http://100.96.210.91:8081'
   const TARGET_LIBRARY = env.VITE_API_TARGET_LIBRARY || 'http://localhost:9191'
   const TARGET_UPLOADS = env.VITE_API_TARGET_UPLOADS || 'http://localhost:5151'
-  const TARGET_WEBSITE = env.VITE_API_TARGET_WEBSITE || 'http://192.168.1.22:8081'
+  const TARGET_WEBSITE = env.VITE_API_TARGET_WEBSITE || 'http://100.96.210.91:8081'
+  const TARGET_COMMUNITY = env.VITE_API_TARGET_COMMUNITY || 'http://100.96.210.91:8081'
 
   console.log('-----------------------------------------------------')
   console.log('  Vite Proxy Configuration')
@@ -28,6 +29,7 @@ export default defineConfig(({ mode }) => {
   console.log(`  Library Backend:       ${TARGET_LIBRARY}`)
   console.log(`  Uploads Backend:       ${TARGET_UPLOADS}`)
   console.log(`  Website Backend:       ${TARGET_WEBSITE}`)
+  console.log(`  Community Backend:     ${TARGET_COMMUNITY}`)
   console.log('-----------------------------------------------------')
 
   const ADMIN_TARGET = TARGET_ADMIN;
@@ -76,6 +78,11 @@ export default defineConfig(({ mode }) => {
         '/gps-websocket': {
           target: TARGET_TRANSPORT,
           ws: true,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api/community': {
+          target: TARGET_COMMUNITY,
           changeOrigin: true,
           secure: false,
         },

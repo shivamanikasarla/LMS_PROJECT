@@ -23,11 +23,11 @@
 .create-header .left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 24px;
 }
 
 .create-header h2 {
-    margin: 0;
+    margin: 0 0 0 8px;
     font-size: 28px;
     font-weight: 800;
     color: #1e293b;
@@ -166,9 +166,11 @@
 }
 
 .input-wrapper input,
+.input-wrapper select,
 .input-wrapper textarea {
     padding-left: 48px !important;
     box-sizing: border-box;
+    appearance: none;
 }
 
 .input-wrapper[style*="transparent"] input {
